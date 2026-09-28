@@ -1,0 +1,2150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo/kajo_app_icon.svg">
+  <link rel="alternate icon" href="logo/kajo_app_icon.ico">
+  <title>KAJO-Dash Layout Editor</title>
+  <style>
+    @font-face {
+      font-family: "Rajdhani Local";
+      src: url("fonts/rajdhani/Rajdhani-SemiBold.ttf") format("truetype");
+      font-weight: 600;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: "Rajdhani Local";
+      src: url("fonts/rajdhani/Rajdhani-Bold.ttf") format("truetype");
+      font-weight: 800;
+      font-style: normal;
+      font-display: block;
+    }
+    :root {
+      color-scheme: dark;
+      --bg: #101316; --panel: #171c21; --line: #303840; --text: #f4f7fb;
+      --muted: #aebbc5; --accent: #44d7ff; --red: #f51616; --guide: #ff45d0;
+      --success: #74e39a; --warning: #ffb347;
+      --cyd-orange: #ff6900; --cyd-surface: #101010; --cyd-panel: #080808;
+      --cyd-border: #424142; --cyd-active: #313031; --cyd-secondary: #bdbebd;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; height: 100vh; display: grid; overflow: hidden;
+      grid-template-columns: 368px minmax(720px, 1fr) 360px minmax(480px, 560px);
+      grid-template-areas: "rail main ui-system inspector";
+      background: var(--bg); color: var(--text);
+      font-family: Consolas, "Segoe UI", Arial, sans-serif;
+    }
+    main { grid-area: main; min-width: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); padding: 14px 20px 20px; gap: 14px; overflow: auto; }
+    aside { grid-area: inspector; min-width: 0; border-left: 1px solid var(--line); background: var(--panel); padding: 20px; overflow: auto; }
+    .asset-rail { grid-area: rail; min-width: 0; border-right: 1px solid var(--line); background: #13181d; padding: 18px; overflow: auto; }
+    .ui-system-rail {
+      grid-area: ui-system; min-width: 0; border-left: 1px solid var(--line); background: #11161a;
+      padding: 16px; overflow: auto; scrollbar-gutter: stable;
+    }
+    .ui-system-heading { position: sticky; top: -16px; z-index: 5; margin: -16px -16px 14px; padding: 16px; border-bottom: 1px solid var(--line); background: rgba(17,22,26,.97); backdrop-filter: blur(8px); }
+    .ui-system-heading strong { display: block; font-size: 15px; }
+    .ui-system-heading span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .ui-system-heading a { display: inline-block; margin-top: 7px; color: #76d9ff; font-size: 11px; text-decoration: none; }
+    .ui-system-heading a:hover { text-decoration: underline; }
+    .ui-kit-section { margin: 0 0 17px; padding: 0 0 17px; border-bottom: 1px solid var(--line); }
+    .ui-kit-section:last-child { border-bottom: 0; }
+    .ui-kit-title { margin: 0 0 7px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+    .ui-kit-note { margin: 7px 0 0; color: #89969f; font-size: 10px; line-height: 1.45; }
+    .ui-palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px 5px; }
+    .ui-swatch { min-width: 0; }
+    .ui-swatch-color { height: 34px; border: 1px solid #53606a; border-radius: 5px; }
+    .ui-swatch strong, .ui-swatch span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ui-swatch strong { margin-top: 5px; color: #e8edf0; font-size: 9px; }
+    .ui-swatch span { margin-top: 2px; color: #84919a; font-size: 8px; }
+    .cyd-demo {
+      width: 100%; padding: 2px; border: 1px solid #293036; border-radius: 7px; background: #000;
+      color: #fff; font-family: "Rajdhani Local", "Arial Narrow", sans-serif;
+    }
+    .cyd-demo * { box-sizing: border-box; }
+    .cyd-topbar { display: grid; grid-template-columns: 84px 1fr 84px; align-items: center; gap: 5px; }
+    .cyd-nav, .cyd-tile, .cyd-segment, .cyd-dialog-action {
+      border: 1px solid var(--cyd-border); background: var(--cyd-surface); color: #fff;
+      box-shadow: none; font-family: inherit; font-weight: 600;
+    }
+    .cyd-nav { display: flex; min-width: 0; min-height: 36px; padding: 0 8px; align-items: center; justify-content: center; gap: 7px; border-radius: 5px; font-size: 13px; }
+    .cyd-nav:active, .cyd-dialog-action:active, .cyd-tile:active, .cyd-segment:active {
+      border-color: var(--cyd-orange); background: var(--cyd-active);
+    }
+    .cyd-nav-arrow { color: #fff; font-family: "Segoe UI Symbol", sans-serif; font-size: 20px; line-height: 1; }
+    .cyd-page-info { min-width: 0; text-align: center; line-height: 1.05; }
+    .cyd-page-info strong { display: block; color: var(--cyd-orange); font-size: 13px; }
+    .cyd-page-info span { display: block; margin-top: 5px; color: #fff; font-size: 10px; }
+    .cyd-tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 7px; }
+    .cyd-tile { position: relative; min-width: 0; min-height: 52px; padding: 6px 21px 5px 8px; border-radius: 7px; text-align: left; }
+    .cyd-tile-title { display: block; overflow: hidden; color: #fff; font-size: 12px; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+    .cyd-tile-sub { display: block; margin-top: 7px; overflow: hidden; color: var(--cyd-secondary); font-size: 9px; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+    .cyd-action-triangle { position: absolute; right: 7px; top: 50%; width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid var(--cyd-orange); transform: translateY(-50%); }
+    .cyd-tile.selected { padding: 4px 19px 3px 6px; border-width: 3px; border-color: var(--cyd-orange); background: var(--cyd-active); }
+    .cyd-tile.passive { border: 0; background: var(--cyd-panel); }
+    .cyd-tile.passive .cyd-action-triangle { display: none; }
+    .cyd-state-key { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; color: #89969f; font: 9px Consolas, monospace; }
+    .cyd-state-key span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 4px; border: 1px solid var(--cyd-border); vertical-align: -1px; }
+    .cyd-state-key .interactive::before { border-color: var(--cyd-border); }
+    .cyd-state-key .selected-key::before { border: 3px solid var(--cyd-orange); background: var(--cyd-active); }
+    .cyd-state-key .passive-key::before { border: 0; background: var(--cyd-panel); }
+    .cyd-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; padding: 1px; border: 1px solid var(--cyd-border); border-radius: 5px; background: #000; overflow: hidden; }
+    .cyd-segment { min-width: 0; min-height: 30px; padding: 0 3px; border-width: 0 1px 0 0; border-radius: 0; font-size: 10px; }
+    .cyd-segment:last-child { border-right: 0; }
+    .cyd-segment.active { color: var(--cyd-orange); background: var(--cyd-active); box-shadow: inset 0 0 0 3px var(--cyd-orange); }
+    .cyd-slider { position: relative; height: 22px; margin-top: 8px; border: 1px solid var(--cyd-border); border-radius: 6px; background: var(--cyd-surface); overflow: hidden; }
+    .cyd-slider-fill { width: 68%; height: 100%; background: var(--cyd-orange); }
+    .cyd-slider-label { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 9px; text-shadow: 0 1px 2px #000; }
+    .cyd-toast { margin: 8px auto 0; padding: 10px 12px; border: 1px solid var(--cyd-orange); border-radius: 6px; background: var(--cyd-panel); color: #fff; text-align: center; font-size: 10px; }
+    .cyd-dialog-demo { padding: 12px 10px; background: rgba(0,0,0,.72); }
+    .cyd-dialog { padding: 10px; border: 1px solid var(--cyd-orange); border-radius: 8px; background: var(--cyd-panel); text-align: center; }
+    .cyd-dialog strong { display: block; font-size: 12px; }
+    .cyd-dialog p { min-height: 28px; margin: 7px 8px 9px; color: var(--cyd-secondary); font: 9px/1.35 "Rajdhani Local", sans-serif; }
+    .cyd-dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cyd-dialog-action { position: relative; min-height: 30px; padding: 0 15px 0 7px; border-radius: 6px; font-size: 10px; text-align: left; }
+    .cyd-dialog-action .cyd-action-triangle { right: 6px; }
+    .cyd-type-row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 10px; padding: 5px 0; border-bottom: 1px solid #20262b; }
+    .cyd-type-row:last-child { border-bottom: 0; }
+    .cyd-type-row strong { color: #fff; font-size: 12px; }
+    .cyd-type-row span { color: var(--cyd-secondary); font: 9px Consolas, monospace; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    h2 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+    p { margin: 0 0 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    label { display: block; margin: 11px 0 6px; color: var(--muted); font-size: 13px; }
+    input, select, textarea {
+      width: 100%; border: 1px solid #33404a; border-radius: 6px; background: #0e1216;
+      color: var(--text); min-height: 38px; padding: 9px 10px; font: inherit; font-size: 13px;
+    }
+    textarea { min-height: 160px; resize: vertical; line-height: 1.35; font-family: Consolas, monospace; }
+    button {
+      border: 1px solid #394650; background: #202830; color: var(--text);
+      border-radius: 6px; min-height: 38px; padding: 8px 11px; font: inherit; font-size: 13px; cursor: pointer;
+    }
+    button:hover { border-color: #5c7180; background: #26313a; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    button.icon { padding: 8px 10px; min-width: 42px; }
+    button.primary { border-color: #3f8fb0; background: #173d4d; }
+    button.primary:hover { border-color: #65c8ef; background: #1d4a5e; }
+    button.upload { border-color: #8a6330; background: #3a2a16; color: #ffd699; }
+    button.upload:hover { border-color: #c9934a; background: #49351d; }
+    button.danger { border-color: #724047; background: #321d21; color: #ffc4ca; }
+    button.refresh-editor { width: 100%; padding: 11px 12px; margin-top: 8px; border-color: #3f8fb0; background: #17313d; font-size: 13px; }
+    button.refresh-editor:hover { border-color: #65c8ef; background: #1d3f4f; }
+    .workflow-bar { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 720px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: rgba(23,28,33,.96); box-shadow: 0 8px 24px rgba(0,0,0,.28); backdrop-filter: blur(10px); }
+    .workflow-title { display: grid; gap: 5px; min-width: 220px; }
+    .workflow-title strong { font-size: 15px; }
+    .workflow-state { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    .workflow-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .state-badge { display: inline-flex; align-items: center; min-height: 26px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: #101419; font-size: 11px; }
+    .state-badge.good { border-color: #315f43; color: var(--success); }
+    .state-badge.warn { border-color: #77572d; color: var(--warning); }
+    .workbench { min-width: 700px; display: grid; place-items: start center; align-content: start; width: 100%; }
+    .target-wrap, .stage-wrap { display: grid; gap: 10px; justify-items: center; }
+    .target-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .target {
+      position: relative; width: 320px; height: 240px; flex: 0 0 auto; background: #000;
+      image-rendering: pixelated; box-shadow: 0 0 0 1px #40505e, 0 12px 36px rgba(0,0,0,.38);
+      user-select: none; -webkit-user-drag: none;
+    }
+    .target-canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+    .stage {
+      position: relative; width: 960px; height: 720px; background: #000;
+      image-rendering: pixelated; box-shadow: 0 0 0 1px #40505e, 0 18px 60px rgba(0,0,0,.45);
+      user-select: none; -webkit-user-drag: none; touch-action: none;
+    }
+    .screen {
+      position: absolute; inset: 0; width: 320px; height: 240px;
+      transform: scale(3); transform-origin: top left; overflow: hidden; background: #000;
+    }
+    .backdrop { position: absolute; inset: 0; width: 320px; height: 240px; opacity: .42; z-index: 1;
+      image-rendering: pixelated; pointer-events: none; }
+    .theme-bg { position: absolute; inset: 0; width: 320px; height: 240px; z-index: 0;
+      image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
+    .layer { position: absolute; inset: 0; width: 320px; height: 240px; overflow: visible; z-index: 3; }
+    #textLayer { pointer-events: none; }
+    body.lvgl-native .backdrop { opacity: 1; }
+    body.lvgl-native #shapeLayer > g:not(.selected-overlay):not(.pending-overlay),
+    body.lvgl-native #textLayer .item:not(.selected):not(.pending-edit) { opacity: 0; }
+    body.lvgl-native #shapeLayer > g.pending-overlay,
+    body.lvgl-native #textLayer .item.pending-edit { opacity: .78; filter: drop-shadow(0 0 2px #44d7ff); }
+    body.lvgl-native #shapeLayer > g.selected-overlay,
+    body.lvgl-native #textLayer .item.selected { opacity: .9; filter: drop-shadow(0 0 2px #44d7ff); }
+    .grid {
+      position: absolute; inset: 0; pointer-events: none; z-index: 2;
+      background-image:
+        linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.18) 1px, transparent 1px);
+      background-size: 10px 10px, 10px 10px, 40px 40px, 40px 40px;
+    }
+    .guide { position: absolute; pointer-events: none; background: var(--guide); z-index: 60; }
+    .guide.v { width: 1px; top: 0; bottom: 0; }
+    .guide.h { height: 1px; left: 0; right: 0; }
+    .item {
+      position: absolute; cursor: move; user-select: none; white-space: nowrap;
+      line-height: 1; text-shadow: 0 0 3px #000, 0 0 3px #000; pointer-events: auto;
+    }
+    .item .extra { position: absolute; pointer-events: none; white-space: nowrap; line-height: 1; }
+    .item .hit { position: absolute; inset: -3px; outline: 1px dashed transparent; }
+    .item.selected .hit { outline-color: var(--accent); background: rgba(68, 215, 255, .12); }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 1100px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #14191e; }
+    .control-group { display: flex; gap: 6px; flex-wrap: wrap; padding-right: 8px; border-right: 1px solid var(--line); }
+    .control-group:last-child { padding-right: 0; border-right: 0; }
+    .contact-sheet-wrap { width: 100%; display: grid; gap: 10px; justify-items: center; margin-top: 12px; }
+    .contact-sheet {
+      max-width: 100%; height: auto; display: block; background: #000;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      box-shadow: 0 0 0 1px #40505e, 0 12px 36px rgba(0,0,0,.38);
+      user-select: none; -webkit-user-drag: none;
+    }
+    .contact-sheet-trigger { width: 100%; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: zoom-in; }
+    .contact-sheet-trigger:hover { background: transparent; }
+    .contact-sheet-trigger:hover .contact-sheet { box-shadow: 0 0 0 2px var(--accent), 0 12px 36px rgba(0,0,0,.48); }
+    .contact-sheet-trigger:focus-visible { border-radius: 4px; }
+    .preview-dialog { width: calc(100vw - 12px); height: calc(100vh - 12px); max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid #40505e; border-radius: 8px; background: #11161b; color: var(--text); overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.72); }
+    .preview-dialog::backdrop { background: rgba(4,7,9,.82); backdrop-filter: blur(5px); }
+    .preview-dialog-shell { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+    .preview-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border-bottom: 1px solid var(--line); background: #171c21; }
+    .preview-dialog-title { display: grid; gap: 2px; }
+    .preview-dialog-title strong { font-size: 15px; }
+    .preview-dialog-title span { color: var(--muted); font-size: 12px; }
+    .preview-dialog-close { min-width: 92px; border-color: #536473; background: #222b33; }
+    .preview-dialog-viewport { min-width: 0; min-height: 0; padding: 20px; overflow: auto; background: #090c0f; }
+    .contact-sheet-full { display: block; width: auto; height: auto; max-width: none; margin: 0 auto; background: #000; image-rendering: pixelated; image-rendering: crisp-edges; user-select: none; -webkit-user-drag: none; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .toolbar { display: flex; gap: 7px; flex-wrap: wrap; }
+    .status { min-height: 18px; color: var(--success); font-size: 12px; }
+    .hint { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .readout { font-family: Consolas, monospace; font-size: 13px; color: var(--muted); }
+    .pill { display: inline-block; padding: 1px 6px; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; color: var(--muted); }
+    kbd { background: #0e1216; border: 1px solid #33404a; border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; font-size: 11px; }
+    .panel-section { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+    .panel-section:last-child { border-bottom: 0; }
+    .icon-editor-section { margin-top: 18px; padding: 14px; border: 1px solid #34414b; border-radius: 9px; background: #11171c; }
+    .icon-editor-section h2 { margin-top: 0; }
+    .icon-editor-workarea { display: grid; grid-template-columns: minmax(0, 256px) 82px; align-items: start; gap: 12px; margin-top: 10px; }
+    .icon-pixel-canvas { display: block; width: 100%; max-width: 256px; aspect-ratio: 1; border: 1px solid #536473; background: #000; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; cursor: crosshair; }
+    .icon-native-preview { display: grid; justify-items: center; gap: 7px; padding: 9px; border: 1px solid #303b44; border-radius: 7px; background: #0a0d10; }
+    .icon-native-preview canvas { width: 64px; height: 64px; border: 1px solid #536473; background: #000; image-rendering: pixelated; image-rendering: crisp-edges; }
+    .icon-native-preview span { color: var(--muted); font-size: 10px; text-align: center; }
+    .icon-tool-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }
+    .icon-tool-row button[aria-pressed="true"] { border-color: var(--accent); background: #173d4d; color: #dff7ff; box-shadow: inset 0 0 0 1px var(--accent); }
+    .icon-edit-actions { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 7px; margin-top: 7px; }
+    .icon-editor-status { min-height: 30px; margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .icon-editor-status.dirty { color: var(--warning); }
+    .icon-editor-status.saved { color: var(--success); }
+    details { border: 1px solid var(--line); border-radius: 8px; background: #12171c; }
+    summary { padding: 10px 12px; color: var(--muted); cursor: pointer; font-size: 13px; }
+    details > p, details > .details-body { padding: 0 12px 12px; margin: 0; }
+    .rail-heading { margin-bottom: 14px; }
+    .rail-heading strong { display: block; font-size: 15px; }
+    .rail-heading span { color: var(--muted); font-size: 12px; }
+    #typeFields[hidden], #fontField[hidden] { display: none; }
+
+    @media (max-width: 2050px) {
+      body { height: auto; min-height: 100vh; grid-template-columns: minmax(700px, 1fr) 340px 440px; grid-template-rows: minmax(720px, 100vh) auto; grid-template-areas: "main ui-system inspector" "rail rail inspector"; overflow: auto; }
+      main { height: 100vh; }
+      aside { position: sticky; top: 0; height: 100vh; }
+      .asset-rail { display: grid; grid-template-columns: 340px minmax(500px, 1fr); align-items: start; gap: 20px; overflow: visible; border-top: 1px solid var(--line); border-right: 0; }
+      .asset-rail .contact-sheet-wrap { margin-top: 0; }
+    }
+    @media (max-width: 1480px) {
+      body { display: block; min-width: 760px; }
+      main, aside { height: auto; min-height: 0; position: static; }
+      .asset-rail { display: block; }
+      .ui-system-rail { border-top: 1px solid var(--line); border-left: 0; }
+      .ui-system-heading { position: static; margin-top: 0; }
+      .workflow-bar { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="asset-rail" aria-label="Dashboard navigator and previews">
+    <div>
+      <div class="rail-heading"><strong>Dashboard navigator</strong><span>Choose a screen and compare its 1:1 output.</span></div>
+      <label for="screenSelect">UI screen</label>
+      <select id="screenSelect"></select>
+
+      <div class="target-wrap" style="margin-top:18px">
+        <div class="target-label" id="targetLabel">Target preview · 320×240</div>
+        <div class="target" id="target">
+          <canvas class="target-canvas" id="targetCanvas" width="320" height="240"></canvas>
+        </div>
+      </div>
+      <label for="targetScale">Target preview scale</label>
+      <input id="targetScale" type="range" min="0.75" max="2" value="1" step="0.25">
+    </div>
+
+    <div class="contact-sheet-wrap">
+      <div class="target-label">Generated preview contact sheet</div>
+      <button id="openContactSheet" class="contact-sheet-trigger" type="button" title="Open contact sheet at 100% scale" aria-haspopup="dialog" aria-controls="contactSheetDialog">
+        <img class="contact-sheet" id="contactSheet" alt="Generated preview contact sheet. Click to open at 100% scale.">
+      </button>
+    </div>
+  </nav>
+
+  <main>
+    <header class="workflow-bar">
+      <div class="workflow-title">
+        <strong>Layout workflow</strong>
+        <div class="workflow-state">
+          <span class="state-badge" id="saveState">Loading layout…</span>
+          <span class="state-badge" id="generateState">Generation unknown</span>
+          <span class="status" id="status" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+      <div class="workflow-actions">
+        <button id="saveFile" class="primary">Save layout</button>
+        <button id="runPreview" class="primary">Generate previews</button>
+        <button id="uploadLvgl" class="upload">Save &amp; upload LVGL</button>
+      </div>
+    </header>
+
+    <div class="workbench">
+      <div class="stage-wrap">
+        <div class="target-label" id="workspaceLabel">Editable workspace</div>
+        <div class="stage" id="stage">
+          <div class="screen" id="screen">
+            <img class="backdrop" id="backdrop" alt="">
+            <canvas class="theme-bg" id="themeBgCanvas" width="320" height="240"></canvas>
+            <div class="grid" id="grid"></div>
+            <svg class="layer" id="shapeLayer" viewBox="0 0 320 240"></svg>
+            <div class="layer" id="textLayer"></div>
+            <svg class="layer" id="handleLayer" viewBox="0 0 320 240" style="pointer-events:none"></svg>
+          </div>
+        </div>
+        <div class="readout"><span id="hoverReadout">x: —  y: —</span> &nbsp; <span class="pill" id="selCount">0 selected</span></div>
+        <div class="controls">
+          <div class="control-group" aria-label="History">
+            <button id="undo" class="icon" title="Undo (Ctrl+Z)">Undo</button>
+            <button id="redo" class="icon" title="Redo (Ctrl+Y)">Redo</button>
+          </div>
+          <div class="control-group" aria-label="Alignment">
+            <button id="alignLeft">Align left</button>
+            <button id="alignHCenter">Center X</button>
+            <button id="alignRight">Align right</button>
+            <button id="alignTop">Align top</button>
+            <button id="alignVCenter">Center Y</button>
+            <button id="alignBottom">Align bottom</button>
+            <button id="distH">Distribute X</button>
+            <button id="distV">Distribute Y</button>
+          </div>
+          <div class="control-group" aria-label="Canvas view">
+            <button id="toggleGrid">Toggle grid</button>
+            <button id="toggleBackdrop">Toggle backdrop</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <section class="ui-system-rail" aria-label="Shared UI design system reference">
+    <div class="ui-system-heading">
+      <strong>Shared UI design system</strong>
+      <span>Visual reference for firmware menu chrome. Dashboard theme colors remain independent.</span>
+      <span>Code source: <code>src/lvgl_app/ui_style.h</code></span>
+      <a href="../docs/ui-components.md" target="_blank" rel="noopener">Open component rules ↗</a>
+    </div>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">System palette · RGB565</div>
+      <div class="ui-palette">
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#ff6900"></div><strong>Accent</strong><span>FB40</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#101010"></div><strong>Control</strong><span>1082</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#080808"></div><strong>Panel</strong><span>0841</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#424142"></div><strong>Border</strong><span>4208</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#313031"></div><strong>Active fill</strong><span>3186</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#bdbebd"></div><strong>Label</strong><span>BDF7</span></div>
+      </div>
+    </section>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">Replay charts · flat fills</div>
+      <div class="ui-palette">
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#00beff"></div><strong>Speed</strong><span>05FF</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#ff2021"></div><strong>Power</strong><span>F904</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#ffff00"></div><strong>Voltage</strong><span>FFE0</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#003039"></div><strong>Speed fill</strong><span>0187</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#4a0000"></div><strong>Power fill</strong><span>4800</span></div>
+        <div class="ui-swatch"><div class="ui-swatch-color" style="background:#292800"></div><strong>Voltage fill</strong><span>2940</span></div>
+      </div>
+      <p class="ui-kit-note">One to four stacked bands, shared cursor and field/value callouts. Field names sit at the bottom-left of each full-height plot, with scale labels kept inside their own bands. Solid dim area fills follow the trace exactly, with no separate bottom strip, gradients or horizontal gridlines. Each column uses its bucket minimum for both trace and fill. Power includes zero and extends below it for regen; negative wattage appears in the callout with (regen).</p>
+    </section>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">Top navigation · 84 × 36</div>
+      <div class="cyd-demo">
+        <div class="cyd-topbar">
+          <button class="cyd-nav" type="button"><span class="cyd-nav-arrow">←</span><span>BACK</span></button>
+          <div class="cyd-page-info"><strong>DISPLAY</strong><span>1/2</span></div>
+          <button class="cyd-nav" type="button"><span>NEXT</span><span class="cyd-nav-arrow">→</span></button>
+        </div>
+      </div>
+      <p class="ui-kit-note">Centered title/page text is passive. No surrounding border or divider line.</p>
+    </section>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">Menu tiles · 5 px gaps</div>
+      <div class="cyd-demo">
+        <div class="cyd-tile-grid">
+          <button class="cyd-tile" type="button"><span class="cyd-tile-title">THEME</span><span class="cyd-tile-sub">Choose dashboard</span><i class="cyd-action-triangle"></i></button>
+          <button class="cyd-tile selected" type="button"><span class="cyd-tile-title">ACTIVE</span><span class="cyd-tile-sub">Selected option</span><i class="cyd-action-triangle"></i></button>
+          <button class="cyd-tile" type="button"><span class="cyd-tile-title">DISPLAY</span><span class="cyd-tile-sub">Brightness and touch</span><i class="cyd-action-triangle"></i></button>
+          <div class="cyd-tile passive"><span class="cyd-tile-title">STATUS</span><span class="cyd-tile-sub">Information only</span></div>
+        </div>
+        <div class="cyd-state-key"><span class="interactive">Interactive</span><span class="selected-key">Selected</span><span class="passive-key">Passive</span></div>
+      </div>
+      <p class="ui-kit-note">Idle touch targets use a light-grey border. Orange appears only while pressed or selected; the thicker selected border is inset-compensated so content never moves. Information-only surfaces are borderless. Subtitle boxes reserve 2 px of descent room so glyphs never clip at the lower edge.</p>
+    </section>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">Selectors and values</div>
+      <div class="cyd-demo">
+        <div class="cyd-selector" aria-label="Appearance selector example">
+          <button class="cyd-segment active" type="button">DARK</button>
+          <button class="cyd-segment" type="button">LIGHT</button>
+          <button class="cyd-segment" type="button">AUTO</button>
+        </div>
+        <div class="cyd-slider"><div class="cyd-slider-fill"></div><span class="cyd-slider-label">68%</span></div>
+      </div>
+      <p class="ui-kit-note">Segments share one clean housing. Use orange only for the active choice.</p>
+    </section>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">Transient status notice</div>
+      <div class="cyd-demo"><div class="cyd-toast">SETTINGS SAVED</div></div>
+      <p class="ui-kit-note">Slides from y=244 to y=197 over 140 ms. Add messages through <code>StatusNotice</code>.</p>
+    </section>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">Confirmation dialog</div>
+      <div class="cyd-demo cyd-dialog-demo">
+        <div class="cyd-dialog">
+          <strong>APPLY SETTINGS?</strong>
+          <p>Explain the result and any restart before the user confirms.</p>
+          <div class="cyd-dialog-actions">
+            <button class="cyd-dialog-action" type="button">CANCEL<i class="cyd-action-triangle"></i></button>
+            <button class="cyd-dialog-action" type="button">CONFIRM<i class="cyd-action-triangle"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">Text hierarchy</div>
+      <div class="cyd-demo">
+        <div class="cyd-type-row"><strong>PRIMARY TITLE</strong><span>white · F12/F14</span></div>
+        <div class="cyd-type-row"><strong style="color:var(--cyd-orange)">SECTION TITLE</strong><span>orange · F12/F14</span></div>
+        <div class="cyd-type-row"><strong style="color:var(--cyd-secondary)">Explanation text</strong><span>label · F10</span></div>
+      </div>
+      <p class="ui-kit-note">Use <code>txt(...)</code> for every user-facing string and verify Finnish/German wrapping.</p>
+    </section>
+  </section>
+
+  <aside>
+    <h1 id="editorTitle">CYD Layout Editor</h1>
+    <details class="help-panel">
+      <summary>How this editor works</summary>
+      <p>Drag items or their resize handles in the workspace. <span class="pill">tools/layout.json</span> is converted into
+        <span class="pill">include/cyd_layout_generated.h</span> for firmware builds.</p>
+    </details>
+
+    <section class="panel-section">
+    <h2>Selected item</h2>
+    <label for="selected">Selected element</label>
+    <select id="selected"></select>
+
+    <div class="row">
+      <div><label for="x">X</label><input id="x" type="number"></div>
+      <div><label for="y">Y</label><input id="y" type="number"></div>
+    </div>
+
+    <div id="fontField" hidden>
+      <label for="fontStep">Text size (font tier)</label>
+      <select id="fontStep"></select>
+      <div class="hint">Cyan edit overlays remain visible after deselection. Generate LVGL previews to replace the native framebuffer with the exact edited result.</div>
+    </div>
+
+    <div id="typeFields" hidden>
+      <div class="row"><div><label for="w">W</label><input id="w" type="number"></div>
+        <div><label for="h">H</label><input id="h" type="number"></div></div>
+    </div>
+
+    <label for="scale">Preview scale</label>
+    <input id="scale" type="range" min="1" max="4" value="3" step="0.25">
+    </section>
+
+    <section class="panel-section">
+    <h2>Selection actions</h2>
+    <div class="toolbar">
+      <button id="deleteSelected" class="danger" title="Delete selected elements; Undo is available">Delete selected</button>
+      <button id="resetScreen" class="danger">Reset screen…</button>
+    </div>
+    </section>
+
+    <section class="panel-section">
+    <h2>File and source</h2>
+    <div class="toolbar">
+      <button id="downloadFile">Download</button>
+      <button id="importFile">Import…</button>
+      <button id="reloadFile">Reload</button>
+    </div>
+    <button id="refreshEditor" class="refresh-editor" hidden>Refresh LVGL editor from firmware source</button>
+    <input id="fileInput" type="file" accept="application/json,.json" hidden>
+    </section>
+
+    <section class="panel-section">
+    <h2>Export snippets</h2>
+    <div class="toolbar">
+      <button id="copyCurrent">Copy screen JSON</button>
+      <button id="copyCpp">Copy C++ constants</button>
+    </div>
+    <textarea id="output" spellcheck="false"></textarea>
+    </section>
+    <div class="hint">
+      <kbd>Drag</kbd> move · square handles resize shapes · <kbd>Shift</kbd>/<kbd>Ctrl</kbd>+click multi-select ·
+      <kbd>↑↓←→</kbd> nudge (<kbd>Shift</kbd> ×5) · hold <kbd>Alt</kbd> to disable snapping ·
+      <kbd>Ctrl</kbd>+<kbd>Z</kbd>/<kbd>Y</kbd> undo/redo.
+    </div>
+
+    <section class="panel-section icon-editor-section" aria-labelledby="iconEditorTitle">
+      <h2 id="iconEditorTitle">Icon pixel editor</h2>
+      <label for="iconEditorSelect">Firmware icon</label>
+      <select id="iconEditorSelect"></select>
+      <div class="icon-editor-workarea">
+        <canvas id="iconPixelCanvas" class="icon-pixel-canvas" width="256" height="256" tabindex="0" aria-label="16 by 16 icon pixel grid"></canvas>
+        <div class="icon-native-preview">
+          <canvas id="iconPixelPreview" width="16" height="16" aria-label="Icon preview"></canvas>
+          <span>16×16<br>native mask</span>
+        </div>
+      </div>
+      <div class="icon-tool-row" aria-label="Pixel tool">
+        <button id="iconDrawTool" type="button" aria-pressed="true">Draw white</button>
+        <button id="iconEraseTool" type="button" aria-pressed="false">Erase</button>
+      </div>
+      <div class="icon-edit-actions">
+        <button id="iconRevert" type="button">Revert</button>
+        <button id="iconClear" type="button">Clear</button>
+        <button id="saveIcon" class="primary" type="button" disabled>Save icon</button>
+      </div>
+      <div id="iconEditorStatus" class="icon-editor-status" role="status">Loading icon…</div>
+      <div class="hint">Click or drag individual cells. Black is transparent; white receives the runtime theme color. Save updates the source PNG and packed firmware icon immediately.</div>
+    </section>
+  </aside>
+
+  <dialog id="contactSheetDialog" class="preview-dialog" aria-labelledby="contactSheetDialogTitle">
+    <div class="preview-dialog-shell">
+      <header class="preview-dialog-header">
+        <div class="preview-dialog-title">
+          <strong id="contactSheetDialogTitle">Generated preview contact sheet</strong>
+          <span>100% image scale · native defaults left, forced Light mode right · scroll to inspect · Escape also closes</span>
+        </div>
+        <button id="closeContactSheet" class="preview-dialog-close" type="button" aria-label="Close full-size preview and go back">× Back</button>
+      </header>
+      <div class="preview-dialog-viewport">
+        <img id="contactSheetFull" class="contact-sheet-full" alt="Generated preview contact sheet at 100% scale">
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    const STORAGE_KEY = "cydLayoutEditor.v4";
+    const QUERY = new URLSearchParams(window.location.search);
+    const LVGL_MODE = QUERY.get("lvgl") === "1";
+    const ASSET_VERSION = LVGL_MODE ? "lvgl-previews-20260708" : "battery-procedural-20260707";
+    const CONTACT_SHEET_PATH = LVGL_MODE ? "../preview_output/lvgl/contact_sheet.png" : "../preview_output/contact_sheet.png";
+    // Only the LVGL generator still exists; the pre-LVGL run_preview.bat and
+    // its /api/run-preview route are gone.
+    const RUN_PREVIEW_ENDPOINT = "/api/run-preview-lvgl";
+    const SNAP = 3;
+    const CENTERS = { x: [0, 160, 320], y: [0, 120, 240] };
+    const FALLBACK_FONT_KEYS = ["F10","F12","F14","F16","F20","F24","F28","F36","F48","F72","F96"];
+    const LVGL_FONT_FALLBACK = {
+      family: { fallbackCss: '"Rajdhani Local", "Arial Narrow", "Segoe UI", sans-serif' },
+      availableTiers: ["F10","F12","F14","F16","F20","F24","F28","F36","F48","F72","F96"],
+      tiers: { F8: "rajdhani12", F10: "rajdhani12", F12: "rajdhani12", F14: "rajdhani14", F16: "rajdhani16", F20: "rajdhani20", F24: "rajdhani24", F28: "rajdhani24", F34: "rajdhani24", F36: "rajdhani36", F48: "rajdhani36", F64: "rajdhani36", F72: "speed72", F80: "speed72", F96: "speed96", F128: "speed96", F160: "speed96" },
+      thresholds: { F8: "F10", F10: "F10", F12: "F12", F14: "F14", F16: "F16", F20: "F20", F24: "F24", F28: "F28", F34: "F28", F36: "F36", F48: "F48", F64: "F48", F72: "F72", F80: "F72", F96: "F96", F128: "F96", F160: "F96" },
+      fonts: {
+        rajdhani12: { sourceSize: 12, lineHeight: 14, baseLine: 3, widths: {} },
+        rajdhani14: { sourceSize: 14, lineHeight: 15, baseLine: 3, widths: {} },
+        rajdhani16: { sourceSize: 16, lineHeight: 17, baseLine: 3, widths: {} },
+        rajdhani20: { sourceSize: 20, lineHeight: 21, baseLine: 4, widths: {} },
+        rajdhani24: { sourceSize: 24, lineHeight: 27, baseLine: 6, widths: {} },
+        rajdhani36: { sourceSize: 36, lineHeight: 32, baseLine: 6, widths: {} },
+        speed72: { sourceSize: 72, lineHeight: 47, baseLine: 0, widths: {} },
+        speed96: { sourceSize: 96, lineHeight: 62, baseLine: 0, widths: {} }
+      }
+    };
+    let lvglFontMetrics = LVGL_FONT_FALLBACK;
+    const COLORS = {
+      WHITE: "#f5faff", BLACK: "#000000", DIM: "#373c41", PANEL: "#0a1214", ORANGE: "#ffa000",
+      DARK_ORANGE: "#785000", GREEN: "#50e628", BLUE: "#00aff5", CYAN: "#3cdcff",
+      YELLOW: "#ffdc00", RED_ORANGE: "#ff5a14"
+    };
+    const ICON_PATH = "../preview_output/icons16/";
+    // Crisp 16x16 two-state RGBA masks. Keep in sync with
+    // ICON_FILES in tools/convert_icons_1bit.py.
+    const ICON_FILES = {
+      speed: "speedometer.png", battery: "battery.png", current: "amps_gauge.png",
+      power: "heartbeat.png", efficiency: "efficiency.png",
+      temp_motor: "thermometer.png", temp_esc: "chip.png",
+      trip: "trip.png", odo: "odo.png", avg_speed: "speedometer.png",
+      uptime: "clock.png", bike_uptime: "bike.png", esc_temp: "chip.png",
+      voltage: "voltage.png", amperage: "amps_gauge.png", watts: "heartbeat.png",
+      distance: "navigation.png", nav: "navigation.png", bluetooth: "bluetooth.png",
+      wifi: "wifi.png", sd_card: "sd_card.png", settings: "wrench.png",
+      warning: "warning_filled.png", fault: "warning_outline.png", lights: "headlight.png"
+    };
+    const ICON_EDITOR_LABELS = {
+      "speedometer.png": "Speed / average speed", "battery.png": "Battery",
+      "amps_gauge.png": "Current / amperage", "heartbeat.png": "Power / watts",
+      "efficiency.png": "Efficiency",
+      "thermometer.png": "Motor temperature", "chip.png": "ESC temperature",
+      "trip.png": "Trip", "odo.png": "Odometer", "clock.png": "Uptime",
+      "bike.png": "Bike uptime", "voltage.png": "Voltage",
+      "navigation.png": "Distance / navigation", "bluetooth.png": "Bluetooth",
+      "wifi.png": "Wi-Fi", "sd_card.png": "SD card", "wrench.png": "Settings",
+      "warning_filled.png": "Warning (filled)", "warning_outline.png": "Fault (outline)",
+      "headlight.png": "Lights"
+    };
+    const ICON_EDITOR_FILES = [...new Set(Object.values(ICON_FILES))];
+    const ICON_IMAGES = {};
+    const PREVIEW_IMAGES = {};
+    const BACKGROUND_BASE = {
+      hud: "BLACK", dualGauge: "BLACK", simple: "BLACK", barGraph: "BLACK",
+      pixelMono: "BLACK", pixelGauge: "BLACK", largeTiles: "#e5e2d8",
+      bigReadout: "BLACK", redline: "BLACK"
+    };
+    const SHAPE_PRESETS = {
+      hud: [
+        { id: "speedFrame", kind: "shape", type: "line", points: [[42,74],[62,52],[108,52],[128,74],[108,126],[62,126],[42,104],[32,90],[42,74]], color: "ORANGE" },
+        { id: "powerFrame", kind: "shape", type: "line", points: [[192,74],[212,52],[258,52],[278,74],[288,90],[278,104],[258,126],[212,126],[192,104],[192,74]], color: "ORANGE" },
+        { id: "centerStack", kind: "shape", type: "line", points: [[160,57],[160,134]], color: "ORANGE" },
+        { id: "topTrimLeft", kind: "shape", type: "line", points: [[73,24],[118,24],[128,17],[148,17]], color: "ORANGE" },
+        { id: "topTrimRight", kind: "shape", type: "line", points: [[172,17],[192,17],[202,24],[247,24]], color: "ORANGE" },
+        { id: "divider", kind: "shape", type: "line", points: [[0,139],[320,139]], color: "DIM" }
+      ],
+      compact: [
+        { id: "outerPanel", kind: "shape", type: "rrect", x: 4, y: 4, w: 312, h: 232, radius: 6, outline: "DIM", fill: "PANEL" },
+        { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 280, y: 7, w: 24, h: 16, color: "GREEN", sample: 66 },
+        { id: "speedArc", kind: "shape", type: "continuousArc", cx: 160, cy: 105, r: 58, max: 100, color: "GREEN", sample: 21 },
+        { id: "powerCard", kind: "shape", type: "rrect", x: 236, y: 70, w: 74, h: 46, radius: 5, outline: "DIM", fill: [10, 15, 19] },
+        { id: "powerIcon", kind: "shape", type: "icon", icon: "power", x: 240, y: 86, w: 16, h: 16, color: "GREEN" },
+        { id: "voltsCard", kind: "shape", type: "rrect", x: 10, y: 70, w: 74, h: 46, radius: 5, outline: "DIM", fill: [10, 15, 19] },
+        { id: "voltsIcon", kind: "shape", type: "icon", icon: "voltage", x: 14, y: 86, w: 16, h: 16, color: "GREEN" },
+        { id: "ampsCard", kind: "shape", type: "rrect", x: 10, y: 126, w: 74, h: 46, radius: 5, outline: "DIM", fill: [10, 15, 19] },
+        { id: "ampsIcon", kind: "shape", type: "icon", icon: "amperage", x: 14, y: 142, w: 16, h: 16, color: "GREEN" },
+        { id: "tempCard", kind: "shape", type: "rrect", x: 236, y: 126, w: 74, h: 46, radius: 5, outline: "DIM", fill: [10, 15, 19] },
+        { id: "tempIcon", kind: "shape", type: "icon", icon: "temp_motor", x: 240, y: 142, w: 16, h: 16, color: "GREEN" },
+        { id: "footerLine", kind: "shape", type: "rrect", x: 12, y: 198, w: 296, h: 34, radius: 3, outline: "DIM" }
+      ],
+      barGraph: [
+        { id: "outerPanel", kind: "shape", type: "rrect", x: 2, y: 5, w: 316, h: 232, radius: 5, outline: "CYAN", fill: "BLACK" },
+        { id: "batteryBarFrame", kind: "shape", type: "rect", x: 12, y: 28, w: 112, h: 20, outline: "CYAN" },
+        { id: "speedBarFrame", kind: "shape", type: "rect", x: 12, y: 69, w: 112, h: 20, outline: "CYAN" },
+        { id: "powerBarFrame", kind: "shape", type: "rect", x: 12, y: 110, w: 112, h: 20, outline: "RED_ORANGE" },
+        { id: "voltageBarFrame", kind: "shape", type: "rect", x: 12, y: 151, w: 112, h: 20, outline: "GREEN" },
+        { id: "currentBarFrame", kind: "shape", type: "rect", x: 12, y: 192, w: 112, h: 20, outline: "YELLOW" },
+        { id: "separator", kind: "shape", type: "line", points: [[205,18],[205,224]], color: "CYAN" }
+      ],
+      pixelMono: [
+        { id: "outerFrame", kind: "shape", type: "rect", x: 2, y: 5, w: 316, h: 232, outline: "DIM" },
+        { id: "speedBox", kind: "shape", type: "rect", x: 12, y: 50, w: 135, h: 110, outline: "WHITE" },
+        { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 276, y: 10, w: 24, h: 16, color: "WHITE", sample: 66 },
+        { id: "metricRow1", kind: "shape", type: "rect", x: 164, y: 42, w: 142, h: 29, outline: "DIM" },
+        { id: "powerIcon", kind: "shape", type: "icon", icon: "power", x: 169, y: 47, w: 16, h: 16, color: "WHITE" },
+        { id: "metricRow2", kind: "shape", type: "rect", x: 164, y: 78, w: 142, h: 29, outline: "DIM" },
+        { id: "voltsIcon", kind: "shape", type: "icon", icon: "voltage", x: 169, y: 83, w: 16, h: 16, color: "WHITE" },
+        { id: "metricRow3", kind: "shape", type: "rect", x: 164, y: 114, w: 142, h: 29, outline: "DIM" },
+        { id: "ampsIcon", kind: "shape", type: "icon", icon: "amperage", x: 169, y: 119, w: 16, h: 16, color: "WHITE" },
+        { id: "metricRow4", kind: "shape", type: "rect", x: 164, y: 150, w: 142, h: 29, outline: "DIM" },
+        { id: "tempIcon", kind: "shape", type: "icon", icon: "temp_motor", x: 169, y: 155, w: 16, h: 16, color: "WHITE" },
+        { id: "footerTop", kind: "shape", type: "line", points: [[0,194],[320,194]], color: "WHITE" },
+        { id: "footerSplit1", kind: "shape", type: "line", points: [[106,194],[106,238]], color: "DIM" },
+        { id: "footerSplit2", kind: "shape", type: "line", points: [[213,194],[213,238]], color: "DIM" }
+      ],
+      pixelGauge: [
+        { id: "outerFrame", kind: "shape", type: "rect", x: 2, y: 5, w: 316, h: 232, outline: "DIM" },
+        { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 276, y: 10, w: 24, h: 16, color: "GREEN", sample: 66 },
+        { id: "speedArc", kind: "shape", type: "arcGauge", cx: 90, cy: 112, r: 66, max: 80, color: "GREEN", sample: 21 },
+        { id: "metricRow1", kind: "shape", type: "rect", x: 164, y: 42, w: 142, h: 29, outline: "DIM" },
+        { id: "powerIcon", kind: "shape", type: "icon", icon: "power", x: 169, y: 47, w: 16, h: 16, color: "YELLOW" },
+        { id: "metricRow2", kind: "shape", type: "rect", x: 164, y: 78, w: 142, h: 29, outline: "DIM" },
+        { id: "voltsIcon", kind: "shape", type: "icon", icon: "voltage", x: 169, y: 83, w: 16, h: 16, color: "GREEN" },
+        { id: "metricRow3", kind: "shape", type: "rect", x: 164, y: 114, w: 142, h: 29, outline: "DIM" },
+        { id: "ampsIcon", kind: "shape", type: "icon", icon: "amperage", x: 169, y: 119, w: 16, h: 16, color: "GREEN" },
+        { id: "metricRow4", kind: "shape", type: "rect", x: 164, y: 150, w: 142, h: 29, outline: "DIM" },
+        { id: "tempIcon", kind: "shape", type: "icon", icon: "temp_motor", x: 169, y: 155, w: 16, h: 16, color: "RED_ORANGE" },
+        { id: "footerTop", kind: "shape", type: "line", points: [[0,194],[320,194]], color: "DIM" },
+        { id: "footerSplit1", kind: "shape", type: "line", points: [[106,194],[106,238]], color: "DIM" },
+        { id: "footerSplit2", kind: "shape", type: "line", points: [[213,194],[213,238]], color: "DIM" }
+      ],
+      largeTiles: [
+        { id: "speedTile", kind: "shape", type: "rrect", x: 8, y: 8, w: 198, h: 90, radius: 5, outline: [220, 216, 206], fill: [246, 241, 231] },
+        { id: "speedIcon", kind: "shape", type: "icon", icon: "speed", x: 174, y: 14, w: 16, h: 16, color: [44, 49, 54] },
+        { id: "batteryTile", kind: "shape", type: "rrect", x: 210, y: 8, w: 102, h: 90, radius: 5, outline: [220, 216, 206], fill: [246, 241, 231] },
+        { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 280, y: 14, w: 24, h: 16, color: [44, 49, 54], sample: 66 },
+        { id: "voltsTile", kind: "shape", type: "rrect", x: 8, y: 102, w: 100, h: 60, radius: 5, outline: [220, 216, 206], fill: [246, 241, 231] },
+        { id: "voltsIcon", kind: "shape", type: "icon", icon: "voltage", x: 76, y: 108, w: 16, h: 16, color: [44, 49, 54] },
+        { id: "ampsTile", kind: "shape", type: "rrect", x: 111, y: 102, w: 100, h: 60, radius: 5, outline: [220, 216, 206], fill: [246, 241, 231] },
+        { id: "ampsIcon", kind: "shape", type: "icon", icon: "amperage", x: 179, y: 108, w: 16, h: 16, color: [44, 49, 54] },
+        { id: "powerTile", kind: "shape", type: "rrect", x: 214, y: 102, w: 98, h: 60, radius: 5, outline: [220, 216, 206], fill: [246, 241, 231] },
+        { id: "powerIcon", kind: "shape", type: "icon", icon: "power", x: 280, y: 108, w: 16, h: 16, color: [44, 49, 54] },
+        { id: "tripTile", kind: "shape", type: "rrect", x: 8, y: 166, w: 100, h: 60, radius: 5, outline: [220, 216, 206], fill: [246, 241, 231] },
+        { id: "tripIcon", kind: "shape", type: "icon", icon: "trip", x: 76, y: 172, w: 16, h: 16, color: [44, 49, 54] },
+        { id: "tempTile", kind: "shape", type: "rrect", x: 111, y: 166, w: 100, h: 60, radius: 5, outline: [220, 216, 206], fill: [246, 241, 231] },
+        { id: "tempIcon", kind: "shape", type: "icon", icon: "temp_motor", x: 179, y: 172, w: 16, h: 16, color: [44, 49, 54] },
+        { id: "odoTile", kind: "shape", type: "rrect", x: 214, y: 166, w: 98, h: 60, radius: 5, outline: [220, 216, 206], fill: [246, 241, 231] },
+        { id: "odoIcon", kind: "shape", type: "icon", icon: "odo", x: 280, y: 172, w: 16, h: 16, color: [44, 49, 54] },
+        { id: "batteryProgress", kind: "shape", type: "rrect", x: 226, y: 70, w: 72, h: 11, radius: 2, fill: [55, 181, 82] }
+      ],
+      bigReadout: [
+        { id: "outerPanel", kind: "shape", type: "rrect", x: 4, y: 4, w: 312, h: 232, radius: 6, outline: "DIM", fill: "PANEL" },
+        { id: "timeIcon", kind: "shape", type: "icon", icon: "uptime", x: 8, y: 8, w: 16, h: 16, color: "WHITE" },
+        { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 284, y: 8, w: 24, h: 16, color: "GREEN", sample: 66 },
+        { id: "topLine", kind: "shape", type: "line", points: [[4,40],[316,40]], color: "DIM" },
+        { id: "footerLine", kind: "shape", type: "line", points: [[4,158],[316,158]], color: "DIM" },
+        { id: "powerCard", kind: "shape", type: "rrect", x: 12, y: 164, w: 66, h: 62, radius: 5, outline: "DIM", fill: [10, 15, 19] },
+        { id: "powerIcon", kind: "shape", type: "icon", icon: "power", x: 33, y: 169, w: 16, h: 16, color: "YELLOW" },
+        { id: "voltsCard", kind: "shape", type: "rrect", x: 89, y: 164, w: 66, h: 62, radius: 5, outline: "DIM", fill: [10, 15, 19] },
+        { id: "voltsIcon", kind: "shape", type: "icon", icon: "voltage", x: 110, y: 169, w: 16, h: 16, color: "GREEN" },
+        { id: "ampsCard", kind: "shape", type: "rrect", x: 166, y: 164, w: 66, h: 62, radius: 5, outline: "DIM", fill: [10, 15, 19] },
+        { id: "ampsIcon", kind: "shape", type: "icon", icon: "amperage", x: 187, y: 169, w: 16, h: 16, color: "CYAN" },
+        { id: "tempCard", kind: "shape", type: "rrect", x: 243, y: 164, w: 66, h: 62, radius: 5, outline: "DIM", fill: [10, 15, 19] },
+        { id: "tempIcon", kind: "shape", type: "icon", icon: "temp_motor", x: 264, y: 169, w: 16, h: 16, color: "YELLOW" }
+      ],
+      redline: []
+    };
+    const SVGNS = "http://www.w3.org/2000/svg";
+
+    const el = {};
+    ["screen","stage","target","targetCanvas","backdrop","themeBgCanvas","grid","shapeLayer","textLayer","handleLayer","screenSelect","selected",
+     "x","y","w","h","fontStep","fontField","typeFields","scale","targetScale","output","status","hoverReadout",
+     "selCount","undo","redo","fileInput","contactSheet","runPreview","uploadLvgl","refreshEditor","saveState","generateState",
+     "openContactSheet","closeContactSheet","contactSheetDialog","contactSheetFull","targetLabel","workspaceLabel",
+     "iconEditorSelect","iconPixelCanvas","iconPixelPreview","iconDrawTool","iconEraseTool","iconRevert","iconClear","saveIcon","iconEditorStatus"].forEach(id => el[id] = document.getElementById(id));
+    el.editorTitle = document.getElementById("editorTitle");
+    el.main = document.querySelector("main");
+    el.workflowBar = document.querySelector(".workflow-bar");
+    if (LVGL_MODE) {
+      document.body.classList.add("lvgl-native");
+      document.title = "KAJO-Dash Layout Editor";
+      el.editorTitle.textContent = "KAJO-Dash Layout Editor";
+      el.runPreview.textContent = "Generate LVGL previews";
+      el.refreshEditor.hidden = false;
+      el.targetLabel.textContent = "Native LVGL target · 320×240";
+      el.workspaceLabel.textContent = "Editable workspace · native LVGL base";
+    }
+
+    let layout = null;       // normalized: screens[id] = {name,image,prefix,schema,items:[]}
+    let pristine = null;     // normalized copy from disk
+    let currentScreen = null;
+    let selection = new Set();
+    let drag = null;
+    let fileHandle = null;
+    let backdropOn = LVGL_MODE;
+    const undoStack = [], redoStack = [];
+    let lastCommitted = null;
+    let fileSig = "";   // signature of layout.json as loaded; local autosave is only reapplied while it matches
+    let savedSnapshot = "";
+    let generatedSnapshot = null;
+    let nativeBaselineScreens = {};
+    let workspaceLiveEdit = false;
+    let autoFitScale = true;
+    let statusTimer = null;
+    let previewRevision = Date.now();
+    let iconEditorPixels = new Uint8Array(16 * 16);
+    let iconEditorSavedPixels = new Uint8Array(16 * 16);
+    let iconEditorFile = "";
+    let iconEditorTool = 1;
+    let iconEditorStrokeValue = 1;
+    let iconEditorDrawing = false;
+    let iconEditorLastCell = null;
+    let iconEditorLoadToken = 0;
+
+    // ---------- helpers ----------
+    // Screen IDs are stable implementation keys, while these are the current
+    // product-facing names. Normalizing here also migrates older imported
+    // layouts, so stale names cannot return through editor autosave/import.
+    const CANONICAL_SCREEN_NAMES = {
+      hud: "01 Cyber HUD",
+      dualGauge: "02 Dual Gauge",
+      simple: "03 Simple",
+      barGraph: "04 Bar Graph",
+      pixelMono: "05 Mono",
+      pixelGauge: "06 Pixel",
+      largeTiles: "07 Tiles",
+      bigReadout: "08 Ride Console",
+      redline: "09 Redline",
+      trace: "10 Trace"
+    };
+    const colorOf = c => Array.isArray(c) ? `rgb(${c[0]},${c[1]},${c[2]})`
+      : (typeof c === "string" ? (COLORS[c] || (c.startsWith("#") ? c : "#fff")) : "#fff");
+    function rgbArray(c) {
+      if (Array.isArray(c)) return c;
+      const css = colorOf(c);
+      if (css.startsWith("rgb(")) return css.match(/\d+/g).slice(0, 3).map(Number);
+      if (css.startsWith("#")) {
+        const v = css.slice(1);
+        return [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16));
+      }
+      return [255, 255, 255];
+    }
+    const assetUrl = path => path + (path.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(ASSET_VERSION);
+    let iconAssetRevision = Date.now();
+    const iconFileUrl = filename => assetUrl(ICON_PATH + filename) + "&icon=" + iconAssetRevision;
+    const iconUrl = name => iconFileUrl(ICON_FILES[name] || ICON_FILES.settings);
+    const fontKeys = () => (lvglFontMetrics.availableTiers && lvglFontMetrics.availableTiers.length ? lvglFontMetrics.availableTiers : FALLBACK_FONT_KEYS);
+    const canonicalFontKey = k => (lvglFontMetrics.thresholds && lvglFontMetrics.thresholds[k]) || (fontKeys().includes(k) ? k : fontKeys()[0]);
+    const lvglFontId = k => (lvglFontMetrics.tiers && lvglFontMetrics.tiers[k]) || LVGL_FONT_FALLBACK.tiers[k] || "rajdhani14";
+    const lvglFont = k => (lvglFontMetrics.fonts && lvglFontMetrics.fonts[lvglFontId(k)]) || LVGL_FONT_FALLBACK.fonts[lvglFontId(k)] || LVGL_FONT_FALLBACK.fonts.rajdhani14;
+    const fontPx = k => lvglFont(k).lineHeight;
+    const fontRenderPx = k => lvglFont(k).sourceSize || fontPx(k);
+    const fontCssFamily = k => (lvglFontId(k).startsWith("speed") ? '"Rajdhani Bold", ' : "") + (lvglFontMetrics.family?.fallbackCss || LVGL_FONT_FALLBACK.family.fallbackCss);
+    const mainFontKey = e => canonicalFontKey(e.font || (e.fit ? e.fit[0] : "F14"));
+    const isText = it => it.kind === "text";
+    const clampX = v => Math.max(0, Math.min(320, Math.round(v)));
+    const clampY = v => Math.max(0, Math.min(240, Math.round(v)));
+    const cloneItem = it => JSON.parse(JSON.stringify(it));
+    const screenMeta = () => layout.screens[currentScreen];
+    const items = () => screenMeta().items;
+    const itemById = id => items().find(it => it.id === id);
+
+    function anchorTransform(anchor) {
+      return anchor === "mm" ? "translate(-50%, -50%)" : anchor === "ra" ? "translate(-100%, 0)" : "translate(0, 0)";
+    }
+
+    // Normalize the current items-array layout model for editing.
+    function normalize(raw) {
+      const out = { screens: {} };
+      for (const [sid, s] of Object.entries(raw.screens)) {
+        const meta = { name: CANONICAL_SCREEN_NAMES[sid] || s.name, image: s.image, prefix: s.prefix };
+        meta.schema = "items";
+        // spread first so on-disk key order (and thus minimal save diffs) is preserved
+        meta.items = expandTextAttachments(s.items.map(it => normalizeBatteryIndicator({ ...it, kind: it.kind || (it.type ? "shape" : "text") })));
+        out.screens[sid] = meta;
+      }
+      return out;
+    }
+
+    function normalizeBatteryIndicator(it) {
+      if (it.kind === "shape" && (it.type === "battery" || it.icon === "battery") && /batt|battery/i.test(it.id || "")) {
+        it.type = "battery";
+        it.icon = "battery";
+        if (!it.w || it.w < 20) it.w = 24;
+        if (!it.h) it.h = 16;
+        if (it.sample == null) it.sample = 66;
+      }
+      return it;
+    }
+
+    function uniqueItemId(base, used) {
+      let id = base, n = 2;
+      while (used.has(id)) id = `${base}${n++}`;
+      used.add(id);
+      return id;
+    }
+    function attachedTextItem(parent, attached, id) {
+      return {
+        id, kind: "text",
+        x: parent.x + (attached.dx || 0),
+        y: parent.y + (attached.dy || 0),
+        anchor: attached.anchor || "la",
+        font: attached.font || "F10",
+        color: attached.color || parent.color || "WHITE",
+        text: attached.text || ""
+      };
+    }
+    function expandTextAttachments(sourceItems) {
+      const used = new Set(sourceItems.map(it => it.id));
+      const expanded = [];
+      for (const source of sourceItems) {
+        const it = cloneItem(source);
+        const extraItems = [];
+        if (isText(it)) {
+          if (it.label) {
+            extraItems.push(attachedTextItem(it, it.label, uniqueItemId(`${it.id}Label`, used)));
+            delete it.label;
+          }
+          if (Array.isArray(it.extras)) {
+            it.extras.forEach((ex, i) => extraItems.push(attachedTextItem(it, ex, uniqueItemId(`${it.id}Extra${i + 1}`, used))));
+            delete it.extras;
+          }
+        }
+        expanded.push(it, ...extraItems);
+      }
+      return expanded;
+    }
+
+    function ensureShapePresets() {
+      for (const [sid, preset] of Object.entries(SHAPE_PRESETS)) {
+        const s = layout && layout.screens[sid];
+        if (!s) continue;
+        s.schema = "items";
+        const existing = new Set(s.items.map(it => it.id));
+        const missing = preset.filter(it => !existing.has(it.id)).map(cloneItem);
+        if (missing.length) {
+          const firstText = s.items.findIndex(it => it.kind === "text");
+          const split = firstText < 0 ? s.items.length : firstText;
+          s.items = [...s.items.slice(0, split), ...missing, ...s.items.slice(split)];
+        }
+      }
+    }
+
+    // serialize back to disk format. All screens now save as the richer item
+    // schema so moved/scaled shapes persist.
+    function denormalize() {
+      const screens = {};
+      for (const [sid, s] of Object.entries(layout.screens)) {
+        const base = { name: s.name, image: s.image, prefix: s.prefix };
+        screens[sid] = { ...base, items: s.items.map(stripInternal) };
+      }
+      const head = layout._comment ? { _comment: layout._comment } : {};
+      return { ...head, screens };
+    }
+    function stripInternal(it) { const { ...rest } = it; return rest; }
+
+    // ---------- geometry per item type ----------
+    function refPoint(it) {           // primary point used for snapping
+      if (isText(it)) return { x: it.x, y: it.y };
+      const b = bbox(it); return { x: b.x, y: b.y };
+    }
+    function bbox(it) {
+      if (isText(it)) return textBBox(it);
+      switch (it.type) {
+        case "line": {
+          const xs = it.points.map(p => p[0]), ys = it.points.map(p => p[1]);
+          return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+        }
+        case "arcGauge": case "continuousArc": case "tickGauge": case "arcBar": return { x: it.cx - it.r, y: it.cy - it.r, w: it.r * 2, h: it.r * 2 };
+        case "icon": return { x: it.x, y: it.y, w: it.w || 24, h: it.h || 24 };
+        default: return { x: it.x, y: it.y, w: it.w, h: it.h };
+      }
+    }
+    function textBBox(it) {
+      const node = el.textLayer.querySelector(`.item[data-id="${cssEsc(it.id)}"]`);
+      if (!node) return { x: it.x, y: it.y, w: 10, h: 10 };
+      const sr = el.screen.getBoundingClientRect(), scale = Number(el.scale.value);
+      const r = node.getBoundingClientRect();
+      return { x: (r.left - sr.left) / scale, y: (r.top - sr.top) / scale, w: r.width / scale, h: r.height / scale };
+    }
+    function translateItem(it, dx, dy) {
+      if (isText(it)) { it.x = clampX(it.x + dx); it.y = clampY(it.y + dy); return; }
+      if (it.type === "line") { it.points = it.points.map(([x, y]) => [clampX(x + dx), clampY(y + dy)]); return; }
+      if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar") { it.cx = clampX(it.cx + dx); it.cy = clampY(it.cy + dy); return; }
+      it.x = clampX(it.x + dx); it.y = clampY(it.y + dy);
+    }
+    const nearestFontKey = (px) => fontKeys().reduce((b, k) => Math.abs(fontPx(k) - px) < Math.abs(fontPx(b) - px) ? k : b, fontKeys()[0]);
+    function setBBox(it, nb) {        // resize an element to a new bounding box
+      if (isText(it)) {
+        // Text scales by font tier; the rendered box height ~= font px (line-height 1).
+        const newKey = nearestFontKey(Math.max(6, nb.h));
+        if (it.fit) { it.fit = [newKey, ...it.fit.filter(k => fontPx(k) < fontPx(newKey))]; it.max_w = Math.max(8, Math.round(nb.w)); }
+        else it.font = newKey;
+        return;
+      }
+      const ob = bbox(it);
+      if (it.type === "line") {
+        const sx = ob.w ? nb.w / ob.w : 1, sy = ob.h ? nb.h / ob.h : 1;
+        it.points = it.points.map(([x, y]) => [Math.round(nb.x + (x - ob.x) * sx), Math.round(nb.y + (y - ob.y) * sy)]);
+        return;
+      }
+      if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar") {
+        const r = Math.max(2, Math.round(Math.min(nb.w, nb.h) / 2));
+        it.r = r; it.cx = Math.round(nb.x + nb.w / 2); it.cy = Math.round(nb.y + nb.h / 2); return;
+      }
+      it.x = Math.round(nb.x); it.y = Math.round(nb.y);
+      it.w = Math.max(2, Math.round(nb.w)); it.h = Math.max(2, Math.round(nb.h));
+    }
+    const cssEsc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : s;
+
+    // ---------- undo / autosave ----------
+    function snapshot() { return JSON.stringify(layout.screens, (k, v) => k === "schema" ? undefined : v); }
+    function updateWorkflowState() {
+      if (!layout) return;
+      const current = snapshot();
+      const dirty = current !== savedSnapshot;
+      el.saveState.textContent = dirty ? "Unsaved changes" : "Saved";
+      el.saveState.className = "state-badge " + (dirty ? "warn" : "good");
+      if (generatedSnapshot === null) {
+        el.generateState.textContent = dirty ? "Previews stale" : "Generation not checked";
+        el.generateState.className = "state-badge" + (dirty ? " warn" : "");
+      } else {
+        const generationStale = current !== generatedSnapshot;
+        el.generateState.textContent = generationStale ? "Previews stale" : "Previews current";
+        el.generateState.className = "state-badge " + (generationStale ? "warn" : "good");
+      }
+    }
+    function updateWorkspaceRenderMode() {
+      if (!LVGL_MODE) return;
+      // The browser renderer is useful as a selected-item editing overlay, but
+      // it is not pixel-identical to LVGL. Never replace the native framebuffer
+      // with it: pending edits remain an overlay until native previews regenerate.
+      document.body.classList.remove("workspace-live-edit");
+      el.workspaceLabel.textContent = workspaceLiveEdit
+        ? "Editable workspace · native LVGL + pending edit overlay"
+        : "Editable workspace · native LVGL base";
+    }
+    function commitSavedState() {
+      savedSnapshot = snapshot();
+      fileSig = savedSnapshot;
+      pristine = normalize(denormalize());
+      localStorage.removeItem(STORAGE_KEY);
+      updateWorkflowState();
+    }
+    function applySnapshot(json) {
+      const snap = JSON.parse(json);
+      for (const [sid, s] of Object.entries(snap)) if (layout.screens[sid]) layout.screens[sid].items = s.items;
+    }
+    function setNativeBaseline() {
+      nativeBaselineScreens = layout ? JSON.parse(JSON.stringify(layout.screens)) : {};
+    }
+    function isPendingItem(it, screenId = currentScreen) {
+      const baseline = nativeBaselineScreens[screenId];
+      if (!baseline) return true;
+      const original = baseline.items && baseline.items.find(candidate => candidate.id === it.id);
+      return !original || JSON.stringify(original) !== JSON.stringify(it);
+    }
+    function pushUndo() {
+      if (lastCommitted !== null) undoStack.push(lastCommitted);
+      lastCommitted = snapshot(); redoStack.length = 0;
+      if (undoStack.length > 200) undoStack.shift();
+      workspaceLiveEdit = true;
+      updateWorkspaceRenderMode();
+      autosave(); refreshUndoButtons();
+    }
+    function refreshUndoButtons() { el.undo.disabled = !undoStack.length; el.redo.disabled = !redoStack.length; }
+    function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); const p = undoStack.pop(); applySnapshot(p); lastCommitted = p; workspaceLiveEdit = true; autosave(); render(); refreshUndoButtons(); }
+    function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); const n = redoStack.pop(); applySnapshot(n); lastCommitted = n; workspaceLiveEdit = true; autosave(); render(); refreshUndoButtons(); }
+    function autosave() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ base: fileSig, snap: snapshot() })); } catch (_) {}
+      updateWorkflowState();
+    }
+    function setStatus(m) {
+      clearTimeout(statusTimer);
+      el.status.textContent = m;
+      if (m) statusTimer = setTimeout(() => { if (el.status.textContent === m) el.status.textContent = ""; }, 6000);
+    }
+
+    // ---------- rendering ----------
+    function renderScreenOptions() {
+      el.screenSelect.innerHTML = "";
+      for (const [id, s] of Object.entries(layout.screens)) {
+        const o = document.createElement("option"); o.value = id;
+        o.textContent = (s.schema === "items" ? "● " : "○ ") + (s.name || id);
+        el.screenSelect.appendChild(o);
+      }
+      el.screenSelect.value = currentScreen;
+    }
+    function svg(tag, attrs) { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; }
+
+    function iconEditorIsDirty() {
+      return iconEditorPixels.some((value, index) => value !== iconEditorSavedPixels[index]);
+    }
+
+    function setIconEditorStatus(message, state = "") {
+      el.iconEditorStatus.textContent = message;
+      el.iconEditorStatus.className = "icon-editor-status" + (state ? " " + state : "");
+    }
+
+    function renderIconEditor() {
+      const canvas = el.iconPixelCanvas;
+      const ctx = canvas.getContext("2d");
+      const cell = canvas.width / 16;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          ctx.fillStyle = iconEditorPixels[y * 16 + x] ? "#fff" : "#000";
+          ctx.fillRect(x * cell, y * cell, cell, cell);
+        }
+      }
+      ctx.beginPath();
+      for (let i = 0; i <= 16; i++) {
+        const p = Math.min(canvas.width - 0.5, i * cell + 0.5);
+        ctx.moveTo(p, 0); ctx.lineTo(p, canvas.height);
+        ctx.moveTo(0, p); ctx.lineTo(canvas.width, p);
+      }
+      ctx.strokeStyle = "rgba(92,113,128,.48)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const preview = el.iconPixelPreview.getContext("2d");
+      const image = preview.createImageData(16, 16);
+      for (let i = 0; i < iconEditorPixels.length; i++) {
+        const value = iconEditorPixels[i] ? 255 : 0;
+        image.data[i * 4] = value;
+        image.data[i * 4 + 1] = value;
+        image.data[i * 4 + 2] = value;
+        image.data[i * 4 + 3] = 255;
+      }
+      preview.putImageData(image, 0, 0);
+
+      const dirty = iconEditorIsDirty();
+      el.saveIcon.disabled = !dirty;
+      el.iconRevert.disabled = !dirty;
+      if (dirty) setIconEditorStatus("Unsaved pixel changes", "dirty");
+      else if (el.iconEditorStatus.classList.contains("dirty")) setIconEditorStatus("No unsaved pixel changes");
+    }
+
+    function setIconEditorTool(value) {
+      iconEditorTool = value ? 1 : 0;
+      el.iconDrawTool.setAttribute("aria-pressed", String(iconEditorTool === 1));
+      el.iconEraseTool.setAttribute("aria-pressed", String(iconEditorTool === 0));
+    }
+
+    function iconCellFromPointer(ev) {
+      const rect = el.iconPixelCanvas.getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(15, Math.floor((ev.clientX - rect.left) * 16 / rect.width))),
+        y: Math.max(0, Math.min(15, Math.floor((ev.clientY - rect.top) * 16 / rect.height))),
+      };
+    }
+
+    function paintIconLine(from, to, value) {
+      let x = from.x, y = from.y;
+      const dx = Math.abs(to.x - x), sx = x < to.x ? 1 : -1;
+      const dy = -Math.abs(to.y - y), sy = y < to.y ? 1 : -1;
+      let error = dx + dy;
+      while (true) {
+        iconEditorPixels[y * 16 + x] = value;
+        if (x === to.x && y === to.y) break;
+        const twice = 2 * error;
+        if (twice >= dy) { error += dy; x += sx; }
+        if (twice <= dx) { error += dx; y += sy; }
+      }
+      renderIconEditor();
+    }
+
+    async function loadIconEditor(filename) {
+      const token = ++iconEditorLoadToken;
+      iconEditorFile = filename;
+      el.iconEditorSelect.value = filename;
+      el.saveIcon.disabled = true;
+      setIconEditorStatus("Loading " + (ICON_EDITOR_LABELS[filename] || filename) + "…");
+      try {
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        const loaded = new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = () => reject(new Error("icon PNG could not be loaded"));
+        });
+        image.src = iconFileUrl(filename);
+        await loaded;
+        if (token !== iconEditorLoadToken) return;
+        const source = document.createElement("canvas");
+        source.width = 16; source.height = 16;
+        const sourceCtx = source.getContext("2d", { willReadFrequently: true });
+        sourceCtx.clearRect(0, 0, 16, 16);
+        sourceCtx.drawImage(image, 0, 0, 16, 16);
+        const rgba = sourceCtx.getImageData(0, 0, 16, 16).data;
+        iconEditorPixels = Uint8Array.from({ length: 256 }, (_, i) => rgba[i * 4 + 3] >= 128 ? 1 : 0);
+        iconEditorSavedPixels = iconEditorPixels.slice();
+        renderIconEditor();
+        setIconEditorStatus(`Loaded ${ICON_EDITOR_LABELS[filename] || filename} · 16×16`);
+      } catch (error) {
+        if (token !== iconEditorLoadToken) return;
+        setIconEditorStatus("Load failed: " + error.message, "dirty");
+      }
+    }
+
+    async function saveIconEditor() {
+      if (!iconEditorFile || !iconEditorIsDirty()) return;
+      el.saveIcon.disabled = true;
+      setIconEditorStatus("Saving icon and regenerating firmware data…");
+      try {
+        const response = await fetch("/api/save-icon", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: iconEditorFile, pixels: Array.from(iconEditorPixels) }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) throw new Error(result.error || `server returned ${response.status}`);
+        iconEditorSavedPixels = iconEditorPixels.slice();
+        iconAssetRevision = Date.now();
+        for (const key of Object.keys(ICON_IMAGES)) delete ICON_IMAGES[key];
+        renderIconEditor();
+        const shared = result.sharedIds && result.sharedIds.length > 1 ? ` · shared by ${result.sharedIds.join(", ")}` : "";
+        setIconEditorStatus(`Saved ${result.filename}${shared}`, "saved");
+        setStatus(`Saved ${result.filename} and regenerated packed firmware icons`);
+        if (layout) render();
+      } catch (error) {
+        renderIconEditor();
+        setIconEditorStatus("Save failed: " + error.message, "dirty");
+        setStatus("Icon save needs the local editor server from scripts/run_layout_editor_lvgl.bat");
+      }
+    }
+
+    function initIconEditor() {
+      for (const filename of ICON_EDITOR_FILES) {
+        const option = document.createElement("option");
+        option.value = filename;
+        option.textContent = ICON_EDITOR_LABELS[filename] || filename;
+        el.iconEditorSelect.appendChild(option);
+      }
+      setIconEditorTool(1);
+      loadIconEditor(ICON_EDITOR_FILES.includes("trip.png") ? "trip.png" : ICON_EDITOR_FILES[0]);
+    }
+
+    function loadIconImage(name) {
+      const src = iconUrl(name);
+      if (ICON_IMAGES[src]) return ICON_IMAGES[src];
+      const img = new Image();
+      img.onload = () => renderTargetPreview();
+      img.src = src;
+      ICON_IMAGES[src] = img;
+      return img;
+    }
+
+    function previewImageUrl(screen = screenMeta()) {
+      const source = screen.image || "";
+      if (!LVGL_MODE) return assetUrl(source);
+      const filename = source.split(/[\\/]/).pop();
+      return `../preview_output/lvgl/${filename}?v=${encodeURIComponent(ASSET_VERSION)}&t=${previewRevision}`;
+    }
+
+    function loadPreviewImage(screen = screenMeta()) {
+      const src = previewImageUrl(screen);
+      if (PREVIEW_IMAGES[src]) return PREVIEW_IMAGES[src];
+      const img = new Image();
+      img.onload = () => renderTargetPreview();
+      img.onerror = () => setStatus("Native LVGL screen preview is missing — generate previews");
+      img.src = src;
+      PREVIEW_IMAGES[src] = img;
+      return img;
+    }
+
+    function refreshNativeScreenImages() {
+      previewRevision = Date.now();
+      for (const key of Object.keys(PREVIEW_IMAGES)) delete PREVIEW_IMAGES[key];
+    }
+
+    // The firmware draws no background artwork, only each screen's base colour.
+    function drawScreenBase(ctx, screenId = currentScreen) {
+      const [r, g, b] = rgbArray(BACKGROUND_BASE[screenId] || "BLACK");
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.fillRect(0, 0, 320, 240);
+    }
+
+    function svgIconMaskNode(it, name, x, y, w, h) {
+      const id = `iconMask_${it.id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+      const mask = svg("mask", { id, x, y, width: w, height: h, maskUnits: "userSpaceOnUse" });
+      mask.appendChild(svg("image", { href: iconUrl(name), x, y, width: w, height: h }));
+      const rect = svg("rect", { x, y, width: w, height: h, fill: colorOf(it.color || "WHITE"), mask: `url(#${id})` });
+      return [mask, rect];
+    }
+
+    let _iconCanvas = null;
+    function drawTintedIconCanvas(ctx, it) {
+      const img = loadIconImage(it.icon);
+      if (!img.complete || !img.naturalWidth) return;
+      const w = it.w || 16, h = it.h || 16;
+      // Tint on an offscreen canvas so source-in only clears the icon itself,
+      // not the rest of the target preview, then composite the result.
+      const oc = _iconCanvas || (_iconCanvas = document.createElement("canvas"));
+      oc.width = w; oc.height = h;
+      const octx = oc.getContext("2d");
+      octx.clearRect(0, 0, w, h);
+      octx.imageSmoothingEnabled = false;
+      octx.globalCompositeOperation = "source-over";
+      octx.drawImage(img, 0, 0, w, h);
+      octx.globalCompositeOperation = "source-in";
+      octx.fillStyle = colorOf(it.color || "WHITE");
+      octx.fillRect(0, 0, w, h);
+      ctx.drawImage(oc, it.x, it.y);
+    }
+
+    function batteryBgFor(it) {
+      if (it.bg) return it.bg;
+      return currentScreen === "largeTiles" ? [246, 241, 231] : "BLACK";
+    }
+    function batteryPctFor(it) {
+      const raw = it.sample != null ? it.sample : 66;
+      const n = Number(String(raw).replace(/[^\d]/g, ""));
+      return Math.max(0, Math.min(100, Number.isFinite(n) ? n : 66));
+    }
+    function batteryFillColor(percent, good) {
+      if (percent <= 15) return colorOf("RED_ORANGE");
+      if (percent <= 35) return colorOf("YELLOW");
+      return colorOf(good || "GREEN");
+    }
+    function batteryGeometry(it) {
+      const w = it.w || 16, h = it.h || 16;
+      const terminalW = Math.max(2, Math.floor(w / 5));
+      const bodyW = Math.max(6, w - terminalW - 1);
+      const bodyH = Math.max(6, h - 4);
+      const bodyY = it.y + Math.floor((h - bodyH) / 2);
+      const tipH = Math.max(4, Math.floor(bodyH / 2));
+      const tipY = it.y + Math.floor((h - tipH) / 2);
+      const innerW = Math.max(1, bodyW - 4);
+      const innerH = Math.max(1, bodyH - 4);
+      return { w, h, terminalW, bodyW, bodyH, bodyY, tipH, tipY, innerW, innerH };
+    }
+    function svgBatteryNodes(it) {
+      const g = batteryGeometry(it);
+      const pct = batteryPctFor(it);
+      const fg = colorOf(it.color || "GREEN");
+      const fill = batteryFillColor(pct, it.color || "GREEN");
+      const fillW = Math.round(g.innerW * pct / 100);
+      const nodes = [
+        svg("rect", { x: it.x, y: it.y, width: g.w, height: g.h, fill: colorOf(batteryBgFor(it)) }),
+        svg("rect", { x: it.x, y: g.bodyY, width: g.bodyW, height: g.bodyH, fill: "none", stroke: fg, "vector-effect": "non-scaling-stroke" }),
+        svg("rect", { x: it.x + g.bodyW, y: g.tipY, width: g.terminalW, height: g.tipH, fill: fg })
+      ];
+      if (fillW > 0) nodes.push(svg("rect", { x: it.x + 2, y: g.bodyY + 2, width: fillW, height: g.innerH, fill }));
+      return nodes;
+    }
+    function drawBatteryCanvas(ctx, it) {
+      const g = batteryGeometry(it);
+      const pct = batteryPctFor(it);
+      const fillW = Math.round(g.innerW * pct / 100);
+      ctx.fillStyle = colorOf(batteryBgFor(it));
+      ctx.fillRect(it.x, it.y, g.w, g.h);
+      ctx.strokeStyle = colorOf(it.color || "GREEN");
+      ctx.lineWidth = 1;
+      ctx.strokeRect(it.x + 0.5, g.bodyY + 0.5, g.bodyW - 1, g.bodyH - 1);
+      ctx.fillStyle = colorOf(it.color || "GREEN");
+      ctx.fillRect(it.x + g.bodyW, g.tipY, g.terminalW, g.tipH);
+      if (fillW > 0) {
+        ctx.fillStyle = batteryFillColor(pct, it.color || "GREEN");
+        ctx.fillRect(it.x + 2, g.bodyY + 2, fillW, g.innerH);
+      }
+    }
+
+    function renderShapes(layer = el.shapeLayer) {
+      layer.innerHTML = "";
+      for (const it of items()) {
+        if (isText(it)) continue;
+        const classes = [selection.has(it.id) ? "selected-overlay" : "", isPendingItem(it) ? "pending-overlay" : ""].filter(Boolean).join(" ");
+        const g = svg("g", { "data-id": it.id, class: classes, style: "cursor:move" });
+        const stroke = colorOf(it.color || it.outline || "WHITE");
+        if (it.type === "line") {
+          const pts = it.points.map(p => p.join(",")).join(" ");
+          g.appendChild(svg("polyline", { points: pts, fill: "none", stroke, "stroke-width": (it.width || 1), "vector-effect": "non-scaling-stroke" }));
+          g.appendChild(svg("polyline", { points: pts, fill: "none", stroke: "transparent", "stroke-width": 6, "vector-effect": "non-scaling-stroke" }));
+        } else if (it.type === "rect" || it.type === "rrect") {
+          g.appendChild(svg("rect", { x: it.x, y: it.y, width: it.w, height: it.h, rx: it.type === "rrect" ? (it.radius || 4) : 0,
+            fill: it.fill ? colorOf(it.fill) : "none", stroke: it.outline ? colorOf(it.outline) : "none", "vector-effect": "non-scaling-stroke" }));
+        } else if (it.type === "ellipse") {
+          g.appendChild(svg("ellipse", { cx: it.x + it.w / 2, cy: it.y + it.h / 2, rx: it.w / 2, ry: it.h / 2,
+            fill: it.fill ? colorOf(it.fill) : "none", stroke: it.outline ? colorOf(it.outline) : "none", "vector-effect": "non-scaling-stroke" }));
+        } else if (it.type === "battery") {
+          svgBatteryNodes(it).forEach(n => g.appendChild(n));
+          g.appendChild(svg("rect", { x: it.x, y: it.y, width: it.w || 16, height: it.h || 16, fill: "transparent" }));
+        } else if (it.type === "icon") {
+          if (it.icon === "battery") svgBatteryNodes(it).forEach(n => g.appendChild(n));
+          else svgIconMaskNode(it, it.icon, it.x, it.y, it.w || 16, it.h || 16).forEach(n => g.appendChild(n));
+          g.appendChild(svg("rect", { x: it.x, y: it.y, width: it.w || 16, height: it.h || 16, fill: "transparent" }));
+        } else if (it.type === "arcGauge") {
+          const c = colorOf(it.color || "GREEN"), frac = Math.max(0, Math.min(1, (it.sample != null ? it.sample : 0) / it.max));
+          g.appendChild(svg("circle", { cx: it.cx, cy: it.cy, r: it.r, fill: "none", stroke: "#2a402c", "vector-effect": "non-scaling-stroke" }));
+          g.appendChild(svg("path", { d: arcPath(it.cx, it.cy, it.r - 8, 140, 260 * frac), fill: "none", stroke: c, "stroke-width": 6, "vector-effect": "non-scaling-stroke" }));
+          g.appendChild(svg("circle", { cx: it.cx, cy: it.cy, r: it.r, fill: "transparent", stroke: "none" }));
+        } else if (it.type === "continuousArc") {
+          const c = colorOf(it.color || "GREEN"), dim = colorOf(it.dim || "PANEL");
+          const mx = it.max || 100, end = 140 + 260 * Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx;
+          for (let deg = 140; deg <= 400; deg += 2) {
+            const a = deg * Math.PI / 180;
+            g.appendChild(svg("circle", { cx: it.cx + Math.cos(a) * it.r, cy: it.cy + Math.sin(a) * it.r, r: 3,
+              fill: deg <= end ? c : dim, stroke: "none" }));
+          }
+          g.appendChild(svg("circle", { cx: it.cx, cy: it.cy, r: it.r + 4, fill: "transparent", stroke: "none" }));
+        } else if (it.type === "arcBar") {
+          const c = colorOf(it.color || "GREEN"), mx = it.max || 100;
+          const frac = Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx;
+          const start = it.startDeg != null ? it.startDeg : 140, sweep = (it.sweepDeg != null ? it.sweepDeg : 260) * frac;
+          if (sweep > 0) g.appendChild(svg("path", { d: arcPath(it.cx, it.cy, it.r, start, sweep), fill: "none", stroke: c,
+            "stroke-width": it.width || 6, "stroke-linecap": "butt", "vector-effect": "non-scaling-stroke" }));
+          g.appendChild(svg("circle", { cx: it.cx, cy: it.cy, r: it.r + (it.width || 6), fill: "transparent", stroke: "none" }));
+        } else if (it.type === "tickGauge") {
+          const litC = colorOf(it.color || "#f51616"), dimC = colorOf(it.dim || [125, 125, 125]);
+          const majorC = it.majorColor ? colorOf(it.majorColor) : null;
+          const mx = it.max || 100, segs = it.segs || 42, start = it.startDeg != null ? it.startDeg : 205, sweep = it.sweepDeg != null ? it.sweepDeg : 130;
+          const lit = Math.round(Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx * segs);
+          const tMaj = it.tickMajor != null ? it.tickMajor : 17, tMin = it.tickMinor != null ? it.tickMinor : 10;
+          for (let i = 0; i <= segs; i++) {
+            const a = (start + i * sweep / segs) * Math.PI / 180, tick = i % 5 === 0 ? tMaj : tMin;
+            g.appendChild(svg("line", { x1: it.cx + Math.cos(a) * (it.r - tick), y1: it.cy + Math.sin(a) * (it.r - tick),
+              x2: it.cx + Math.cos(a) * it.r, y2: it.cy + Math.sin(a) * it.r, stroke: i <= lit ? litC : (majorC && i % 5 === 0 ? majorC : dimC), "stroke-width": i <= lit ? 2 : 1, "vector-effect": "non-scaling-stroke" }));
+          }
+          g.appendChild(svg("circle", { cx: it.cx, cy: it.cy, r: it.r, fill: "transparent", stroke: "none" }));  // hit area
+        } else if (it.type === "segBar") {
+          const c = colorOf(it.color || "#f51616"), segs = it.segs || 5, gap = it.gap != null ? it.gap : 3, mx = it.max || 100;
+          const lit = Math.round(Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx * segs), sw = (it.w - gap * (segs - 1)) / segs;
+          for (let i = 0; i < segs; i++) g.appendChild(svg("rect", { x: it.x + i * (sw + gap), y: it.y, width: sw, height: it.h,
+            fill: i < lit ? c : "none", stroke: c, "vector-effect": "non-scaling-stroke" }));
+        }
+        layer.appendChild(g);
+      }
+    }
+    function arcPath(cx, cy, r, startDeg, sweepDeg) {
+      const a0 = startDeg * Math.PI / 180, a1 = (startDeg + sweepDeg) * Math.PI / 180;
+      const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+      const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      const large = sweepDeg > 180 ? 1 : 0;
+      return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+    }
+
+    function renderText(layer = el.textLayer, interactive = true) {
+      [...layer.querySelectorAll(".item")].forEach(n => n.remove());
+      for (const it of items()) {
+        if (!isText(it)) continue;
+        const node = document.createElement("div");
+        node.className = "item"
+          + (interactive && selection.has(it.id) ? " selected" : "")
+          + (isPendingItem(it) ? " pending-edit" : "");
+        node.dataset.id = it.id;
+        const fkey = chosenFontKey(it);
+        const anchor = it.fit ? "mm" : (it.anchor || "la");  // fit text is centered, like the canvas/preview
+        node.style.left = it.x + "px"; node.style.top = it.y + "px";
+        node.style.transform = anchorTransform(anchor);
+        node.style.fontSize = fontRenderPx(fkey) + "px";
+        node.style.lineHeight = fontPx(fkey) + "px";
+        node.style.fontFamily = fontCssFamily(fkey);
+        node.style.fontWeight = lvglFontId(fkey).startsWith("speed") ? "800" : "600";
+        node.style.color = colorOf(it.color);
+        const t = document.createElement("span"); t.textContent = it.text != null ? it.text : it.id; node.appendChild(t);
+        if (interactive) node.appendChild(Object.assign(document.createElement("div"), { className: "hit" }));
+        const extras = [...(it.extras || [])]; if (it.label) extras.push(it.label);
+        for (const ex of extras) {
+          const e2 = document.createElement("span"); e2.className = "extra"; e2.textContent = ex.text;
+          e2.style.left = (ex.dx || 0) + "px"; e2.style.top = (ex.dy || 0) + "px";
+          e2.style.fontSize = fontRenderPx(ex.font) + "px"; e2.style.lineHeight = fontPx(ex.font) + "px";
+          e2.style.fontFamily = fontCssFamily(ex.font); e2.style.color = colorOf(ex.color);
+          e2.style.transform = anchorTransform(ex.anchor); node.appendChild(e2);
+        }
+        layer.appendChild(node);
+      }
+    }
+
+    function canvasFont(key) {
+      const px = fontRenderPx(key);
+      const weight = lvglFontId(key).startsWith("speed") ? 800 : 600;
+      return `${weight} ${px}px ${fontCssFamily(key)}`;
+    }
+    function lvglTextWidth(text, fontKey) {
+      const f = lvglFont(fontKey);
+      const widths = f.widths || {};
+      let total = 0;
+      for (const ch of String(text)) {
+        total += widths[ch] != null ? widths[ch] : (f.lineHeight * 0.55);
+      }
+      return total;
+    }
+    // The first fit tier is the value shown in the font dropdown, so the editing
+    // overlay must render that exact tier. The native fit width is expanded when
+    // the user changes the dropdown, keeping subsequent LVGL generation aligned.
+    let _measureCtx = null;
+    function chosenFontKey(it) {
+      if (!it.fit) return canonicalFontKey(it.font || "F14");
+      const candidates = [...new Set(it.fit.map(canonicalFontKey))].filter(k => fontKeys().includes(k));
+      return candidates[0] || fontKeys()[0];
+    }
+    function drawCanvasText(ctx, x, y, text, fontKey, color, anchor = "la") {
+      ctx.font = canvasFont(fontKey);
+      ctx.fillStyle = colorOf(color);
+      ctx.textAlign = anchor === "ra" ? "right" : anchor === "mm" ? "center" : "left";
+      ctx.textBaseline = "top";
+      const lineH = fontPx(fontKey);
+      ctx.fillText(text, x, anchor === "mm" ? y - lineH / 2 : y);
+    }
+    function drawCanvasTextItem(ctx, it) {
+      const text = it.text != null ? it.text : it.id;
+      if (it.fit) {
+        drawCanvasText(ctx, it.x, it.y, text, chosenFontKey(it), it.color || "WHITE", "mm");
+      } else {
+        drawCanvasText(ctx, it.x, it.y, text, it.font || "F14", it.color || "WHITE", it.anchor || "la");
+      }
+      const extras = [...(it.extras || [])]; if (it.label) extras.push(it.label);
+      for (const ex of extras) drawCanvasText(ctx, it.x + (ex.dx || 0), it.y + (ex.dy || 0),
+        ex.text, ex.font || "F10", ex.color || "WHITE", ex.anchor || "la");
+    }
+    function canvasRoundedRect(ctx, x, y, w, h, r) {
+      r = Math.min(r || 4, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+    function drawCanvasShape(ctx, it) {
+      ctx.lineWidth = it.width || 1;
+      ctx.strokeStyle = colorOf(it.color || it.outline || "WHITE");
+      ctx.fillStyle = it.fill ? colorOf(it.fill) : "transparent";
+      if (it.type === "line") {
+        ctx.beginPath();
+        it.points.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+        ctx.stroke();
+      } else if (it.type === "rect" || it.type === "rrect") {
+        if (it.type === "rrect") canvasRoundedRect(ctx, it.x, it.y, it.w, it.h, it.radius || 4);
+        else ctx.beginPath(), ctx.rect(it.x, it.y, it.w, it.h);
+        if (it.fill) ctx.fill();
+        if (it.outline) ctx.stroke();
+      } else if (it.type === "ellipse") {
+        ctx.beginPath();
+        ctx.ellipse(it.x + it.w / 2, it.y + it.h / 2, it.w / 2, it.h / 2, 0, 0, Math.PI * 2);
+        if (it.fill) ctx.fill();
+        if (it.outline) ctx.stroke();
+      } else if (it.type === "battery") {
+        drawBatteryCanvas(ctx, it);
+      } else if (it.type === "icon") {
+        if (it.icon === "battery") drawBatteryCanvas(ctx, it);
+        else drawTintedIconCanvas(ctx, it);
+      } else if (it.type === "arcGauge") {
+        const frac = Math.max(0, Math.min(1, (it.sample != null ? it.sample : 0) / it.max));
+        ctx.strokeStyle = "#2a402c";
+        ctx.beginPath(); ctx.arc(it.cx, it.cy, it.r, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = colorOf(it.color || "GREEN");
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(it.cx, it.cy, it.r - 8, 140 * Math.PI / 180, (140 + 260 * frac) * Math.PI / 180);
+        ctx.stroke();
+      } else if (it.type === "continuousArc") {
+        const c = colorOf(it.color || "GREEN"), dim = colorOf(it.dim || "PANEL");
+        const mx = it.max || 100, end = 140 + 260 * Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx;
+        for (let deg = 140; deg <= 400; deg += 2) {
+          const a = deg * Math.PI / 180;
+          ctx.fillStyle = deg <= end ? c : dim;
+          ctx.beginPath();
+          ctx.arc(it.cx + Math.cos(a) * it.r, it.cy + Math.sin(a) * it.r, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (it.type === "arcBar") {
+        const mx = it.max || 100;
+        const frac = Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx;
+        const start = it.startDeg != null ? it.startDeg : 140;
+        const sweep = (it.sweepDeg != null ? it.sweepDeg : 260) * frac;
+        if (sweep > 0) {
+          ctx.strokeStyle = colorOf(it.color || "GREEN");
+          ctx.lineWidth = it.width || 6;
+          ctx.lineCap = "butt";
+          ctx.beginPath();
+          ctx.arc(it.cx, it.cy, it.r, start * Math.PI / 180, (start + sweep) * Math.PI / 180);
+          ctx.stroke();
+        }
+      } else if (it.type === "tickGauge") {
+        const litC = colorOf(it.color || "#f51616"), dimC = colorOf(it.dim || [125, 125, 125]);
+        const majorC = it.majorColor ? colorOf(it.majorColor) : null;
+        const mx = it.max || 100, segs = it.segs || 42, start = it.startDeg != null ? it.startDeg : 205, sweep = it.sweepDeg != null ? it.sweepDeg : 130;
+        const lit = Math.round(Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx * segs);
+        const tMaj = it.tickMajor != null ? it.tickMajor : 17, tMin = it.tickMinor != null ? it.tickMinor : 10;
+        for (let i = 0; i <= segs; i++) {
+          const a = (start + i * sweep / segs) * Math.PI / 180, tick = i % 5 === 0 ? tMaj : tMin;
+          ctx.strokeStyle = i <= lit ? litC : (majorC && i % 5 === 0 ? majorC : dimC); ctx.lineWidth = i <= lit ? 2 : 1;
+          ctx.beginPath();
+          ctx.moveTo(it.cx + Math.cos(a) * (it.r - tick), it.cy + Math.sin(a) * (it.r - tick));
+          ctx.lineTo(it.cx + Math.cos(a) * it.r, it.cy + Math.sin(a) * it.r);
+          ctx.stroke();
+        }
+      } else if (it.type === "segBar") {
+        const c = colorOf(it.color || "#f51616"), segs = it.segs || 5, gap = it.gap != null ? it.gap : 3, mx = it.max || 100;
+        const lit = Math.round(Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx * segs), sw = (it.w - gap * (segs - 1)) / segs;
+        ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = 1;
+        for (let i = 0; i < segs; i++) {
+          const sx = it.x + i * (sw + gap);
+          if (i < lit) ctx.fillRect(sx, it.y, sw, it.h);
+          else ctx.strokeRect(sx + 0.5, it.y + 0.5, sw - 1, it.h - 1);
+        }
+      }
+    }
+    function renderTargetPreview() {
+      const ctx = el.targetCanvas.getContext("2d");
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, 320, 240);
+      if (LVGL_MODE) {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, 320, 240);
+        const img = loadPreviewImage();
+        if (img.complete && img.naturalWidth === 320 && img.naturalHeight === 240) ctx.drawImage(img, 0, 0);
+        return;
+      }
+      drawScreenBase(ctx);
+      for (const it of items()) {
+        if (isText(it)) drawCanvasTextItem(ctx, it);
+        else drawCanvasShape(ctx, it);
+      }
+    }
+
+    function setPreviewScale(scale) {
+      el.stage.style.width = `${320 * scale}px`;
+      el.stage.style.height = `${240 * scale}px`;
+      el.screen.style.transform = `scale(${scale})`;
+    }
+    function fitWorkspaceScale() {
+      if (!el.main || !el.workflowBar) return;
+      const rect = el.main.getBoundingClientRect();
+      const availableWidth = Math.max(320, rect.width - 48);
+      const availableHeight = Math.max(240, rect.height - el.workflowBar.offsetHeight - 132);
+      const fitted = Math.max(1, Math.min(4, Math.floor(Math.min(availableWidth / 320, availableHeight / 240) * 4) / 4));
+      el.scale.value = fitted;
+      setPreviewScale(fitted);
+    }
+    function setTargetScale(scale) {
+      el.target.style.width = `${320 * scale}px`;
+      el.target.style.height = `${240 * scale}px`;
+    }
+
+    function renderHandles() {
+      el.handleLayer.innerHTML = "";
+      for (const id of selection) {
+        const it = itemById(id); if (!it) continue;
+        const b = bbox(it);
+        el.handleLayer.appendChild(svg("rect", { x: b.x, y: b.y, width: Math.max(1, b.w), height: Math.max(1, b.h),
+          fill: "none", stroke: "#44d7ff", "stroke-dasharray": "3 2", "stroke-width": 1, "vector-effect": "non-scaling-stroke" }));
+      }
+      if (selection.size === 1) {
+        const it = itemById([...selection][0]);
+        if (it) {
+          const b = bbox(it), hs = 4;
+          const corners = [["nw", b.x, b.y], ["ne", b.x + b.w, b.y], ["sw", b.x, b.y + b.h], ["se", b.x + b.w, b.y + b.h]];
+          for (const [name, hx, hy] of corners) {
+            const r = svg("rect", { x: hx - hs / 2, y: hy - hs / 2, width: hs, height: hs, fill: "#44d7ff",
+              "data-handle": name, style: "pointer-events:all;cursor:nwse-resize", "vector-effect": "non-scaling-stroke" });
+            el.handleLayer.appendChild(r);
+          }
+        }
+      }
+    }
+
+    function render() {
+      updateWorkspaceRenderMode();
+      const s = screenMeta();
+      el.backdrop.src = previewImageUrl(s);
+      el.backdrop.style.display = backdropOn ? "" : "none";
+      const bgCtx = el.themeBgCanvas.getContext("2d", { willReadFrequently: true });
+      drawScreenBase(bgCtx);
+      selection = new Set([...selection].filter(id => itemById(id)));
+      el.selected.innerHTML = "";
+      for (const it of items()) {
+        const o = document.createElement("option"); o.value = it.id;
+        o.textContent = (isText(it) ? "T " : "◇ ") + it.id; el.selected.appendChild(o);
+      }
+      renderShapes(); renderText(); renderHandles(); renderTargetPreview();
+      const primary = [...selection][selection.size - 1] || (items()[0] && items()[0].id);
+      syncInspector(primary);
+      el.selCount.textContent = `${selection.size} selected`;
+      renderScreenOptions(); updateOutput();
+    }
+
+    function syncInspector(id) {
+      const it = id && itemById(id); if (!it) return;
+      el.selected.value = id;
+      const r = refPoint(it);
+      el.x.value = r.x; el.y.value = r.y;
+      el.fontField.hidden = !isText(it);
+      el.typeFields.hidden = isText(it);
+      if (isText(it)) {
+        el.fontStep.innerHTML = "";
+        fontKeys().forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = `${k.slice(1)} px (${lvglFontId(k)})`; el.fontStep.appendChild(o); });
+        el.fontStep.value = mainFontKey(it);
+      } else if (!el.typeFields.hidden) {
+        const b = bbox(it); el.w.value = b.w; el.h.value = b.h;
+      }
+    }
+
+    function updateOutput() {
+      el.output.value = JSON.stringify(denormalize().screens[currentScreen], (k, v) =>
+        (k === "extras" || k === "label") && v ? undefined : v, 2);
+    }
+    function cppConstants() {
+      const prefix = screenMeta().prefix || currentScreen.toUpperCase();
+      return items().map(it => {
+        const r = refPoint(it), key = it.id.replace(/[A-Z]/g, m => "_" + m).toUpperCase();
+        return `const int ${prefix}_${key}_X = ${r.x};\nconst int ${prefix}_${key}_Y = ${r.y};`;
+      }).join("\n");
+    }
+
+    // ---------- interaction ----------
+    function pointerToScreen(ev) {
+      const r = el.screen.getBoundingClientRect(), scale = Number(el.scale.value);
+      return { x: (ev.clientX - r.left) / scale, y: (ev.clientY - r.top) / scale };
+    }
+    function showGuides(gx, gy) {
+      [...el.screen.querySelectorAll(".guide")].forEach(n => n.remove());
+      if (gx != null) { const g = document.createElement("div"); g.className = "guide v"; g.style.left = gx + "px"; el.screen.appendChild(g); }
+      if (gy != null) { const g = document.createElement("div"); g.className = "guide h"; g.style.top = gy + "px"; el.screen.appendChild(g); }
+    }
+    function snapValue(v, cand) { let best = null, bestD = SNAP + .001; for (const c of cand) { const d = Math.abs(v - c); if (d < bestD) { bestD = d; best = c; } } return best; }
+
+    function hitItemId(target) {
+      const g = target.closest("[data-id]"); return g ? g.dataset.id : null;
+    }
+    function onPointerDown(ev) {
+      ev.preventDefault();
+      const handle = ev.target.getAttribute && ev.target.getAttribute("data-handle");
+      if (handle && selection.size === 1) { startResize(ev, handle); return; }
+      const id = hitItemId(ev.target);
+      if (!id) return;
+      const additive = ev.shiftKey || ev.ctrlKey || ev.metaKey;
+      if (additive) { selection.has(id) ? selection.delete(id) : selection.add(id); }
+      else if (!selection.has(id)) selection = new Set([id]);
+      render();
+      if (!selection.size) return;
+      const p = pointerToScreen(ev), start = {};
+      for (const sid of selection) start[sid] = JSON.parse(JSON.stringify(itemById(sid)));
+      drag = { ox: p.x, oy: p.y, start, moved: false, anchorId: id };
+      el.screen.setPointerCapture(ev.pointerId);
+    }
+    function onPointerMove(ev) {
+      const p = pointerToScreen(ev);
+      el.hoverReadout.textContent = `x: ${clampX(p.x)}  y: ${clampY(p.y)}`;
+      if (drag && drag.resize) { doResize(p); return; }
+      if (!drag) return;
+      let dx = p.x - drag.ox, dy = p.y - drag.oy; drag.moved = true;
+      let gx = null, gy = null;
+      if (!ev.altKey) {
+        const xs = [...CENTERS.x], ys = [...CENTERS.y];
+        for (const it of items()) { if (selection.has(it.id)) continue; const r = refPoint(it); xs.push(r.x); ys.push(r.y); }
+        const ar = refPointFrom(drag.start[drag.anchorId]);
+        const sx = snapValue(ar.x + dx, xs), sy = snapValue(ar.y + dy, ys);
+        if (sx != null) { dx += sx - (ar.x + dx); gx = sx; }
+        if (sy != null) { dy += sy - (ar.y + dy); gy = sy; }
+      }
+      for (const sid of selection) {
+        const it = itemById(sid); Object.assign(it, JSON.parse(JSON.stringify(drag.start[sid])));
+        translateItem(it, Math.round(dx), Math.round(dy));
+      }
+      showGuides(gx, gy); renderShapes(); renderText(); renderHandles(); renderTargetPreview(); syncInspector(drag.anchorId);
+    }
+    function refPointFrom(it) { return isText(it) ? { x: it.x, y: it.y } : bbox(it); }
+
+    function startResize(ev, handle) {
+      const it = itemById([...selection][0]);
+      drag = { resize: true, handle, ob: bbox(it), id: it.id, start: JSON.parse(JSON.stringify(it)), moved: false };
+      el.screen.setPointerCapture(ev.pointerId);
+    }
+    function doResize(p) {
+      const it = itemById(drag.id); Object.assign(it, JSON.parse(JSON.stringify(drag.start)));
+      const b = { ...drag.ob };
+      let x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.h;
+      if (drag.handle.includes("w")) x0 = Math.min(p.x, x1 - 2);
+      if (drag.handle.includes("e")) x1 = Math.max(p.x, x0 + 2);
+      if (drag.handle.includes("n")) y0 = Math.min(p.y, y1 - 2);
+      if (drag.handle.includes("s")) y1 = Math.max(p.y, y0 + 2);
+      setBBox(it, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }); drag.moved = true;
+      renderShapes(); renderText(); renderHandles(); renderTargetPreview(); syncInspector(it.id);
+    }
+    function endDrag() { if (drag && drag.moved) pushUndo(); showGuides(null, null); drag = null; render(); }
+
+    el.screen.addEventListener("pointerdown", onPointerDown);
+    el.screen.addEventListener("pointermove", onPointerMove);
+    el.screen.addEventListener("pointerup", endDrag);
+    el.screen.addEventListener("pointercancel", endDrag);
+    el.screen.addEventListener("dragstart", ev => ev.preventDefault());
+    el.stage.addEventListener("dragstart", ev => ev.preventDefault());
+    el.target.addEventListener("dragstart", ev => ev.preventDefault());
+    el.contactSheet.addEventListener("dragstart", ev => ev.preventDefault());
+    el.contactSheetFull.addEventListener("dragstart", ev => ev.preventDefault());
+
+    // ---------- align / distribute ----------
+    function alignOp(kind) {
+      const sel = [...selection].map(itemById); if (sel.length < 2) { setStatus("Select 2+ to align"); return; }
+      const refs = sel.map(refPoint);
+      if ("left hcenter right".includes(kind)) {
+        const xs = refs.map(r => r.x), t = kind === "left" ? Math.min(...xs) : kind === "right" ? Math.max(...xs) : Math.round((Math.min(...xs) + Math.max(...xs)) / 2);
+        sel.forEach((it, i) => translateItem(it, t - refs[i].x, 0));
+      } else {
+        const ys = refs.map(r => r.y), t = kind === "top" ? Math.min(...ys) : kind === "bottom" ? Math.max(...ys) : Math.round((Math.min(...ys) + Math.max(...ys)) / 2);
+        sel.forEach((it, i) => translateItem(it, 0, t - refs[i].y));
+      }
+      pushUndo(); render();
+    }
+    function distribute(axis) {
+      const sel = [...selection].map(itemById); if (sel.length < 3) { setStatus("Select 3+ to distribute"); return; }
+      const key = axis === "h" ? "x" : "y";
+      sel.sort((a, b) => refPoint(a)[key] - refPoint(b)[key]);
+      const first = refPoint(sel[0])[key], last = refPoint(sel[sel.length - 1])[key], step = (last - first) / (sel.length - 1);
+      sel.forEach((it, i) => { const cur = refPoint(it)[key]; translateItem(it, axis === "h" ? Math.round(first + step * i) - cur : 0, axis === "v" ? Math.round(first + step * i) - cur : 0); });
+      pushUndo(); render();
+    }
+    function deleteSelected() {
+      if (!selection.size) { setStatus("Select element(s) to delete"); return; }
+      const doomed = new Set(selection);
+      const before = items().length;
+      screenMeta().items = items().filter(it => !doomed.has(it.id));
+      const removed = before - items().length;
+      selection.clear();
+      if (!removed) return;
+      pushUndo();
+      render();
+      setStatus(`Deleted ${removed} element${removed === 1 ? "" : "s"}`);
+    }
+
+    // ---------- file IO ----------
+    const serialize = () => JSON.stringify(denormalize(), null, 2) + "\n";
+    async function saveToFile() {
+      // 1) Direct write via the local editor server (scripts/run_layout_editor_lvgl.bat).
+      try {
+        const res = await fetch("/save-layout", { method: "POST", headers: { "Content-Type": "application/json" }, body: serialize() });
+        if (res.ok) { commitSavedState(); setStatus("Saved to tools/layout.json"); return true; }
+        if (res.status === 400) { const j = await res.json().catch(() => ({})); setStatus("Save rejected: " + (j.error || res.status)); return false; }
+      } catch (_) { /* no save endpoint (file:// or plain server) - fall through */ }
+      // 2) File System Access API (prompts once, then remembers the file).
+      try {
+        if (window.showSaveFilePicker) {
+          if (!fileHandle) fileHandle = await window.showSaveFilePicker({ suggestedName: "layout.json", types: [{ description: "JSON", accept: { "application/json": [".json"] } }] });
+          const w = await fileHandle.createWritable(); await w.write(serialize()); await w.close();
+          commitSavedState(); setStatus("Saved to " + fileHandle.name); return true;
+        }
+      } catch (e) { if (e.name !== "AbortError") setStatus("Save failed: " + e.message); return false; }
+      // 3) Plain download to the browser's Downloads folder.
+      downloadFile();
+      return false;
+    }
+    function refreshContactSheet() {
+      if (!el.contactSheet) return;
+      const src = CONTACT_SHEET_PATH + "?t=" + Date.now() + "&v=" + encodeURIComponent(ASSET_VERSION);
+      el.contactSheet.src = src;
+      el.contactSheetFull.src = src;
+    }
+    async function regeneratePreviews() {
+      el.runPreview.disabled = true;
+      setStatus(LVGL_MODE ? "Saving layout and regenerating LVGL preview images..." : "Saving layout and regenerating preview images...");
+      const saved = await saveToFile();
+      if (!saved) { setStatus("Preview generation cancelled because the layout was not saved"); el.runPreview.disabled = false; return; }
+      try {
+        const res = await fetch(RUN_PREVIEW_ENDPOINT, { method: "POST" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          setStatus("Preview generation failed: " + (json.error || res.status));
+          return;
+        }
+        if (LVGL_MODE) refreshNativeScreenImages();
+        refreshContactSheet();
+        await boot({ overlayHeader: true, skipAutosave: true, keepScreen: true });
+        setStatus(LVGL_MODE ? "Regenerated LVGL previews and reloaded generated layout constants" : "Regenerated preview images and reloaded generated layout constants");
+      } catch (_) {
+        setStatus("Preview generation needs the local editor server from scripts/run_layout_editor_lvgl.bat");
+      } finally {
+        el.runPreview.disabled = false;
+      }
+    }
+    async function refreshEditorFromSource() {
+      if (!LVGL_MODE) return;
+      el.refreshEditor.disabled = true;
+      el.runPreview.disabled = true;
+      setStatus("Refreshing LVGL editor from firmware source...");
+      const saved = await saveToFile();
+      if (!saved) { setStatus("Source refresh cancelled because the layout was not saved"); el.refreshEditor.disabled = false; el.runPreview.disabled = false; return; }
+      try {
+        const res = await fetch(RUN_PREVIEW_ENDPOINT, { method: "POST" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          setStatus("LVGL source refresh failed: " + (json.error || res.status));
+          return;
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.set("lvgl", "1");
+        url.searchParams.set("v", "source-refresh-" + Date.now());
+        window.location.replace(url.toString());
+      } catch (_) {
+        setStatus("LVGL source refresh needs the local editor server from scripts/run_layout_editor_lvgl.bat");
+      } finally {
+        el.refreshEditor.disabled = false;
+        el.runPreview.disabled = false;
+      }
+    }
+    async function uploadLvglFirmware() {
+      el.uploadLvgl.disabled = true;
+      setStatus("Saving layout before starting upload...");
+      try {
+        const saved = await saveToFile();
+        if (!saved) { setStatus("Upload cancelled because the layout was not saved"); return; }
+        setStatus("Starting upload_lvgl.bat with the saved layout...");
+        const res = await fetch("/api/upload-lvgl", { method: "POST" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) {
+          setStatus("LVGL upload launch failed: " + (json.error || res.status));
+          return;
+        }
+        setStatus("Started upload_lvgl.bat in a separate window");
+      } catch (_) {
+        setStatus("LVGL upload needs the local editor server from scripts/run_layout_editor_lvgl.bat");
+      } finally {
+        el.uploadLvgl.disabled = false;
+      }
+    }
+    function downloadFile() {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([serialize()], { type: "application/json" }));
+      a.download = "layout.json"; a.click(); URL.revokeObjectURL(a.href);
+      setStatus("Downloaded layout.json — replace tools/layout.json");
+    }
+    function importText(text) {
+      const raw = JSON.parse(text); if (!raw.screens) throw new Error("missing screens");
+      layout = normalize(raw); layout._comment = raw._comment; ensureShapePresets(); pristine = normalize(raw);
+      if (!layout.screens[currentScreen]) currentScreen = Object.keys(layout.screens)[0];
+      savedSnapshot = ""; generatedSnapshot = null; nativeBaselineScreens = {}; workspaceLiveEdit = true;
+      selection.clear(); undoStack.length = 0; redoStack.length = 0; lastCommitted = snapshot(); refreshUndoButtons(); render(); autosave();
+    }
+
+    function cppIdent(value) {
+      return (String(value)
+        .replace(/[^0-9A-Za-z]+/g, "_")
+        .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .toUpperCase() || "ITEM");
+    }
+    function parseGeneratedLayoutHeader(text) {
+      const constants = {};
+      const re = /constexpr\s+Item\s+([A-Z0-9_]+)\s*=\s*\{([^}]+)\};/g;
+      let m;
+      while ((m = re.exec(text))) {
+        const nums = m[2].split(",").map(v => Number(v.trim()));
+        if (nums.length < 11 || nums.some(n => Number.isNaN(n))) continue;
+        constants[m[1]] = {
+          x: nums[0], y: nums[1], w: nums[2], h: nums[3], radius: nums[4],
+          cx: nums[5], cy: nums[6], r: nums[7], maxValue: nums[8], maxWidth: nums[9], font: nums[10],
+        };
+      }
+      return constants;
+    }
+    function applyGeneratedHeaderConstants(constants) {
+      let applied = 0, skippedLines = 0;
+      for (const screen of Object.values(layout.screens)) {
+        const prefix = cppIdent(screen.prefix || screen.name || "");
+        for (const it of screen.items) {
+          const c = constants[`${prefix}_${cppIdent(it.id)}`];
+          if (!c) continue;
+          if (isText(it)) {
+            it.x = c.x; it.y = c.y;
+            if (c.maxWidth > 0) it.max_w = c.maxWidth;
+            if (c.font > 0) {
+              const key = `F${c.font}`;
+              const canonical = canonicalFontKey(key);
+              if (fontKeys().includes(canonical)) {
+                if (it.fit) it.fit = [canonical, ...it.fit.map(canonicalFontKey).filter(k => k !== canonical)];
+                else it.font = canonical;
+              }
+            }
+            applied++;
+          } else if (it.type === "line") {
+            skippedLines++;
+          } else if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar") {
+            it.cx = c.cx; it.cy = c.cy; it.r = c.r;
+            if (c.maxValue > 0) it.max = c.maxValue;
+            applied++;
+          } else {
+            it.x = c.x; it.y = c.y;
+            if (c.w > 0) it.w = c.w;
+            if (c.h > 0) it.h = c.h;
+            if (c.radius > 0 || it.radius != null) it.radius = c.radius;
+            applied++;
+          }
+        }
+      }
+      return { applied, skippedLines };
+    }
+    async function loadGeneratedHeaderOverlay() {
+      const res = await fetch("../include/cyd_layout_generated.h", { cache: "no-store" });
+      if (!res.ok) throw new Error(res.status);
+      return applyGeneratedHeaderConstants(parseGeneratedLayoutHeader(await res.text()));
+    }
+
+    async function loadLvglFontMetrics() {
+      if (!LVGL_MODE) return;
+      try {
+        const res = await fetch(assetUrl("lvgl_font_metrics.json"), { cache: "no-store" });
+        if (res.ok) lvglFontMetrics = await res.json();
+      } catch (_) {
+        lvglFontMetrics = LVGL_FONT_FALLBACK;
+      }
+    }
+
+    // ---------- boot ----------
+    async function boot(options = {}) {
+      const keepScreen = options.keepScreen ? currentScreen : null;
+      await loadLvglFontMetrics();
+      try { const res = await fetch("layout.json", { cache: "no-store" }); if (!res.ok) throw new Error(res.status); const raw = await res.json();
+        layout = normalize(raw); layout._comment = raw._comment; pristine = normalize(raw);
+      } catch (e) { setStatus("Could not fetch layout.json — use Import (or run via scripts/run_layout_editor_lvgl.bat)"); }
+      if (!layout) return;
+      currentScreen = keepScreen && layout.screens[keepScreen] ? keepScreen : Object.keys(layout.screens)[0];
+      fileSig = snapshot();   // signature of the file as loaded, before any local overrides
+      savedSnapshot = fileSig;
+      generatedSnapshot = options.overlayHeader ? fileSig : null;
+      setNativeBaseline();
+      workspaceLiveEdit = false;
+      // Reapply local unsaved edits only if they were based on this exact file;
+      // if layout.json changed (e.g. icons added on disk), discard them so the file wins.
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!options.skipAutosave && saved) {
+        try {
+          const o = JSON.parse(saved);
+          if (o && o.base === fileSig && o.snap) { applySnapshot(o.snap); ensureShapePresets(); workspaceLiveEdit = o.snap !== fileSig; }
+          else localStorage.removeItem(STORAGE_KEY);
+        } catch (_) { localStorage.removeItem(STORAGE_KEY); }
+      }
+      let headerResult = null;
+      if (options.overlayHeader) {
+        try {
+          headerResult = await loadGeneratedHeaderOverlay();
+          localStorage.removeItem(STORAGE_KEY);
+          pristine = normalize(denormalize());
+          setNativeBaseline();
+        } catch (e) {
+          setStatus("Reloaded layout.json, but header load failed: " + e.message);
+        }
+      }
+      if (autoFitScale) fitWorkspaceScale(); else setPreviewScale(+el.scale.value);
+      setTargetScale(+el.targetScale.value);
+      lastCommitted = snapshot(); refreshUndoButtons(); render();
+      updateWorkflowState();
+      if (headerResult) {
+        const suffix = headerResult.skippedLines ? `; skipped ${headerResult.skippedLines} line shape(s)` : "";
+        setStatus(`Reloaded layout.json + ${headerResult.applied} generated header values${suffix}`);
+      }
+      refreshContactSheet();
+    }
+
+    // ---------- events ----------
+    el.screenSelect.addEventListener("change", () => { currentScreen = el.screenSelect.value; selection.clear(); render(); });
+    el.selected.addEventListener("change", () => { selection = new Set([el.selected.value]); render(); });
+    el.x.addEventListener("change", () => { const it = itemById(el.selected.value); if (!it) return; const r = refPoint(it); translateItem(it, clampX(+el.x.value) - r.x, 0); pushUndo(); render(); });
+    el.y.addEventListener("change", () => { const it = itemById(el.selected.value); if (!it) return; const r = refPoint(it); translateItem(it, 0, clampY(+el.y.value) - r.y); pushUndo(); render(); });
+    el.w.addEventListener("change", () => { const it = itemById(el.selected.value); if (!it || isText(it)) return; const b = bbox(it); setBBox(it, { ...b, w: Math.max(2, +el.w.value) }); pushUndo(); render(); });
+    el.h.addEventListener("change", () => { const it = itemById(el.selected.value); if (!it || isText(it)) return; const b = bbox(it); setBBox(it, { ...b, h: Math.max(2, +el.h.value) }); pushUndo(); render(); });
+    el.fontStep.addEventListener("change", () => {
+      const it = itemById(el.selected.value); if (!it || !isText(it)) return;
+      const key = canonicalFontKey(el.fontStep.value);
+      if (it.fit) {
+        it.fit = [key, ...it.fit.map(canonicalFontKey).filter(k => fontPx(k) < fontPx(key))];
+        // An explicit tier choice is authoritative. Grow the fitting width when
+        // necessary so chosenFontKey (and firmware fitted text) cannot silently
+        // reject the selected tier and fall back to a smaller one.
+        const requiredWidth = Math.ceil(lvglTextWidth(it.text != null ? it.text : it.id, key)) + 2;
+        it.max_w = Math.max(it.max_w || 0, requiredWidth);
+      }
+      else it.font = key;
+      pushUndo(); render();
+      setStatus(`${key.slice(1)} px selected; generate LVGL previews for the exact native frame`);
+    });
+
+    el.scale.addEventListener("input", e => { autoFitScale = false; setPreviewScale(+e.target.value); });
+    el.targetScale.addEventListener("input", e => setTargetScale(+e.target.value));
+    el.openContactSheet.addEventListener("click", () => {
+      el.contactSheetFull.src = el.contactSheet.src;
+      if (!el.contactSheetDialog.open) el.contactSheetDialog.showModal();
+    });
+    el.closeContactSheet.addEventListener("click", () => el.contactSheetDialog.close());
+    el.contactSheetDialog.addEventListener("click", ev => {
+      if (ev.target === el.contactSheetDialog) el.contactSheetDialog.close();
+    });
+    el.contactSheetDialog.addEventListener("close", () => el.openContactSheet.focus());
+
+    el.undo.addEventListener("click", undo); el.redo.addEventListener("click", redo);
+    document.getElementById("alignLeft").onclick = () => alignOp("left");
+    document.getElementById("alignHCenter").onclick = () => alignOp("hcenter");
+    document.getElementById("alignRight").onclick = () => alignOp("right");
+    document.getElementById("alignTop").onclick = () => alignOp("top");
+    document.getElementById("alignVCenter").onclick = () => alignOp("vcenter");
+    document.getElementById("alignBottom").onclick = () => alignOp("bottom");
+    document.getElementById("distH").onclick = () => distribute("h");
+    document.getElementById("distV").onclick = () => distribute("v");
+    document.getElementById("toggleGrid").onclick = () => el.grid.hidden = !el.grid.hidden;
+    document.getElementById("toggleBackdrop").onclick = () => { backdropOn = !backdropOn; render(); };
+    document.getElementById("deleteSelected").onclick = deleteSelected;
+    document.getElementById("resetScreen").onclick = () => {
+      if (!pristine || !window.confirm(`Reset ${screenMeta().name || currentScreen} to its loaded layout? You can still Undo afterward.`)) return;
+      screenMeta().items = JSON.parse(JSON.stringify(pristine.screens[currentScreen].items)); pushUndo(); render(); setStatus("Reset " + currentScreen);
+    };
+    document.getElementById("saveFile").onclick = saveToFile;
+    document.getElementById("downloadFile").onclick = downloadFile;
+    document.getElementById("reloadFile").onclick = () => boot({ overlayHeader: true, skipAutosave: true, keepScreen: true });
+    el.runPreview.onclick = regeneratePreviews;
+    el.refreshEditor.onclick = refreshEditorFromSource;
+    el.uploadLvgl.onclick = uploadLvglFirmware;
+    document.getElementById("importFile").onclick = () => el.fileInput.click();
+    el.fileInput.addEventListener("change", () => { const f = el.fileInput.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { importText(r.result); setStatus("Imported " + f.name); } catch (e) { setStatus("Import failed: " + e.message); } }; r.readAsText(f); });
+    document.getElementById("copyCurrent").onclick = async () => { updateOutput(); await navigator.clipboard.writeText(el.output.value); setStatus("Copied screen JSON"); };
+    document.getElementById("copyCpp").onclick = async () => { el.output.value = cppConstants(); await navigator.clipboard.writeText(el.output.value); setStatus("Copied C++ constants"); };
+    el.iconEditorSelect.addEventListener("change", () => {
+      const requested = el.iconEditorSelect.value;
+      if (requested === iconEditorFile) return;
+      if (iconEditorIsDirty() && !window.confirm("Discard the unsaved pixel changes and open another icon?")) {
+        el.iconEditorSelect.value = iconEditorFile;
+        return;
+      }
+      loadIconEditor(requested);
+    });
+    el.iconDrawTool.addEventListener("click", () => setIconEditorTool(1));
+    el.iconEraseTool.addEventListener("click", () => setIconEditorTool(0));
+    el.iconRevert.addEventListener("click", () => {
+      iconEditorPixels = iconEditorSavedPixels.slice();
+      renderIconEditor();
+      setIconEditorStatus("Reverted to the last saved pixels");
+    });
+    el.iconClear.addEventListener("click", () => {
+      iconEditorPixels.fill(0);
+      renderIconEditor();
+    });
+    el.saveIcon.addEventListener("click", saveIconEditor);
+    el.iconPixelCanvas.addEventListener("contextmenu", ev => ev.preventDefault());
+    el.iconPixelCanvas.addEventListener("pointerdown", ev => {
+      if (ev.button !== 0 && ev.button !== 2) return;
+      ev.preventDefault();
+      iconEditorDrawing = true;
+      iconEditorStrokeValue = ev.button === 2 ? 0 : iconEditorTool;
+      iconEditorLastCell = iconCellFromPointer(ev);
+      el.iconPixelCanvas.setPointerCapture(ev.pointerId);
+      paintIconLine(iconEditorLastCell, iconEditorLastCell, iconEditorStrokeValue);
+    });
+    el.iconPixelCanvas.addEventListener("pointermove", ev => {
+      if (!iconEditorDrawing) return;
+      const cell = iconCellFromPointer(ev);
+      if (cell.x === iconEditorLastCell.x && cell.y === iconEditorLastCell.y) return;
+      paintIconLine(iconEditorLastCell, cell, iconEditorStrokeValue);
+      iconEditorLastCell = cell;
+    });
+    const finishIconStroke = ev => {
+      if (!iconEditorDrawing) return;
+      iconEditorDrawing = false;
+      iconEditorLastCell = null;
+      if (el.iconPixelCanvas.hasPointerCapture(ev.pointerId)) el.iconPixelCanvas.releasePointerCapture(ev.pointerId);
+    };
+    el.iconPixelCanvas.addEventListener("pointerup", finishIconStroke);
+    el.iconPixelCanvas.addEventListener("pointercancel", finishIconStroke);
+
+    document.addEventListener("keydown", ev => {
+      if (ev.target instanceof Element && ev.target.matches("input, textarea, select")) return;
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); undo(); return; }
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "y") { ev.preventDefault(); redo(); return; }
+      if (!selection.size) return;
+      if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); deleteSelected(); return; }
+      const step = ev.shiftKey ? 5 : 1; let dx = 0, dy = 0;
+      if (ev.key === "ArrowLeft") dx = -step; else if (ev.key === "ArrowRight") dx = step;
+      else if (ev.key === "ArrowUp") dy = -step; else if (ev.key === "ArrowDown") dy = step; else return;
+      ev.preventDefault();
+      for (const id of selection) translateItem(itemById(id), dx, dy);
+      pushUndo(); render();
+    });
+
+    let resizeFrame = 0;
+    window.addEventListener("resize", () => {
+      if (!autoFitScale) return;
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(fitWorkspaceScale);
+    });
+    window.addEventListener("beforeunload", ev => {
+      const layoutDirty = layout && snapshot() !== savedSnapshot;
+      if (!layoutDirty && !iconEditorIsDirty()) return;
+      ev.preventDefault();
+      ev.returnValue = "";
+    });
+
+    initIconEditor();
+    boot();
+  </script>
+</body>
+</html>

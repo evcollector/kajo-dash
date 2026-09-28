@@ -1,0 +1,17 @@
+# The display compiles in a generated copy of the newest CHANGELOG.md entries.
+# Editing the markdown without regenerating would ship a stale changelog on the
+# device, which is worse than none, so check the two still agree.
+name: Changelog header
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    name: firmware_changelog.h matches CHANGELOG.md
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the generated header
+        run: python3 tools/generate_changelog_header.py --check

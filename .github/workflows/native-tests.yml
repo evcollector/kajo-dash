@@ -1,0 +1,39 @@
+# The native suite runs the firmware's own screen and settings code on the
+# host: navigation through simulated taps, the vehicle field model, the VESC
+# and FarDriver wire protocols and the Preferences shim. It needs no display and no SDL, so
+# CYD_BUILD_TESTS builds the test targets on their own.
+name: Native tests
+
+on:
+  push:
+  pull_request:
+
+env:
+  # Matches lib_deps in platformio.ini (lvgl/lvgl @ 8.4.0). PlatformIO is not
+  # installed here, so the library is cloned at that version instead of being
+  # resolved from .pio/libdeps.
+  LVGL_VERSION: v8.4.0
+
+jobs:
+  ctest:
+    name: ctest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone LVGL ${{ env.LVGL_VERSION }}
+        run: |
+          git clone --depth 1 --branch "$LVGL_VERSION" https://github.com/lvgl/lvgl.git "$RUNNER_TEMP/lvgl"
+
+      - name: Configure
+        run: |
+          cmake -S tools/lvgl_native_preview -B build/native-tests \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCYD_BUILD_TESTS=ON \
+            -DLVGL_DIR="$RUNNER_TEMP/lvgl"
+
+      - name: Build
+        run: cmake --build build/native-tests --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build/native-tests -C Release --output-on-failure

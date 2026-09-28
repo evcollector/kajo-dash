@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #000; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+    body { display: grid; place-items: start center; }
+    #simulator { width: 100vw; }
+    #display-frame { border: 2px solid #ff6d00; border-radius: 12px; overflow: hidden; background: #000; }
+    canvas { display: block; width: 100%; aspect-ratio: 4 / 3; image-rendering: pixelated; touch-action: none; }
+    #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #000; color: #ff6d00;
+               font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main id="simulator">
+    <div id="display-frame"><canvas id="canvas" width="320" height="240"></canvas></div>
+  </main>
+  <div id="loading">STARTING DISPLAY…</div>
+  <script>
+    function sizeSimulator() {
+      if (window.innerWidth <= 1 || window.innerHeight <= 1) return;
+      const availableHeight = Math.max(1, window.innerHeight);
+      const width = Math.max(1, Math.min(window.innerWidth, availableHeight * 4 / 3));
+      document.getElementById('simulator').style.width = width + 'px';
+    }
+    requestAnimationFrame(sizeSimulator);
+    window.addEventListener('load', sizeSimulator);
+    window.addEventListener('resize', sizeSimulator);
+
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      onRuntimeInitialized: function () {
+        sizeSimulator();
+        const canvas = Module.canvas;
+        const pointer = function (event, pressed) {
+          event.preventDefault();
+          const bounds = canvas.getBoundingClientRect();
+          const x = Math.max(0, Math.min(319, Math.floor((event.clientX - bounds.left) * 320 / bounds.width)));
+          const y = Math.max(0, Math.min(239, Math.floor((event.clientY - bounds.top) * 240 / bounds.height)));
+          Module._cyd_pointer_event(pressed ? 1 : 0, x, y);
+        };
+        canvas.addEventListener('pointerdown', function (event) { canvas.setPointerCapture(event.pointerId); pointer(event, true); });
+        canvas.addEventListener('pointermove', function (event) { if (event.buttons) pointer(event, true); });
+        canvas.addEventListener('pointerup', function (event) { pointer(event, false); });
+        canvas.addEventListener('pointercancel', function (event) { pointer(event, false); });
+        document.getElementById('loading').style.display = 'none';
+        if (window.CydAndroid && window.CydAndroid.onSimulatorReady) window.CydAndroid.onSimulatorReady();
+      }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

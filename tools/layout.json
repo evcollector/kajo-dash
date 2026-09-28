@@ -1,0 +1,4157 @@
+{
+  "_comment": "Single source of truth for dashboard text/value readout placement and editor-adjustable structural items. Consumed directly by tools/preview_ui.py and tools/layout_editor.html, and converted for firmware into include/cyd_layout_generated.h by tools/generate_layout_header.py. Coordinates are 320x240 device pixels. anchor: la=top-left, mm=center, ra=right. fit=[fonts] picks the first font whose rendered width fits max_w (mirrors firmware drawCenteredFittedText). 'label'/'extras' are sub-texts drawn at dx/dy relative to the element. Screens use ordered items with kind=text/shape.",
+  "screens": {
+    "hud": {
+      "name": "01 Cyber HUD",
+      "image": "../preview_output/01_cyber_hud.png",
+      "prefix": "HUD",
+      "items": [
+        {
+          "id": "speedFrame",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              18,
+              64
+            ],
+            [
+              49,
+              35
+            ],
+            [
+              119,
+              35
+            ],
+            [
+              151,
+              64
+            ],
+            [
+              119,
+              130
+            ],
+            [
+              49,
+              130
+            ],
+            [
+              18,
+              103
+            ],
+            [
+              2,
+              84
+            ],
+            [
+              18,
+              64
+            ]
+          ],
+          "color": "ORANGE"
+        },
+        {
+          "id": "powerFrame",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              159,
+              64
+            ],
+            [
+              192,
+              35
+            ],
+            [
+              269,
+              35
+            ],
+            [
+              302,
+              64
+            ],
+            [
+              319,
+              82
+            ],
+            [
+              302,
+              103
+            ],
+            [
+              269,
+              130
+            ],
+            [
+              192,
+              130
+            ],
+            [
+              159,
+              103
+            ],
+            [
+              159,
+              64
+            ]
+          ],
+          "color": "ORANGE"
+        },
+        {
+          "id": "speedMeterPath",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              38,
+              137
+            ],
+            [
+              31,
+              124
+            ],
+            [
+              9,
+              82
+            ],
+            [
+              31,
+              40
+            ],
+            [
+              121,
+              40
+            ],
+            [
+              143,
+              82
+            ],
+            [
+              121,
+              124
+            ],
+            [
+              114,
+              137
+            ]
+          ],
+          "color": "ORANGE"
+        },
+        {
+          "id": "powerMeterPath",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              194,
+              138
+            ],
+            [
+              188,
+              125
+            ],
+            [
+              167,
+              82
+            ],
+            [
+              188,
+              40
+            ],
+            [
+              290,
+              40
+            ],
+            [
+              311,
+              82
+            ],
+            [
+              290,
+              125
+            ],
+            [
+              284,
+              138
+            ]
+          ],
+          "color": "ORANGE"
+        },
+        {
+          "id": "centerStack",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              160,
+              57
+            ],
+            [
+              160,
+              134
+            ]
+          ],
+          "color": "ORANGE"
+        },
+        {
+          "id": "topTrimLeft",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              73,
+              24
+            ],
+            [
+              118,
+              24
+            ],
+            [
+              128,
+              17
+            ],
+            [
+              148,
+              17
+            ]
+          ],
+          "color": "ORANGE"
+        },
+        {
+          "id": "topTrimRight",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              172,
+              17
+            ],
+            [
+              192,
+              17
+            ],
+            [
+              202,
+              24
+            ],
+            [
+              247,
+              24
+            ]
+          ],
+          "color": "ORANGE"
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 76,
+          "y": 82,
+          "fit": [
+            "F72",
+            "F48",
+            "F28"
+          ],
+          "max_w": 110,
+          "color": "WHITE",
+          "text": "21"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 239,
+          "y": 82,
+          "fit": [
+            "F48",
+            "F36",
+            "F28"
+          ],
+          "max_w": 116,
+          "color": "WHITE",
+          "text": "1860"
+        },
+        {
+          "id": "speedUnit",
+          "kind": "text",
+          "x": 76,
+          "y": 118,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "KM/H"
+        },
+        {
+          "id": "powerUnit",
+          "kind": "text",
+          "x": 239,
+          "y": 118,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "W"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 24,
+          "y": 152,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "71.9"
+        },
+        {
+          "id": "voltsLabel",
+          "kind": "text",
+          "x": 24,
+          "y": 173,
+          "anchor": "la",
+          "font": "F8",
+          "color": "WHITE",
+          "text": "VOLTS"
+        },
+        {
+          "id": "amps",
+          "kind": "text",
+          "x": 104,
+          "y": 152,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "9.4"
+        },
+        {
+          "id": "ampsLabel",
+          "kind": "text",
+          "x": 104,
+          "y": 173,
+          "anchor": "la",
+          "font": "F8",
+          "color": "WHITE",
+          "text": "AMPS"
+        },
+        {
+          "id": "motorTemp",
+          "kind": "text",
+          "x": 184,
+          "y": 152,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "36 C"
+        },
+        {
+          "id": "motorTempLabel",
+          "kind": "text",
+          "x": 184,
+          "y": 173,
+          "anchor": "la",
+          "font": "F8",
+          "color": "WHITE",
+          "text": "MOTOR TEMP"
+        },
+        {
+          "id": "escTemp",
+          "kind": "text",
+          "x": 264,
+          "y": 152,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "32 C"
+        },
+        {
+          "id": "escTempLabel",
+          "kind": "text",
+          "x": 264,
+          "y": 173,
+          "anchor": "la",
+          "font": "F8",
+          "color": "WHITE",
+          "text": "ESC TEMP"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 24,
+          "y": 195,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "25.3"
+        },
+        {
+          "id": "tripLabel",
+          "kind": "text",
+          "x": 24,
+          "y": 216,
+          "anchor": "la",
+          "font": "F8",
+          "color": "WHITE",
+          "text": "TRIP"
+        },
+        {
+          "id": "odo",
+          "kind": "text",
+          "x": 104,
+          "y": 195,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "1257"
+        },
+        {
+          "id": "odoLabel",
+          "kind": "text",
+          "x": 104,
+          "y": 216,
+          "anchor": "la",
+          "font": "F8",
+          "color": "WHITE",
+          "text": "ODO KM"
+        },
+        {
+          "id": "avg",
+          "kind": "text",
+          "x": 184,
+          "y": 195,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "27.8"
+        },
+        {
+          "id": "avgLabel",
+          "kind": "text",
+          "x": 184,
+          "y": 216,
+          "anchor": "la",
+          "font": "F8",
+          "color": "WHITE",
+          "text": "AVG KM/H"
+        },
+        {
+          "id": "rate",
+          "kind": "text",
+          "x": 264,
+          "y": 195,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "12.3"
+        },
+        {
+          "id": "rateLabel",
+          "kind": "text",
+          "x": 264,
+          "y": 216,
+          "anchor": "la",
+          "font": "F8",
+          "color": "WHITE",
+          "text": "WH/KM"
+        },
+        {
+          "id": "clockIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "uptime",
+          "x": 6,
+          "y": 5,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "topTime",
+          "kind": "text",
+          "x": 24,
+          "y": 5,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09:19"
+        },
+        {
+          "id": "oem",
+          "kind": "text",
+          "x": 160,
+          "y": 13,
+          "anchor": "mm",
+          "font": "F20",
+          "max_w": 110,
+          "color": "ORANGE",
+          "text": "KAJO DASH"
+        },
+        {
+          "id": "topBattPct",
+          "kind": "text",
+          "x": 278,
+          "y": 5,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "66%"
+        },
+        {
+          "id": "topBattIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 282,
+          "y": 6,
+          "w": 31,
+          "h": 14,
+          "segs": 5,
+          "color": "GREEN",
+          "sample": 66
+        },
+        {
+          "id": "voltsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "voltage",
+          "x": 6,
+          "y": 153,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "ampsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "amperage",
+          "x": 86,
+          "y": 153,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "motorIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "temp_motor",
+          "x": 166,
+          "y": 153,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "escIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "temp_esc",
+          "x": 246,
+          "y": 153,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "tripIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "trip",
+          "x": 6,
+          "y": 196,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "odoIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "odo",
+          "x": 86,
+          "y": 196,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "avgIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "avg_speed",
+          "x": 166,
+          "y": 196,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "rateIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "efficiency",
+          "x": 246,
+          "y": 196,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        }
+      ]
+    },
+    "dualGauge": {
+      "name": "02 Dual Gauge",
+      "image": "../preview_output/02_dual_gauge.png",
+      "prefix": "GAUGE",
+      "items": [
+        {
+          "id": "clockIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "uptime",
+          "x": 6,
+          "y": 5,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "uptime",
+          "kind": "text",
+          "x": 24,
+          "y": 5,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09:19"
+        },
+        {
+          "id": "oem",
+          "kind": "text",
+          "x": 160,
+          "y": 13,
+          "anchor": "mm",
+          "font": "F20",
+          "max_w": 110,
+          "color": "GREEN",
+          "text": "KAJO DASH"
+        },
+        {
+          "id": "batteryPct",
+          "kind": "text",
+          "x": 278,
+          "y": 5,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "66%"
+        },
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 282,
+          "y": 6,
+          "w": 31,
+          "h": 14,
+          "segs": 5,
+          "color": "GREEN",
+          "sample": 66
+        },
+        {
+          "id": "speedGauge",
+          "kind": "shape",
+          "type": "arcGauge",
+          "cx": 66,
+          "cy": 112,
+          "r": 62,
+          "max": 80,
+          "color": "GREEN",
+          "sample": 21
+        },
+        {
+          "id": "powerGauge",
+          "kind": "shape",
+          "type": "arcGauge",
+          "cx": 265,
+          "cy": 110,
+          "r": 54,
+          "max": 5000,
+          "color": "GREEN",
+          "sample": 1860
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 66,
+          "y": 110,
+          "fit": [
+            "F72",
+            "F48",
+            "F28"
+          ],
+          "max_w": 80,
+          "color": "WHITE",
+          "text": "21"
+        },
+        {
+          "id": "speedUnit",
+          "kind": "text",
+          "x": 66,
+          "y": 146,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "KM/H"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 265,
+          "y": 110,
+          "fit": [
+            "F36",
+            "F28",
+            "F20"
+          ],
+          "max_w": 78,
+          "color": "WHITE",
+          "text": "1860"
+        },
+        {
+          "id": "powerUnit",
+          "kind": "text",
+          "x": 265,
+          "y": 136,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "W"
+        },
+        {
+          "id": "voltsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "voltage",
+          "x": 138,
+          "y": 58,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 158,
+          "y": 56,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "71.9"
+        },
+        {
+          "id": "voltsExtra2",
+          "kind": "text",
+          "x": 194,
+          "y": 59,
+          "anchor": "la",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "V"
+        },
+        {
+          "id": "voltsLabel",
+          "kind": "text",
+          "x": 158,
+          "y": 44,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "VOLTS"
+        },
+        {
+          "id": "ampsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "amperage",
+          "x": 138,
+          "y": 92,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "amps",
+          "kind": "text",
+          "x": 158,
+          "y": 90,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "9.4"
+        },
+        {
+          "id": "ampsExtra2",
+          "kind": "text",
+          "x": 184,
+          "y": 93,
+          "anchor": "la",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "A"
+        },
+        {
+          "id": "ampsLabel",
+          "kind": "text",
+          "x": 158,
+          "y": 78,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "AMPS"
+        },
+        {
+          "id": "motorIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "temp_motor",
+          "x": 138,
+          "y": 126,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "motorTemp",
+          "kind": "text",
+          "x": 158,
+          "y": 124,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "36"
+        },
+        {
+          "id": "motorTempExtra2",
+          "kind": "text",
+          "x": 181,
+          "y": 127,
+          "anchor": "la",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "°C"
+        },
+        {
+          "id": "motorTempLabel",
+          "kind": "text",
+          "x": 158,
+          "y": 112,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "MOTOR"
+        },
+        {
+          "id": "escIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "temp_esc",
+          "x": 138,
+          "y": 160,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "escTemp",
+          "kind": "text",
+          "x": 158,
+          "y": 158,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "32"
+        },
+        {
+          "id": "escTempExtra2",
+          "kind": "text",
+          "x": 181,
+          "y": 161,
+          "anchor": "la",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "°C"
+        },
+        {
+          "id": "escTempLabel",
+          "kind": "text",
+          "x": 158,
+          "y": 146,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "ESC"
+        },
+        {
+          "id": "tripExtra1",
+          "kind": "text",
+          "x": 8,
+          "y": 199,
+          "anchor": "la",
+          "font": "F10",
+          "color": "GREEN",
+          "text": "TRIP"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 8,
+          "y": 212,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "25.3"
+        },
+        {
+          "id": "tripExtra2",
+          "kind": "text",
+          "x": 48,
+          "y": 215,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "KM"
+        },
+        {
+          "id": "odoExtra1",
+          "kind": "text",
+          "x": 88,
+          "y": 199,
+          "anchor": "la",
+          "font": "F10",
+          "color": "GREEN",
+          "text": "ODO"
+        },
+        {
+          "id": "odo",
+          "kind": "text",
+          "x": 88,
+          "y": 212,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "1257"
+        },
+        {
+          "id": "odoExtra2",
+          "kind": "text",
+          "x": 128,
+          "y": 215,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "KM"
+        },
+        {
+          "id": "avgExtra1",
+          "kind": "text",
+          "x": 168,
+          "y": 199,
+          "anchor": "la",
+          "font": "F10",
+          "color": "GREEN",
+          "text": "AVG"
+        },
+        {
+          "id": "avg",
+          "kind": "text",
+          "x": 168,
+          "y": 212,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "27.8"
+        },
+        {
+          "id": "avgExtra2",
+          "kind": "text",
+          "x": 208,
+          "y": 215,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "KM/H"
+        },
+        {
+          "id": "timeExtra1",
+          "kind": "text",
+          "x": 248,
+          "y": 199,
+          "anchor": "la",
+          "font": "F10",
+          "color": "GREEN",
+          "text": "UPTIME"
+        },
+        {
+          "id": "time",
+          "kind": "text",
+          "x": 248,
+          "y": 212,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09:19"
+        }
+      ]
+    },
+    "simple": {
+      "name": "03 Simple",
+      "image": "../preview_output/03_simple.png",
+      "prefix": "SIMPLE",
+      "items": [
+        {
+          "id": "topLine",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              0,
+              32
+            ],
+            [
+              320,
+              32
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "clockIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "uptime",
+          "x": 6,
+          "y": 5,
+          "w": 16,
+          "h": 16,
+          "color": "ORANGE"
+        },
+        {
+          "id": "time",
+          "kind": "text",
+          "x": 24,
+          "y": 5,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09:19"
+        },
+        {
+          "id": "oem",
+          "kind": "text",
+          "x": 160,
+          "y": 13,
+          "anchor": "mm",
+          "font": "F20",
+          "max_w": 110,
+          "color": "ORANGE",
+          "text": "KAJO DASH"
+        },
+        {
+          "id": "battery",
+          "kind": "text",
+          "x": 278,
+          "y": 5,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "66%"
+        },
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 282,
+          "y": 6,
+          "w": 31,
+          "h": 14,
+          "segs": 5,
+          "color": "ORANGE",
+          "sample": 66
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 86,
+          "y": 92,
+          "fit": [
+            "F96",
+            "F72",
+            "F48"
+          ],
+          "max_w": 150,
+          "color": "WHITE",
+          "text": "21"
+        },
+        {
+          "id": "speedUnit",
+          "kind": "text",
+          "x": 86,
+          "y": 140,
+          "anchor": "mm",
+          "font": "F20",
+          "color": "ORANGE",
+          "text": "KM/H"
+        },
+        {
+          "id": "batteryCard",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 176,
+          "y": 38,
+          "w": 138,
+          "h": 112,
+          "radius": 8,
+          "outline": "DIM",
+          "fill": "PANEL"
+        },
+        {
+          "id": "range",
+          "kind": "text",
+          "x": 245,
+          "y": 106,
+          "anchor": "la",
+          "font": "F48",
+          "color": "WHITE",
+          "text": "42",
+          "max_w": 96
+        },
+        {
+          "id": "rangeLabel",
+          "kind": "text",
+          "x": 245,
+          "y": 48,
+          "anchor": "tc",
+          "font": "F16",
+          "color": "LABEL",
+          "text": "RANGE"
+        },
+        {
+          "id": "powerLabel",
+          "kind": "text",
+          "x": 8,
+          "y": 156,
+          "anchor": "la",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "POWER"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 312,
+          "y": 154,
+          "anchor": "ra",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "1860 W"
+        },
+        {
+          "id": "powerBar",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 8,
+          "y": 170,
+          "w": 304,
+          "h": 20,
+          "radius": 0,
+          "outline": "ORANGE"
+        },
+        {
+          "id": "divider",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              0,
+              196
+            ],
+            [
+              320,
+              196
+            ]
+          ],
+          "color": "PANEL"
+        },
+        {
+          "id": "tripLabel",
+          "kind": "text",
+          "x": 8,
+          "y": 200,
+          "anchor": "la",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "TRIP"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 8,
+          "y": 212,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "25.3"
+        },
+        {
+          "id": "tripExtra1",
+          "kind": "text",
+          "x": 56,
+          "y": 218,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "KM"
+        },
+        {
+          "id": "odoLabel",
+          "kind": "text",
+          "x": 312,
+          "y": 200,
+          "anchor": "ra",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "ODO"
+        },
+        {
+          "id": "odo",
+          "kind": "text",
+          "x": 168,
+          "y": 212,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "1257"
+        },
+        {
+          "id": "odoExtra1",
+          "kind": "text",
+          "x": 216,
+          "y": 218,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "KM"
+        },
+        {
+          "id": "rangeExtra1",
+          "kind": "text",
+          "x": 268,
+          "y": 116,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "KM"
+        }
+      ]
+    },
+    "barGraph": {
+      "name": "04 Bar Graph",
+      "image": "../preview_output/04_bar_graph.png",
+      "prefix": "BARS",
+      "items": [
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "battery",
+          "x": 8,
+          "y": 32,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "batteryBarFrame",
+          "kind": "shape",
+          "type": "rect",
+          "x": 28,
+          "y": 32,
+          "w": 121,
+          "h": 16,
+          "outline": "CYAN"
+        },
+        {
+          "id": "speedIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "speed",
+          "x": 8,
+          "y": 75,
+          "w": 16,
+          "h": 16,
+          "color": "CYAN"
+        },
+        {
+          "id": "speedBarFrame",
+          "kind": "shape",
+          "type": "rect",
+          "x": 28,
+          "y": 75,
+          "w": 121,
+          "h": 16,
+          "outline": "CYAN"
+        },
+        {
+          "id": "powerIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "power",
+          "x": 8,
+          "y": 118,
+          "w": 16,
+          "h": 16,
+          "color": "RED_ORANGE"
+        },
+        {
+          "id": "powerBarFrame",
+          "kind": "shape",
+          "type": "rect",
+          "x": 28,
+          "y": 118,
+          "w": 121,
+          "h": 16,
+          "outline": "RED_ORANGE"
+        },
+        {
+          "id": "voltageIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "voltage",
+          "x": 8,
+          "y": 161,
+          "w": 16,
+          "h": 16,
+          "color": "BLUE"
+        },
+        {
+          "id": "voltageBarFrame",
+          "kind": "shape",
+          "type": "rect",
+          "x": 28,
+          "y": 161,
+          "w": 121,
+          "h": 16,
+          "outline": "GREEN"
+        },
+        {
+          "id": "currentIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "amperage",
+          "x": 8,
+          "y": 204,
+          "w": 16,
+          "h": 16,
+          "color": "YELLOW"
+        },
+        {
+          "id": "currentBarFrame",
+          "kind": "shape",
+          "type": "rect",
+          "x": 28,
+          "y": 204,
+          "w": 121,
+          "h": 16,
+          "outline": "YELLOW"
+        },
+        {
+          "id": "separator",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              228,
+              17
+            ],
+            [
+              228,
+              223
+            ]
+          ],
+          "color": "CYAN"
+        },
+        {
+          "id": "outerPanel",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 2,
+          "y": 5,
+          "w": 316,
+          "h": 232,
+          "radius": 5,
+          "outline": "CYAN",
+          "fill": "BLACK"
+        },
+        {
+          "id": "battery",
+          "kind": "text",
+          "x": 155,
+          "y": 32,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "66"
+        },
+        {
+          "id": "batteryExtra1",
+          "kind": "text",
+          "x": 158,
+          "y": 38,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "%"
+        },
+        {
+          "id": "batteryLabel",
+          "kind": "text",
+          "x": 8,
+          "y": 17,
+          "anchor": "la",
+          "font": "F14",
+          "color": "CYAN",
+          "text": "BATTERY"
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 155,
+          "y": 75,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "21"
+        },
+        {
+          "id": "speedExtra1",
+          "kind": "text",
+          "x": 160,
+          "y": 81,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "KM/H"
+        },
+        {
+          "id": "speedLabel",
+          "kind": "text",
+          "x": 8,
+          "y": 60,
+          "anchor": "la",
+          "font": "F14",
+          "color": "CYAN",
+          "text": "SPEED"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 155,
+          "y": 118,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "1860"
+        },
+        {
+          "id": "powerExtra1",
+          "kind": "text",
+          "x": 181,
+          "y": 124,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "W"
+        },
+        {
+          "id": "powerLabel",
+          "kind": "text",
+          "x": 8,
+          "y": 103,
+          "anchor": "la",
+          "font": "F14",
+          "color": "RED_ORANGE",
+          "text": "POWER"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 155,
+          "y": 161,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "71.9"
+        },
+        {
+          "id": "voltsExtra1",
+          "kind": "text",
+          "x": 174,
+          "y": 167,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "V"
+        },
+        {
+          "id": "voltsLabel",
+          "kind": "text",
+          "x": 8,
+          "y": 146,
+          "anchor": "la",
+          "font": "F14",
+          "color": "GREEN",
+          "text": "VOLTS"
+        },
+        {
+          "id": "amps",
+          "kind": "text",
+          "x": 155,
+          "y": 204,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "9.4"
+        },
+        {
+          "id": "ampsExtra1",
+          "kind": "text",
+          "x": 174,
+          "y": 210,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "A"
+        },
+        {
+          "id": "ampsLabel",
+          "kind": "text",
+          "x": 8,
+          "y": 189,
+          "anchor": "la",
+          "font": "F14",
+          "color": "YELLOW",
+          "text": "AMPS"
+        },
+        {
+          "id": "motorTemp",
+          "kind": "text",
+          "x": 240,
+          "y": 28,
+          "anchor": "la",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "36 C"
+        },
+        {
+          "id": "motorTempLabel",
+          "kind": "text",
+          "x": 240,
+          "y": 17,
+          "anchor": "la",
+          "font": "F10",
+          "color": "CYAN",
+          "text": "MOTOR TEMP"
+        },
+        {
+          "id": "escTemp",
+          "kind": "text",
+          "x": 240,
+          "y": 63,
+          "anchor": "la",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "32 C"
+        },
+        {
+          "id": "escTempLabel",
+          "kind": "text",
+          "x": 240,
+          "y": 52,
+          "anchor": "la",
+          "font": "F10",
+          "color": "CYAN",
+          "text": "ESC TEMP"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 240,
+          "y": 98,
+          "anchor": "la",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "25.3 KM"
+        },
+        {
+          "id": "tripLabel",
+          "kind": "text",
+          "x": 240,
+          "y": 87,
+          "anchor": "la",
+          "font": "F10",
+          "color": "CYAN",
+          "text": "TRIP"
+        },
+        {
+          "id": "odo",
+          "kind": "text",
+          "x": 240,
+          "y": 133,
+          "anchor": "la",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "1257 KM"
+        },
+        {
+          "id": "odoLabel",
+          "kind": "text",
+          "x": 240,
+          "y": 122,
+          "anchor": "la",
+          "font": "F10",
+          "color": "CYAN",
+          "text": "ODO"
+        },
+        {
+          "id": "avg",
+          "kind": "text",
+          "x": 240,
+          "y": 168,
+          "anchor": "la",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "27.8 KM/H"
+        },
+        {
+          "id": "avgLabel",
+          "kind": "text",
+          "x": 240,
+          "y": 157,
+          "anchor": "la",
+          "font": "F10",
+          "color": "CYAN",
+          "text": "AVG"
+        },
+        {
+          "id": "up",
+          "kind": "text",
+          "x": 240,
+          "y": 203,
+          "anchor": "la",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "00:09"
+        },
+        {
+          "id": "upLabel",
+          "kind": "text",
+          "x": 240,
+          "y": 192,
+          "anchor": "la",
+          "font": "F10",
+          "color": "CYAN",
+          "text": "UP"
+        }
+      ]
+    },
+    "pixelMono": {
+      "name": "05 Mono",
+      "image": "../preview_output/05_pixel_mono.png",
+      "prefix": "PIXEL_MONO",
+      "items": [
+        {
+          "id": "outerFrame",
+          "kind": "shape",
+          "type": "rect",
+          "x": 2,
+          "y": 5,
+          "w": 316,
+          "h": 232,
+          "outline": "DIM"
+        },
+        {
+          "id": "speedBox",
+          "kind": "shape",
+          "type": "rect",
+          "x": 12,
+          "y": 42,
+          "w": 144,
+          "h": 137,
+          "outline": "WHITE"
+        },
+        {
+          "id": "metricRow1",
+          "kind": "shape",
+          "type": "rect",
+          "x": 164,
+          "y": 42,
+          "w": 142,
+          "h": 29,
+          "outline": "DIM"
+        },
+        {
+          "id": "metricRow2",
+          "kind": "shape",
+          "type": "rect",
+          "x": 164,
+          "y": 78,
+          "w": 142,
+          "h": 29,
+          "outline": "DIM"
+        },
+        {
+          "id": "metricRow3",
+          "kind": "shape",
+          "type": "rect",
+          "x": 164,
+          "y": 114,
+          "w": 142,
+          "h": 29,
+          "outline": "DIM"
+        },
+        {
+          "id": "metricRow4",
+          "kind": "shape",
+          "type": "rect",
+          "x": 164,
+          "y": 150,
+          "w": 142,
+          "h": 29,
+          "outline": "DIM"
+        },
+        {
+          "id": "footerTop",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              0,
+              194
+            ],
+            [
+              320,
+              194
+            ]
+          ],
+          "color": "WHITE"
+        },
+        {
+          "id": "footerSplit1",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              106,
+              194
+            ],
+            [
+              106,
+              238
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "footerSplit2",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              213,
+              194
+            ],
+            [
+              213,
+              238
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 282,
+          "y": 9,
+          "w": 31,
+          "h": 14,
+          "color": "WHITE",
+          "sample": 66,
+          "segs": 5
+        },
+        {
+          "id": "powerIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "power",
+          "x": 169,
+          "y": 47,
+          "w": 16,
+          "h": 16,
+          "color": "WHITE"
+        },
+        {
+          "id": "voltsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "voltage",
+          "x": 169,
+          "y": 83,
+          "w": 16,
+          "h": 16,
+          "color": "WHITE"
+        },
+        {
+          "id": "ampsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "amperage",
+          "x": 169,
+          "y": 119,
+          "w": 16,
+          "h": 16,
+          "color": "WHITE"
+        },
+        {
+          "id": "tempIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "temp_motor",
+          "x": 169,
+          "y": 155,
+          "w": 16,
+          "h": 16,
+          "color": "WHITE"
+        },
+        {
+          "id": "time",
+          "kind": "text",
+          "x": 24,
+          "y": 8,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09"
+        },
+        {
+          "id": "oem",
+          "kind": "text",
+          "x": 160,
+          "y": 16,
+          "anchor": "mm",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "KAJO DASH",
+          "max_w": 110
+        },
+        {
+          "id": "battery",
+          "kind": "text",
+          "x": 278,
+          "y": 8,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "66%"
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 86,
+          "y": 108,
+          "fit": [
+            "F96",
+            "F48",
+            "F48",
+            "F28"
+          ],
+          "max_w": 139,
+          "color": "WHITE",
+          "text": "21"
+        },
+        {
+          "id": "speedUnit",
+          "kind": "text",
+          "x": 86,
+          "y": 160,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "KM/H"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 298,
+          "y": 50,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "1860 W"
+        },
+        {
+          "id": "powerLabel",
+          "kind": "text",
+          "x": 195,
+          "y": 50,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "POWER"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 298,
+          "y": 88,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "71.9V"
+        },
+        {
+          "id": "voltsLabel",
+          "kind": "text",
+          "x": 195,
+          "y": 88,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "VOLTS"
+        },
+        {
+          "id": "amps",
+          "kind": "text",
+          "x": 298,
+          "y": 124,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "9.4A"
+        },
+        {
+          "id": "ampsLabel",
+          "kind": "text",
+          "x": 195,
+          "y": 124,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "AMPS"
+        },
+        {
+          "id": "motorTemp",
+          "kind": "text",
+          "x": 298,
+          "y": 160,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "36 C"
+        },
+        {
+          "id": "motorTempLabel",
+          "kind": "text",
+          "x": 195,
+          "y": 160,
+          "anchor": "la",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "MOTOR TEMP"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 37,
+          "y": 226,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "25.3 KM"
+        },
+        {
+          "id": "tripLabel",
+          "kind": "text",
+          "x": 21,
+          "y": 210,
+          "anchor": "mm",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "TRIP"
+        },
+        {
+          "id": "odo",
+          "kind": "text",
+          "x": 145,
+          "y": 226,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "1257 KM"
+        },
+        {
+          "id": "odoLabel",
+          "kind": "text",
+          "x": 127,
+          "y": 210,
+          "anchor": "mm",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "ODO"
+        },
+        {
+          "id": "timeFull",
+          "kind": "text",
+          "x": 256,
+          "y": 226,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "00:09:19"
+        },
+        {
+          "id": "timeFullLabel",
+          "kind": "text",
+          "x": 236,
+          "y": 210,
+          "anchor": "mm",
+          "font": "F10",
+          "color": "WHITE",
+          "text": "TIME"
+        },
+        {
+          "id": "clockIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "uptime",
+          "x": 6,
+          "y": 8,
+          "w": 16,
+          "h": 16,
+          "color": "WHITE"
+        }
+      ]
+    },
+    "pixelGauge": {
+      "name": "06 Pixel",
+      "image": "../preview_output/06_pixel_gauge.png",
+      "prefix": "PIXEL_GAUGE",
+      "items": [
+        {
+          "id": "outerFrame",
+          "kind": "shape",
+          "type": "rect",
+          "x": 2,
+          "y": 5,
+          "w": 316,
+          "h": 232,
+          "outline": "DIM"
+        },
+        {
+          "id": "metricRow1",
+          "kind": "shape",
+          "type": "rect",
+          "x": 164,
+          "y": 42,
+          "w": 142,
+          "h": 29,
+          "outline": "DIM"
+        },
+        {
+          "id": "metricRow2",
+          "kind": "shape",
+          "type": "rect",
+          "x": 164,
+          "y": 78,
+          "w": 142,
+          "h": 29,
+          "outline": "DIM"
+        },
+        {
+          "id": "metricRow3",
+          "kind": "shape",
+          "type": "rect",
+          "x": 164,
+          "y": 114,
+          "w": 142,
+          "h": 29,
+          "outline": "DIM"
+        },
+        {
+          "id": "metricRow4",
+          "kind": "shape",
+          "type": "rect",
+          "x": 164,
+          "y": 150,
+          "w": 142,
+          "h": 29,
+          "outline": "DIM"
+        },
+        {
+          "id": "footerTop",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              0,
+              194
+            ],
+            [
+              320,
+              194
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "footerSplit1",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              106,
+              194
+            ],
+            [
+              106,
+              238
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "footerSplit2",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              213,
+              194
+            ],
+            [
+              213,
+              238
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 278,
+          "y": 9,
+          "w": 35,
+          "h": 14,
+          "color": "GREEN",
+          "sample": 66,
+          "segs": 5
+        },
+        {
+          "id": "speedArc",
+          "kind": "shape",
+          "type": "arcGauge",
+          "cx": 82,
+          "cy": 114,
+          "r": 72,
+          "max": 80,
+          "color": "GREEN",
+          "sample": 21
+        },
+        {
+          "id": "powerIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "power",
+          "x": 169,
+          "y": 47,
+          "w": 16,
+          "h": 16,
+          "color": "YELLOW"
+        },
+        {
+          "id": "voltsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "voltage",
+          "x": 169,
+          "y": 83,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "ampsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "amperage",
+          "x": 169,
+          "y": 119,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "tempIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "temp_motor",
+          "x": 169,
+          "y": 155,
+          "w": 16,
+          "h": 16,
+          "color": "RED_ORANGE"
+        },
+        {
+          "id": "time",
+          "kind": "text",
+          "x": 24,
+          "y": 8,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09"
+        },
+        {
+          "id": "oem",
+          "kind": "text",
+          "x": 160,
+          "y": 16,
+          "anchor": "mm",
+          "font": "F20",
+          "color": "GREEN",
+          "text": "KAJO DASH",
+          "max_w": 110
+        },
+        {
+          "id": "battery",
+          "kind": "text",
+          "x": 274,
+          "y": 8,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "66%"
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 85,
+          "y": 114,
+          "fit": [
+            "F96",
+            "F72",
+            "F48",
+            "F28"
+          ],
+          "max_w": 138,
+          "color": "GREEN",
+          "text": "21"
+        },
+        {
+          "id": "speedUnit",
+          "kind": "text",
+          "x": 85,
+          "y": 158,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "KM/H"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 299,
+          "y": 51,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "1860 W"
+        },
+        {
+          "id": "powerLabel",
+          "kind": "text",
+          "x": 190,
+          "y": 51,
+          "anchor": "la",
+          "font": "F12",
+          "color": "YELLOW",
+          "text": "POWER"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 297,
+          "y": 86,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "71.9V"
+        },
+        {
+          "id": "voltsLabel",
+          "kind": "text",
+          "x": 190,
+          "y": 86,
+          "anchor": "la",
+          "font": "F12",
+          "color": "GREEN",
+          "text": "VOLTS"
+        },
+        {
+          "id": "amps",
+          "kind": "text",
+          "x": 298,
+          "y": 121,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "9.4A"
+        },
+        {
+          "id": "ampsLabel",
+          "kind": "text",
+          "x": 190,
+          "y": 121,
+          "anchor": "la",
+          "font": "F12",
+          "color": "GREEN",
+          "text": "AMPS"
+        },
+        {
+          "id": "motorTemp",
+          "kind": "text",
+          "x": 301,
+          "y": 157,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "36 C"
+        },
+        {
+          "id": "motorTempLabel",
+          "kind": "text",
+          "x": 188,
+          "y": 158,
+          "anchor": "la",
+          "font": "F12",
+          "color": "RED_ORANGE",
+          "text": "MOTOR TEMP"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 10,
+          "y": 216,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "25.3 KM"
+        },
+        {
+          "id": "tripLabel",
+          "kind": "text",
+          "x": 10,
+          "y": 203,
+          "anchor": "la",
+          "font": "F12",
+          "color": "GREEN",
+          "text": "TRIP"
+        },
+        {
+          "id": "odo",
+          "kind": "text",
+          "x": 115,
+          "y": 216,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "1257 KM"
+        },
+        {
+          "id": "odoLabel",
+          "kind": "text",
+          "x": 115,
+          "y": 203,
+          "anchor": "la",
+          "font": "F12",
+          "color": "GREEN",
+          "text": "ODO"
+        },
+        {
+          "id": "up",
+          "kind": "text",
+          "x": 222,
+          "y": 216,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09:19"
+        },
+        {
+          "id": "upLabel",
+          "kind": "text",
+          "x": 222,
+          "y": 203,
+          "anchor": "la",
+          "font": "F12",
+          "color": "GREEN",
+          "text": "UP"
+        },
+        {
+          "id": "clockIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "uptime",
+          "x": 6,
+          "y": 8,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        }
+      ]
+    },
+    "largeTiles": {
+      "name": "07 Tiles",
+      "image": "../preview_output/07_large_tiles.png",
+      "prefix": "LARGE_TILES",
+      "items": [
+        {
+          "id": "speedTile",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 5,
+          "y": 5,
+          "w": 205,
+          "h": 90,
+          "radius": 5,
+          "outline": [
+            220,
+            216,
+            206
+          ],
+          "fill": [
+            246,
+            241,
+            231
+          ]
+        },
+        {
+          "id": "batteryTile",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 215,
+          "y": 5,
+          "w": 100,
+          "h": 90,
+          "radius": 5,
+          "outline": [
+            220,
+            216,
+            206
+          ],
+          "fill": [
+            246,
+            241,
+            231
+          ]
+        },
+        {
+          "id": "voltsTile",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 5,
+          "y": 100,
+          "w": 100,
+          "h": 65,
+          "radius": 5,
+          "outline": [
+            220,
+            216,
+            206
+          ],
+          "fill": [
+            246,
+            241,
+            231
+          ]
+        },
+        {
+          "id": "ampsTile",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 110,
+          "y": 100,
+          "w": 100,
+          "h": 65,
+          "radius": 5,
+          "outline": [
+            220,
+            216,
+            206
+          ],
+          "fill": [
+            246,
+            241,
+            231
+          ]
+        },
+        {
+          "id": "powerTile",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 215,
+          "y": 100,
+          "w": 100,
+          "h": 65,
+          "radius": 5,
+          "outline": [
+            220,
+            216,
+            206
+          ],
+          "fill": [
+            246,
+            241,
+            231
+          ]
+        },
+        {
+          "id": "tripTile",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 5,
+          "y": 170,
+          "w": 100,
+          "h": 65,
+          "radius": 5,
+          "outline": [
+            220,
+            216,
+            206
+          ],
+          "fill": [
+            246,
+            241,
+            231
+          ]
+        },
+        {
+          "id": "tempTile",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 110,
+          "y": 170,
+          "w": 100,
+          "h": 65,
+          "radius": 5,
+          "outline": [
+            220,
+            216,
+            206
+          ],
+          "fill": [
+            246,
+            241,
+            231
+          ]
+        },
+        {
+          "id": "odoTile",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 215,
+          "y": 170,
+          "w": 100,
+          "h": 65,
+          "radius": 5,
+          "outline": [
+            220,
+            216,
+            206
+          ],
+          "fill": [
+            246,
+            241,
+            231
+          ]
+        },
+        {
+          "id": "speedIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "speed",
+          "x": 181,
+          "y": 10,
+          "w": 16,
+          "h": 16,
+          "color": [
+            44,
+            49,
+            54
+          ]
+        },
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 283,
+          "y": 12,
+          "w": 24,
+          "h": 16,
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "sample": 66
+        },
+        {
+          "id": "voltsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "voltage",
+          "x": 83,
+          "y": 104,
+          "w": 16,
+          "h": 16,
+          "color": [
+            44,
+            49,
+            54
+          ]
+        },
+        {
+          "id": "ampsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "amperage",
+          "x": 188,
+          "y": 104,
+          "w": 16,
+          "h": 16,
+          "color": [
+            44,
+            49,
+            54
+          ]
+        },
+        {
+          "id": "powerIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "power",
+          "x": 293,
+          "y": 104,
+          "w": 16,
+          "h": 16,
+          "color": [
+            44,
+            49,
+            54
+          ]
+        },
+        {
+          "id": "tripIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "trip",
+          "x": 83,
+          "y": 174,
+          "w": 16,
+          "h": 16,
+          "color": [
+            44,
+            49,
+            54
+          ]
+        },
+        {
+          "id": "tempIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "temp_motor",
+          "x": 188,
+          "y": 174,
+          "w": 16,
+          "h": 16,
+          "color": [
+            44,
+            49,
+            54
+          ]
+        },
+        {
+          "id": "odoIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "odo",
+          "x": 293,
+          "y": 174,
+          "w": 16,
+          "h": 16,
+          "color": [
+            44,
+            49,
+            54
+          ]
+        },
+        {
+          "id": "batteryProgress",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 217,
+          "y": 34,
+          "w": 91,
+          "h": 8,
+          "radius": 2,
+          "fill": [
+            55,
+            181,
+            82
+          ]
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 89,
+          "y": 63,
+          "fit": [
+            "F72",
+            "F48",
+            "F48",
+            "F28"
+          ],
+          "max_w": 150,
+          "color": "BLACK",
+          "text": "21"
+        },
+        {
+          "id": "speedExtra1",
+          "kind": "text",
+          "x": 12,
+          "y": 10,
+          "anchor": "la",
+          "font": "F14",
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "text": "SPEED"
+        },
+        {
+          "id": "speedExtra2",
+          "kind": "text",
+          "x": 145,
+          "y": 74,
+          "anchor": "la",
+          "font": "F14",
+          "color": "BLACK",
+          "text": "KM/H"
+        },
+        {
+          "id": "battery",
+          "kind": "text",
+          "x": 252,
+          "y": 63,
+          "fit": [
+            "F48",
+            "F36",
+            "F28"
+          ],
+          "max_w": 72,
+          "color": "BLACK",
+          "text": "66"
+        },
+        {
+          "id": "batteryExtra1",
+          "kind": "text",
+          "x": 217,
+          "y": 12,
+          "anchor": "la",
+          "font": "F14",
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "text": "BATTERY"
+        },
+        {
+          "id": "batteryExtra2",
+          "kind": "text",
+          "x": 284,
+          "y": 58,
+          "anchor": "la",
+          "font": "F20",
+          "color": "BLACK",
+          "text": "%"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 46,
+          "y": 147,
+          "fit": [
+            "F24",
+            "F20"
+          ],
+          "max_w": 72,
+          "color": "BLACK",
+          "text": "71.9"
+        },
+        {
+          "id": "voltsExtra1",
+          "kind": "text",
+          "x": 12,
+          "y": 106,
+          "anchor": "la",
+          "font": "F12",
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "text": "VOLTS"
+        },
+        {
+          "id": "voltsExtra2",
+          "kind": "text",
+          "x": 76,
+          "y": 140,
+          "anchor": "la",
+          "font": "F14",
+          "color": "BLACK",
+          "text": "V"
+        },
+        {
+          "id": "amps",
+          "kind": "text",
+          "x": 150,
+          "y": 147,
+          "fit": [
+            "F24",
+            "F20"
+          ],
+          "max_w": 77,
+          "color": "BLACK",
+          "text": "9.4"
+        },
+        {
+          "id": "ampsExtra1",
+          "kind": "text",
+          "x": 117,
+          "y": 106,
+          "anchor": "la",
+          "font": "F12",
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "text": "AMPS"
+        },
+        {
+          "id": "ampsExtra2",
+          "kind": "text",
+          "x": 171,
+          "y": 140,
+          "anchor": "la",
+          "font": "F14",
+          "color": "BLACK",
+          "text": "A"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 256,
+          "y": 147,
+          "fit": [
+            "F24",
+            "F20",
+            "F20"
+          ],
+          "max_w": 75,
+          "color": "BLACK",
+          "text": "1860"
+        },
+        {
+          "id": "powerExtra1",
+          "kind": "text",
+          "x": 222,
+          "y": 106,
+          "anchor": "la",
+          "font": "F12",
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "text": "POWER"
+        },
+        {
+          "id": "powerExtra2",
+          "kind": "text",
+          "x": 286,
+          "y": 140,
+          "anchor": "la",
+          "font": "F14",
+          "color": "BLACK",
+          "text": "W"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 46,
+          "y": 211,
+          "fit": [
+            "F28",
+            "F24",
+            "F20"
+          ],
+          "max_w": 58,
+          "color": "BLACK",
+          "text": "25.3"
+        },
+        {
+          "id": "tripExtra1",
+          "kind": "text",
+          "x": 12,
+          "y": 176,
+          "anchor": "la",
+          "font": "F12",
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "text": "TRIP"
+        },
+        {
+          "id": "tripExtra2",
+          "kind": "text",
+          "x": 64,
+          "y": 204,
+          "anchor": "la",
+          "font": "F14",
+          "color": "BLACK",
+          "text": "KM"
+        },
+        {
+          "id": "motorTemp",
+          "kind": "text",
+          "x": 149,
+          "y": 211,
+          "fit": [
+            "F28",
+            "F24",
+            "F20"
+          ],
+          "max_w": 58,
+          "color": "BLACK",
+          "text": "36"
+        },
+        {
+          "id": "motorTempExtra1",
+          "kind": "text",
+          "x": 117,
+          "y": 176,
+          "anchor": "la",
+          "font": "F12",
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "text": "MOTOR TEMP"
+        },
+        {
+          "id": "motorTempExtra2",
+          "kind": "text",
+          "x": 156,
+          "y": 204,
+          "anchor": "la",
+          "font": "F14",
+          "color": "BLACK",
+          "text": "C"
+        },
+        {
+          "id": "odo",
+          "kind": "text",
+          "x": 247,
+          "y": 211,
+          "fit": [
+            "F28",
+            "F24",
+            "F20"
+          ],
+          "max_w": 58,
+          "color": "BLACK",
+          "text": "1257"
+        },
+        {
+          "id": "odoExtra1",
+          "kind": "text",
+          "x": 222,
+          "y": 176,
+          "anchor": "la",
+          "font": "F12",
+          "color": [
+            44,
+            49,
+            54
+          ],
+          "text": "ODO"
+        },
+        {
+          "id": "odoExtra2",
+          "kind": "text",
+          "x": 290,
+          "y": 204,
+          "anchor": "la",
+          "font": "F14",
+          "color": "BLACK",
+          "text": "KM"
+        }
+      ]
+    },
+    "bigReadout": {
+      "name": "08 Ride Console",
+      "image": "../preview_output/08_big_readout.png",
+      "prefix": "BIG_READOUT",
+      "items": [
+        {
+          "id": "outerPanel",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 4,
+          "y": 4,
+          "w": 312,
+          "h": 232,
+          "radius": 6,
+          "outline": "DIM",
+          "fill": "PANEL"
+        },
+        {
+          "id": "topLine",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              4,
+              30
+            ],
+            [
+              316,
+              30
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "footerLine",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              4,
+              158
+            ],
+            [
+              316,
+              158
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "powerCard",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 12,
+          "y": 164,
+          "w": 66,
+          "h": 62,
+          "radius": 5,
+          "outline": "DIM",
+          "fill": [
+            10,
+            15,
+            19
+          ]
+        },
+        {
+          "id": "voltsCard",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 89,
+          "y": 164,
+          "w": 66,
+          "h": 62,
+          "radius": 5,
+          "outline": "DIM",
+          "fill": [
+            10,
+            15,
+            19
+          ]
+        },
+        {
+          "id": "ampsCard",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 166,
+          "y": 164,
+          "w": 66,
+          "h": 62,
+          "radius": 5,
+          "outline": "DIM",
+          "fill": [
+            10,
+            15,
+            19
+          ]
+        },
+        {
+          "id": "tempCard",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 243,
+          "y": 164,
+          "w": 66,
+          "h": 62,
+          "radius": 5,
+          "outline": "DIM",
+          "fill": [
+            10,
+            15,
+            19
+          ]
+        },
+        {
+          "id": "timeIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "uptime",
+          "x": 6,
+          "y": 6,
+          "w": 16,
+          "h": 16,
+          "color": "YELLOW"
+        },
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 282,
+          "y": 7,
+          "w": 31,
+          "h": 14,
+          "color": "YELLOW",
+          "sample": 66,
+          "segs": 5
+        },
+        {
+          "id": "powerIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "power",
+          "x": 58,
+          "y": 166,
+          "w": 16,
+          "h": 16,
+          "color": "YELLOW"
+        },
+        {
+          "id": "voltsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "voltage",
+          "x": 136,
+          "y": 166,
+          "w": 16,
+          "h": 16,
+          "color": "GREEN"
+        },
+        {
+          "id": "ampsIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "amperage",
+          "x": 214,
+          "y": 164,
+          "w": 16,
+          "h": 16,
+          "color": "CYAN"
+        },
+        {
+          "id": "tempIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "temp_motor",
+          "x": 291,
+          "y": 166,
+          "w": 16,
+          "h": 16,
+          "color": "YELLOW"
+        },
+        {
+          "id": "time",
+          "kind": "text",
+          "x": 24,
+          "y": 6,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09:19"
+        },
+        {
+          "id": "battery",
+          "kind": "text",
+          "x": 278,
+          "y": 6,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "66%"
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 160,
+          "y": 104,
+          "fit": [
+            "F96",
+            "F24",
+            "F48",
+            "F48",
+            "F28"
+          ],
+          "max_w": 153,
+          "color": "WHITE",
+          "text": "21"
+        },
+        {
+          "id": "speedUnit",
+          "kind": "text",
+          "x": 284,
+          "y": 138,
+          "anchor": "mm",
+          "font": "F24",
+          "color": "YELLOW",
+          "text": "KM/H"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 45,
+          "y": 210,
+          "fit": [
+            "F24",
+            "F20",
+            "F16"
+          ],
+          "max_w": 60,
+          "color": "WHITE",
+          "text": "1860W"
+        },
+        {
+          "id": "powerLabel",
+          "kind": "text",
+          "x": 33,
+          "y": 173,
+          "anchor": "mm",
+          "font": "F12",
+          "color": "YELLOW",
+          "text": "POWER"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 122,
+          "y": 210,
+          "fit": [
+            "F24",
+            "F20",
+            "F16"
+          ],
+          "max_w": 60,
+          "color": "WHITE",
+          "text": "71.9V"
+        },
+        {
+          "id": "voltsLabel",
+          "kind": "text",
+          "x": 110,
+          "y": 173,
+          "anchor": "mm",
+          "font": "F12",
+          "color": "GREEN",
+          "text": "VOLTS"
+        },
+        {
+          "id": "amps",
+          "kind": "text",
+          "x": 199,
+          "y": 210,
+          "fit": [
+            "F24",
+            "F20",
+            "F16"
+          ],
+          "max_w": 60,
+          "color": "WHITE",
+          "text": "9.4A"
+        },
+        {
+          "id": "ampsLabel",
+          "kind": "text",
+          "x": 185,
+          "y": 173,
+          "anchor": "mm",
+          "font": "F12",
+          "color": "CYAN",
+          "text": "AMPS"
+        },
+        {
+          "id": "temp",
+          "kind": "text",
+          "x": 276,
+          "y": 210,
+          "fit": [
+            "F24",
+            "F20",
+            "F16"
+          ],
+          "max_w": 60,
+          "color": "WHITE",
+          "text": "36 C"
+        },
+        {
+          "id": "tempLabel",
+          "kind": "text",
+          "x": 263,
+          "y": 173,
+          "anchor": "mm",
+          "font": "F12",
+          "color": "YELLOW",
+          "text": "TEMP"
+        },
+        {
+          "id": "oem",
+          "kind": "text",
+          "x": 160,
+          "y": 14,
+          "anchor": "mm",
+          "font": "F20",
+          "max_w": 110,
+          "color": "YELLOW",
+          "text": "KAJO DASH"
+        }
+      ]
+    },
+    "redline": {
+      "name": "09 Redline",
+      "image": "../preview_output/09_redline.png",
+      "prefix": "REDLINE",
+      "items": [
+        {
+          "id": "speedBar",
+          "kind": "shape",
+          "type": "arcBar",
+          "cx": 160,
+          "cy": 171,
+          "r": 137,
+          "max": 100,
+          "startDeg": 218,
+          "sweepDeg": 104,
+          "width": 8,
+          "color": "#f51616",
+          "sample": 21
+        },
+        {
+          "id": "speedGauge",
+          "kind": "shape",
+          "type": "tickGauge",
+          "cx": 160,
+          "cy": 177,
+          "r": 150,
+          "max": 100,
+          "segs": 50,
+          "startDeg": 218,
+          "sweepDeg": 104,
+          "tickMajor": 19,
+          "tickMinor": 11,
+          "color": "WHITE",
+          "dim": [
+            130,
+            130,
+            130
+          ],
+          "majorColor": "WHITE",
+          "sample": 0
+        },
+        {
+          "id": "s0",
+          "kind": "text",
+          "x": 35,
+          "y": 78,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "0"
+        },
+        {
+          "id": "s20",
+          "kind": "text",
+          "x": 72,
+          "y": 42,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "20"
+        },
+        {
+          "id": "s40",
+          "kind": "text",
+          "x": 130,
+          "y": 23,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "40"
+        },
+        {
+          "id": "s60",
+          "kind": "text",
+          "x": 190,
+          "y": 23,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "60"
+        },
+        {
+          "id": "s80",
+          "kind": "text",
+          "x": 241,
+          "y": 42,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "80"
+        },
+        {
+          "id": "s100",
+          "kind": "text",
+          "x": 288,
+          "y": 77,
+          "anchor": "mm",
+          "font": "F14",
+          "color": "#f51616",
+          "text": "100"
+        },
+        {
+          "id": "oem",
+          "kind": "text",
+          "x": 160,
+          "y": 76,
+          "anchor": "mm",
+          "font": "F20",
+          "color": "#f51616",
+          "text": "REDLINE"
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 159,
+          "y": 133,
+          "fit": [
+            "F96",
+            "F24"
+          ],
+          "max_w": 230,
+          "color": "WHITE",
+          "text": "21"
+        },
+        {
+          "id": "speedUnit",
+          "kind": "text",
+          "x": 143,
+          "y": 175,
+          "anchor": "la",
+          "font": "F14",
+          "color": "WHITE",
+          "text": "KM/H"
+        },
+        {
+          "id": "motor",
+          "kind": "text",
+          "x": 238,
+          "y": 117,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "36"
+        },
+        {
+          "id": "motorLabel",
+          "kind": "text",
+          "x": 238,
+          "y": 104,
+          "anchor": "la",
+          "font": "F10",
+          "color": "#f51616",
+          "text": "MOTOR"
+        },
+        {
+          "id": "motorExtra1",
+          "kind": "text",
+          "x": 270,
+          "y": 122,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "°C"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 14,
+          "y": 117,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "71.9"
+        },
+        {
+          "id": "voltsLabel",
+          "kind": "text",
+          "x": 14,
+          "y": 104,
+          "anchor": "la",
+          "font": "F10",
+          "color": "#f51616",
+          "text": "VOLTAGE"
+        },
+        {
+          "id": "voltsExtra1",
+          "kind": "text",
+          "x": 45,
+          "y": 122,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "V"
+        },
+        {
+          "id": "current",
+          "kind": "text",
+          "x": 14,
+          "y": 155,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "9.4"
+        },
+        {
+          "id": "currentLabel",
+          "kind": "text",
+          "x": 14,
+          "y": 142,
+          "anchor": "la",
+          "font": "F10",
+          "color": "#f51616",
+          "text": "CURRENT"
+        },
+        {
+          "id": "currentExtra1",
+          "kind": "text",
+          "x": 45,
+          "y": 160,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "A"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 238,
+          "y": 155,
+          "anchor": "la",
+          "font": "F20",
+          "color": "WHITE",
+          "text": "1860"
+        },
+        {
+          "id": "powerUnit",
+          "kind": "text",
+          "x": 270,
+          "y": 160,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "W"
+        },
+        {
+          "id": "powerLabel",
+          "kind": "text",
+          "x": 238,
+          "y": 142,
+          "anchor": "la",
+          "font": "F10",
+          "color": "#f51616",
+          "text": "POWER"
+        },
+        {
+          "id": "tripLabel",
+          "kind": "text",
+          "x": 14,
+          "y": 196,
+          "anchor": "la",
+          "font": "F12",
+          "color": "#f51616",
+          "text": "TRIP"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 14,
+          "y": 209,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "25.3"
+        },
+        {
+          "id": "tripExtra1",
+          "kind": "text",
+          "x": 44,
+          "y": 212,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "km"
+        },
+        {
+          "id": "odoLabel",
+          "kind": "text",
+          "x": 221,
+          "y": 196,
+          "anchor": "la",
+          "font": "F12",
+          "color": "#f51616",
+          "text": "ODO"
+        },
+        {
+          "id": "odo",
+          "kind": "text",
+          "x": 221,
+          "y": 209,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "1257"
+        },
+        {
+          "id": "odoExtra1",
+          "kind": "text",
+          "x": 251,
+          "y": 212,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "km"
+        },
+        {
+          "id": "rangeLabel",
+          "kind": "text",
+          "x": 118,
+          "y": 196,
+          "anchor": "la",
+          "font": "F12",
+          "color": "#f51616",
+          "text": "TRIP"
+        },
+        {
+          "id": "range",
+          "kind": "text",
+          "x": 118,
+          "y": 209,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "25.3"
+        },
+        {
+          "id": "rangeExtra1",
+          "kind": "text",
+          "x": 148,
+          "y": 212,
+          "anchor": "la",
+          "font": "F12",
+          "color": "WHITE",
+          "text": "km"
+        },
+        {
+          "id": "clockIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "uptime",
+          "x": 6,
+          "y": 5,
+          "w": 16,
+          "h": 16,
+          "color": "RED"
+        },
+        {
+          "id": "uptime",
+          "kind": "text",
+          "x": 24,
+          "y": 5,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09:19"
+        },
+        {
+          "id": "batteryPct",
+          "kind": "text",
+          "x": 278,
+          "y": 5,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "66%"
+        },
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 282,
+          "y": 6,
+          "w": 31,
+          "h": 14,
+          "segs": 5,
+          "color": "RED",
+          "sample": 66
+        }
+      ]
+    },
+    "trace": {
+      "name": "10 Trace",
+      "image": "../preview_output/10_trace.png",
+      "prefix": "TRACE",
+      "items": [
+        {
+          "id": "topLine",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              0,
+              30
+            ],
+            [
+              320,
+              30
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "footerLine",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              0,
+              177
+            ],
+            [
+              320,
+              177
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "chartPanel",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 138,
+          "y": 38,
+          "w": 174,
+          "h": 131,
+          "radius": 6,
+          "outline": "DIM",
+          "fill": [
+            8,
+            12,
+            16
+          ]
+        },
+        {
+          "id": "chartArea",
+          "kind": "shape",
+          "type": "rrect",
+          "x": 144,
+          "y": 58,
+          "w": 164,
+          "h": 105,
+          "radius": 0,
+          "outline": "DIM",
+          "fill": [
+            8,
+            12,
+            16
+          ]
+        },
+        {
+          "id": "cellSplit1",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              64,
+              184
+            ],
+            [
+              64,
+              228
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "cellSplit2",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              128,
+              184
+            ],
+            [
+              128,
+              228
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "cellSplit3",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              192,
+              184
+            ],
+            [
+              192,
+              228
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "cellSplit4",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              256,
+              184
+            ],
+            [
+              256,
+              228
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "timeIcon",
+          "kind": "shape",
+          "type": "icon",
+          "icon": "uptime",
+          "x": 6,
+          "y": 5,
+          "w": 16,
+          "h": 16,
+          "color": "CYAN"
+        },
+        {
+          "id": "time",
+          "kind": "text",
+          "x": 24,
+          "y": 5,
+          "anchor": "la",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "00:09:19"
+        },
+        {
+          "id": "oem",
+          "kind": "text",
+          "x": 160,
+          "y": 13,
+          "anchor": "mm",
+          "font": "F20",
+          "color": "CYAN",
+          "text": "KAJO DASH",
+          "max_w": 110
+        },
+        {
+          "id": "battery",
+          "kind": "text",
+          "x": 278,
+          "y": 5,
+          "anchor": "ra",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "66%"
+        },
+        {
+          "id": "batteryIcon",
+          "kind": "shape",
+          "type": "battery",
+          "icon": "battery",
+          "x": 282,
+          "y": 6,
+          "w": 31,
+          "h": 14,
+          "color": "CYAN",
+          "sample": 66,
+          "segs": 5
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 70,
+          "y": 74,
+          "fit": [
+            "F72",
+            "F48",
+            "F28"
+          ],
+          "max_w": 128,
+          "color": "WHITE",
+          "text": "21"
+        },
+        {
+          "id": "speedUnit",
+          "kind": "text",
+          "x": 70,
+          "y": 116,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "CYAN",
+          "text": "KM/H"
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 58,
+          "y": 156,
+          "fit": [
+            "F24",
+            "F20"
+          ],
+          "max_w": 96,
+          "color": "YELLOW",
+          "text": "1860"
+        },
+        {
+          "id": "powerExtra1",
+          "kind": "text",
+          "x": 100,
+          "y": 160,
+          "anchor": "la",
+          "font": "F12",
+          "color": "YELLOW",
+          "text": "W"
+        },
+        {
+          "id": "legendSpeedDash",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              146,
+              48
+            ],
+            [
+              156,
+              48
+            ]
+          ],
+          "color": "CYAN"
+        },
+        {
+          "id": "legendSpeed",
+          "kind": "text",
+          "x": 160,
+          "y": 42,
+          "anchor": "la",
+          "font": "F10",
+          "color": "CYAN",
+          "text": "SPEED"
+        },
+        {
+          "id": "legendPowerDash",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              204,
+              48
+            ],
+            [
+              214,
+              48
+            ]
+          ],
+          "color": "YELLOW"
+        },
+        {
+          "id": "legendPower",
+          "kind": "text",
+          "x": 218,
+          "y": 42,
+          "anchor": "la",
+          "font": "F10",
+          "color": "YELLOW",
+          "text": "POWER"
+        },
+        {
+          "id": "chartSpan",
+          "kind": "text",
+          "x": 306,
+          "y": 42,
+          "anchor": "ra",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "20 s"
+        },
+        {
+          "id": "rateLabel",
+          "kind": "text",
+          "x": 32,
+          "y": 183,
+          "anchor": "tc",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "WH/KM"
+        },
+        {
+          "id": "rate",
+          "kind": "text",
+          "x": 32,
+          "y": 213,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "YELLOW",
+          "text": "12.3"
+        },
+        {
+          "id": "rangeLabel",
+          "kind": "text",
+          "x": 96,
+          "y": 183,
+          "anchor": "tc",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "RANGE"
+        },
+        {
+          "id": "range",
+          "kind": "text",
+          "x": 96,
+          "y": 213,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "CYAN",
+          "text": "42 KM"
+        },
+        {
+          "id": "voltsLabel",
+          "kind": "text",
+          "x": 160,
+          "y": 183,
+          "anchor": "tc",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "VOLTS"
+        },
+        {
+          "id": "volts",
+          "kind": "text",
+          "x": 160,
+          "y": 213,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "71.9 V"
+        },
+        {
+          "id": "motorLabel",
+          "kind": "text",
+          "x": 224,
+          "y": 183,
+          "anchor": "tc",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "MOTOR"
+        },
+        {
+          "id": "motorTemp",
+          "kind": "text",
+          "x": 224,
+          "y": 213,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "36 °C"
+        },
+        {
+          "id": "tripLabel",
+          "kind": "text",
+          "x": 288,
+          "y": 183,
+          "anchor": "tc",
+          "font": "F10",
+          "color": "LABEL",
+          "text": "TRIP"
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 288,
+          "y": 213,
+          "anchor": "mm",
+          "font": "F16",
+          "color": "WHITE",
+          "text": "25.3 KM"
+        }
+      ]
+    }
+  }
+}

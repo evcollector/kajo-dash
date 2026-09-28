@@ -1,0 +1,29 @@
+# Compile every PlatformIO environment that is expected to remain buildable.
+# Pinning PlatformIO itself makes CI changes deliberate, just like the platform
+# and library versions pinned in platformio.ini.
+name: Firmware builds
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  platformio:
+    name: PlatformIO (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment:
+          - kajo
+          - fardriver_test
+          - vesc_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PlatformIO
+        run: python -m pip install platformio==6.1.19
+      - name: Build ${{ matrix.environment }}
+        run: python -m platformio run -e "${{ matrix.environment }}"

@@ -1,0 +1,30 @@
+* text=auto eol=lf
+
+# Source, configuration and documentation use stable LF endings in Git and in
+# working trees on every platform. Windows launchers retain native CRLF.
+*.c text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.html text eol=lf
+*.ini text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.txt text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Generated and source artwork must never be line-ending transformed.
+*.bmp binary
+*.gif binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.ttf binary
+*.woff binary
+*.woff2 binary

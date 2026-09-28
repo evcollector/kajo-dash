@@ -1,0 +1,23 @@
+# These tests exercise the signed-update protocol, release bundle/index
+# packaging and test-sender uploader without requiring ESP32 hardware.
+name: Python tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: tools/firmware_update/requirements.txt
+      - name: Install test dependencies
+        run: python -m pip install pytest==8.3.4 -r tools/firmware_update/requirements.txt
+      - name: Test
+        run: python -m pytest -q
