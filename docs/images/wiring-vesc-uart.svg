@@ -1,131 +1,163 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 580" width="900" height="580" role="img" aria-labelledby="title desc">
   <title id="title">CYD to VESC UART wiring</title>
-  <desc id="desc">Four wires from the VESC COMM connector to the CYD. 5V goes to VIN on the CYD power connector. GND, TX/SCL and RX/SDA go to GND, IO27 and IO22 on the CN1 connector. TX and RX cross over. All other pins stay unconnected.</desc>
+  <desc id="desc">Four wires from the VESC COMM connector to the CYD. VESC 5V goes to VIN on the CYD power connector. VESC GND, RX/SDA and TX/SCL go to GND, IO22 and IO27 on the CYD CN1 connector, so the CYD transmits on IO22 into VESC RX and receives on IO27 from VESC TX. All other pins stay unconnected.</desc>
   <style>
-    .bg { fill: #ffffff; }
-    .board { fill: #f7e27a; stroke: #b39a2a; }
-    .ctrl { fill: #3a3f47; stroke: #23272d; }
-    .housing { fill: #fbfbfb; stroke: #6b7280; }
-    .pin { fill: #d1d5db; stroke: #6b7280; }
-    .pin-nc { fill: #eef0f3; stroke: #b6bcc6; stroke-dasharray: 3 2; }
+    .bg { fill: #ffffff; stroke: #d0d7de; }
+    .board { fill: #f5dc6a; stroke: #b8981f; }
+    .hole { fill: #ffffff; stroke: #b8981f; }
+    .ctrl { fill: #30353d; stroke: #1c2026; }
+    .housing { fill: #fafbfc; stroke: #57606a; }
+    .pin { fill: #c9d1d9; stroke: #57606a; }
+    .pin-nc { fill: none; stroke: #afb8c1; stroke-dasharray: 3 2; }
     .t { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #1f2328; }
-    .t-dim { fill: #8b949e; }
-    .t-on-dark { fill: #f3f4f6; }
+    .dim { fill: #6e7781; }
+    .on-dark { fill: #f3f4f6; }
+    .on-dark-dim { fill: #9ba3ae; }
+    .accent { fill: #ff7900; }
     .h1 { font-size: 20px; font-weight: 700; }
     .h2 { font-size: 15px; font-weight: 700; }
     .lbl { font-size: 13px; font-weight: 600; }
     .small { font-size: 12px; }
-    .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+    .mono { font-family: ui-monospace, "Cascadia Mono", SFMono-Regular, Consolas, monospace; }
+    .casing { fill: none; stroke: #1f2328; stroke-opacity: 0.18; stroke-width: 9; stroke-linecap: round; }
     .w { fill: none; stroke-width: 5; stroke-linecap: round; }
-    .w-5v { stroke: #d62828; }
-    .w-gnd { stroke: #1f2328; }
-    .w-tx { stroke: #1f9d55; }
-    .w-rx { stroke: #1f6feb; }
-    .note { fill: #f6f8fa; stroke: #d0d7de; }
-    .warn { fill: #fff4e5; stroke: #e3a33b; }
+    .w-5v { stroke: #d1242f; }
+    .w-gnd { stroke: #24292f; }
+    .w-tx { stroke: #1a7f37; }
+    .w-rx { stroke: #0969da; }
+    .end-5v { fill: #d1242f; }
+    .end-gnd { fill: #24292f; }
+    .end-tx { fill: #1a7f37; }
+    .end-rx { fill: #0969da; }
+    .pill { fill: #ffffff; stroke-width: 1.5; }
+    .card { fill: #f6f8fa; stroke: #d0d7de; }
+    .warn { fill: #fff4e6; stroke: #ff7900; }
     @media (prefers-color-scheme: dark) {
-      .bg { fill: #0d1117; }
-      .board { fill: #6b5d1c; stroke: #c9b458; }
-      .ctrl { fill: #2b3038; stroke: #59606b; }
+      .bg { fill: #0d1117; stroke: #30363d; }
+      .board { fill: #5c4f16; stroke: #b39b3a; }
+      .hole { fill: #0d1117; stroke: #b39b3a; }
+      .ctrl { fill: #262b33; stroke: #484f58; }
       .housing { fill: #161b22; stroke: #8b949e; }
       .pin { fill: #484f58; stroke: #8b949e; }
-      .pin-nc { fill: #161b22; stroke: #484f58; }
+      .pin-nc { stroke: #484f58; }
       .t { fill: #e6edf3; }
-      .t-dim { fill: #7d8590; }
+      .dim { fill: #7d8590; }
+      .casing { stroke: #000000; stroke-opacity: 0.5; }
+      .w-5v { stroke: #ff6b6b; }
       .w-gnd { stroke: #c9d1d9; }
-      .w-rx { stroke: #4c9aff; }
       .w-tx { stroke: #3fb950; }
-      .w-5v { stroke: #ff5c5c; }
-      .note { fill: #161b22; stroke: #30363d; }
-      .warn { fill: #2b2111; stroke: #9e6a03; }
+      .w-rx { stroke: #58a6ff; }
+      .end-5v { fill: #ff6b6b; }
+      .end-gnd { fill: #c9d1d9; }
+      .end-tx { fill: #3fb950; }
+      .end-rx { fill: #58a6ff; }
+      .pill { fill: #0d1117; }
+      .card { fill: #161b22; stroke: #30363d; }
+      .warn { fill: #2a1a08; stroke: #ff7900; }
     }
   </style>
 
-  <rect class="bg" x="0" y="0" width="900" height="560" rx="12"/>
-  <text class="t h1" x="450" y="36" text-anchor="middle">CYD to VESC over UART: 4 wires</text>
+  <rect class="bg" x="0.5" y="0.5" width="899" height="579" rx="12"/>
+  <text class="t h1" x="40" y="42">CYD to VESC over UART</text>
+  <text class="t small dim" x="40" y="62">Four wires. Pin order is the real COMM order, drawn with the 5V end up so no wires cross.</text>
 
-  <!-- CYD board -->
-  <rect class="board" x="40" y="70" width="250" height="360" rx="10" stroke-width="2"/>
-  <text class="t h2" x="60" y="98">CYD</text>
-  <text class="t small" x="60" y="116">ESP32-2432S028R, back side</text>
+  <!-- CYD board, back side -->
+  <rect class="board" x="40" y="86" width="270" height="380" rx="12" stroke-width="2"/>
+  <circle class="hole" cx="58" cy="104" r="6" stroke-width="1.5"/>
+  <circle class="hole" cx="292" cy="104" r="6" stroke-width="1.5"/>
+  <circle class="hole" cx="58" cy="448" r="6" stroke-width="1.5"/>
+  <circle class="hole" cx="292" cy="448" r="6" stroke-width="1.5"/>
+  <text class="t h2" x="64" y="130">CYD</text>
+  <text class="t small" x="64" y="148">ESP32-2432S028R, back side</text>
 
-  <!-- CYD power connector -->
-  <text class="t lbl" x="275" y="135" text-anchor="end">Power connector</text>
-  <text class="t small t-dim" x="275" y="150" text-anchor="end">use VIN only</text>
-  <rect class="housing" x="240" y="160" width="60" height="124" rx="4" stroke-width="1.5"/>
-  <rect class="pin" x="284" y="168" width="14" height="20" rx="2"/>
-  <rect class="pin-nc" x="284" y="198" width="14" height="20" rx="2"/>
-  <rect class="pin-nc" x="284" y="228" width="14" height="20" rx="2"/>
-  <rect class="pin-nc" x="284" y="258" width="14" height="20" rx="2"/>
-  <text class="t lbl mono" x="276" y="183" text-anchor="end">VIN</text>
-  <text class="t small mono t-dim" x="276" y="213" text-anchor="end">TX</text>
-  <text class="t small mono t-dim" x="276" y="243" text-anchor="end">RX</text>
-  <text class="t small mono t-dim" x="276" y="273" text-anchor="end">GND</text>
-  <text class="t small" x="60" y="228">UART0 / USB serial:</text>
-  <text class="t small" x="60" y="244">do not use for the link</text>
+  <!-- CYD power connector: VIN only -->
+  <text class="t lbl" x="226" y="176" text-anchor="end">Power</text>
+  <text class="t small dim" x="226" y="192" text-anchor="end">VIN only</text>
+  <text class="t small dim" x="226" y="226" text-anchor="end">TX/RX here are</text>
+  <text class="t small dim" x="226" y="242" text-anchor="end">USB serial: not</text>
+  <text class="t small dim" x="226" y="258" text-anchor="end">for the link</text>
+  <rect class="housing" x="238" y="156" width="64" height="124" rx="4" stroke-width="1.5"/>
+  <rect class="pin" x="284" y="164" width="14" height="20" rx="2"/>
+  <rect class="pin-nc" x="284" y="194" width="14" height="20" rx="2"/>
+  <rect class="pin-nc" x="284" y="224" width="14" height="20" rx="2"/>
+  <rect class="pin-nc" x="284" y="254" width="14" height="20" rx="2"/>
+  <text class="t lbl mono" x="278" y="179" text-anchor="end">VIN</text>
+  <text class="t small mono dim" x="278" y="209" text-anchor="end">TX</text>
+  <text class="t small mono dim" x="278" y="239" text-anchor="end">RX</text>
+  <text class="t small mono dim" x="278" y="269" text-anchor="end">GND</text>
 
-  <!-- CYD CN1 -->
-  <text class="t lbl" x="275" y="316" text-anchor="end">CN1</text>
-  <text class="t small t-dim" x="275" y="331" text-anchor="end">the link</text>
-  <rect class="housing" x="240" y="340" width="60" height="124" rx="4" stroke-width="1.5"/>
+  <!-- CYD CN1: the data link -->
+  <text class="t lbl" x="226" y="334" text-anchor="end">CN1</text>
+  <text class="t small dim" x="226" y="350" text-anchor="end">the link</text>
+  <rect class="housing" x="238" y="310" width="64" height="124" rx="4" stroke-width="1.5"/>
+  <rect class="pin" x="284" y="318" width="14" height="20" rx="2"/>
   <rect class="pin" x="284" y="348" width="14" height="20" rx="2"/>
   <rect class="pin" x="284" y="378" width="14" height="20" rx="2"/>
-  <rect class="pin" x="284" y="408" width="14" height="20" rx="2"/>
-  <rect class="pin-nc" x="284" y="438" width="14" height="20" rx="2"/>
-  <text class="t lbl mono" x="276" y="363" text-anchor="end">GND</text>
-  <text class="t lbl mono" x="276" y="393" text-anchor="end">IO22 (TX)</text>
-  <text class="t lbl mono" x="276" y="423" text-anchor="end">IO27 (RX)</text>
-  <text class="t small mono t-dim" x="276" y="453" text-anchor="end">3.3V</text>
+  <rect class="pin-nc" x="284" y="408" width="14" height="20" rx="2"/>
+  <text class="t lbl mono" x="278" y="333" text-anchor="end">GND</text>
+  <text class="t lbl mono" x="278" y="363" text-anchor="end">IO22</text>
+  <text class="t lbl mono" x="278" y="393" text-anchor="end">IO27</text>
+  <text class="t small mono dim" x="278" y="423" text-anchor="end">3.3V</text>
 
-  <!-- VESC COMM connector -->
-  <rect class="ctrl" x="660" y="70" width="200" height="440" rx="10" stroke-width="2"/>
-  <text class="t h2 t-on-dark" x="760" y="98" text-anchor="middle">VESC</text>
-  <text class="t small t-on-dark" x="760" y="116" text-anchor="middle">8-pin COMM connector</text>
-  <rect class="housing" x="600" y="132" width="92" height="360" rx="4" stroke-width="1.5"/>
-
-  <rect class="pin-nc" x="602" y="142" width="14" height="20" rx="2"/>
-  <rect class="pin-nc" x="602" y="186" width="14" height="20" rx="2"/>
-  <rect class="pin"    x="602" y="230" width="14" height="20" rx="2"/>
-  <rect class="pin"    x="602" y="274" width="14" height="20" rx="2"/>
-  <rect class="pin-nc" x="602" y="318" width="14" height="20" rx="2"/>
-  <rect class="pin"    x="602" y="362" width="14" height="20" rx="2"/>
+  <!-- VESC, COMM connector drawn 5V end up -->
+  <rect class="ctrl" x="650" y="86" width="210" height="380" rx="12" stroke-width="2"/>
+  <text class="t h2 on-dark" x="790" y="130" text-anchor="middle">VESC</text>
+  <text class="t small on-dark-dim" x="790" y="148" text-anchor="middle">8-pin COMM</text>
+  <rect class="housing" x="598" y="118" width="104" height="330" rx="4" stroke-width="1.5"/>
+  <rect class="pin"    x="602" y="126" width="14" height="20" rx="2"/>
+  <rect class="pin-nc" x="602" y="166" width="14" height="20" rx="2"/>
+  <rect class="pin"    x="602" y="206" width="14" height="20" rx="2"/>
+  <rect class="pin-nc" x="602" y="246" width="14" height="20" rx="2"/>
+  <rect class="pin"    x="602" y="286" width="14" height="20" rx="2"/>
+  <rect class="pin"    x="602" y="326" width="14" height="20" rx="2"/>
+  <rect class="pin-nc" x="602" y="366" width="14" height="20" rx="2"/>
   <rect class="pin-nc" x="602" y="406" width="14" height="20" rx="2"/>
-  <rect class="pin"    x="602" y="450" width="14" height="20" rx="2"/>
+  <text class="t lbl mono" x="624" y="141">5V</text>
+  <text class="t small mono dim" x="624" y="181">3.3V</text>
+  <text class="t lbl mono" x="624" y="221">GND</text>
+  <text class="t small mono dim" x="624" y="261">ADC1</text>
+  <text class="t lbl mono" x="624" y="301">RX/SDA</text>
+  <text class="t lbl mono" x="624" y="341">TX/SCL</text>
+  <text class="t small mono dim" x="624" y="381">ADC2</text>
+  <text class="t small mono dim" x="624" y="421">PowerSW</text>
 
-  <text class="t small mono t-dim" x="624" y="157">PowerSW</text>
-  <text class="t small mono t-dim" x="624" y="201">ADC2</text>
-  <text class="t lbl mono" x="624" y="245">TX/SCL</text>
-  <text class="t lbl mono" x="624" y="289">RX/SDA</text>
-  <text class="t small mono t-dim" x="624" y="333">ADC1</text>
-  <text class="t lbl mono" x="624" y="377">GND</text>
-  <text class="t small mono t-dim" x="624" y="421">3.3V</text>
-  <text class="t lbl mono" x="624" y="465">5V</text>
-
-  <!-- Wires: CYD pin centre x=298, VESC pin x=602 -->
-  <path class="w w-5v"  d="M298 178 C 460 178, 440 460, 602 460"/>
-  <path class="w w-gnd" d="M298 358 C 450 358, 450 372, 602 372"/>
-  <path class="w w-tx"  d="M298 418 C 460 418, 440 240, 602 240"/>
-  <path class="w w-rx"  d="M298 388 C 460 388, 440 284, 602 284"/>
-
-  <!-- Wire legend -->
-  <g class="t small">
-    <line class="w w-5v" x1="340" y1="92" x2="366" y2="92"/>
-    <text class="t small" x="374" y="96">5V → VIN (power)</text>
-    <line class="w w-gnd" x1="340" y1="114" x2="366" y2="114"/>
-    <text class="t small" x="374" y="118">GND → GND on CN1</text>
-    <line class="w w-tx" x1="510" y1="92" x2="536" y2="92"/>
-    <text class="t small" x="544" y="96">VESC TX → IO27</text>
-    <line class="w w-rx" x1="510" y1="114" x2="536" y2="114"/>
-    <text class="t small" x="544" y="118">VESC RX ← IO22</text>
+  <!-- Wires: CYD pin centre x=298, VESC pin x=602; same control x keeps them apart -->
+  <g>
+    <path class="casing" d="M298 174 C 450 174, 450 136, 602 136"/>
+    <path class="casing" d="M298 328 C 450 328, 450 216, 602 216"/>
+    <path class="casing" d="M298 358 C 450 358, 450 296, 602 296"/>
+    <path class="casing" d="M298 388 C 450 388, 450 336, 602 336"/>
+    <path class="w w-5v"  d="M298 174 C 450 174, 450 136, 602 136"/>
+    <path class="w w-gnd" d="M298 328 C 450 328, 450 216, 602 216"/>
+    <path class="w w-rx"  d="M298 358 C 450 358, 450 296, 602 296"/>
+    <path class="w w-tx"  d="M298 388 C 450 388, 450 336, 602 336"/>
+    <circle class="end-5v" cx="291" cy="174" r="4.5"/><circle class="end-5v" cx="609" cy="136" r="4.5"/>
+    <circle class="end-gnd" cx="291" cy="328" r="4.5"/><circle class="end-gnd" cx="609" cy="216" r="4.5"/>
+    <circle class="end-rx" cx="291" cy="358" r="4.5"/><circle class="end-rx" cx="609" cy="296" r="4.5"/>
+    <circle class="end-tx" cx="291" cy="388" r="4.5"/><circle class="end-tx" cx="609" cy="336" r="4.5"/>
   </g>
 
-  <!-- Notes -->
-  <rect class="note" x="40" y="470" width="250" height="72" rx="8" stroke-width="1"/>
-  <text class="t small" x="54" y="492">Both sides are 3.3 V logic.</text>
-  <text class="t small" x="54" y="510">No level shifter needed.</text>
-  <text class="t small" x="54" y="528">VESC Tool: UART app, 115200 baud</text>
+  <!-- Wire labels at each curve's midpoint -->
+  <rect class="pill w-5v" x="400" y="144" width="100" height="22" rx="11"/>
+  <text class="t small mono end-5v" x="450" y="159" text-anchor="middle" font-weight="700">VIN ← 5V</text>
+  <rect class="pill w-gnd" x="410" y="261" width="80" height="22" rx="11"/>
+  <text class="t small mono end-gnd" x="450" y="276" text-anchor="middle" font-weight="700">GND</text>
+  <rect class="pill w-rx" x="392" y="316" width="116" height="22" rx="11"/>
+  <text class="t small mono end-rx" x="450" y="331" text-anchor="middle" font-weight="700">IO22 TX → RX</text>
+  <rect class="pill w-tx" x="392" y="351" width="116" height="22" rx="11"/>
+  <text class="t small mono end-tx" x="450" y="366" text-anchor="middle" font-weight="700">IO27 RX ← TX</text>
 
-  <rect class="warn" x="310" y="500" width="340" height="42" rx="8" stroke-width="1"/>
-  <text class="t small" x="324" y="517">Dashed pins stay unconnected. Unplug the 5 V</text>
-  <text class="t small" x="324" y="533">lead before plugging USB into the CYD.</text>
+  <!-- Notes -->
+  <rect class="card" x="40" y="490" width="260" height="66" rx="8" stroke-width="1"/>
+  <text class="t lbl" x="56" y="514">3.3 V logic on both sides</text>
+  <text class="t small dim" x="56" y="534">No level shifter needed.</text>
+
+  <rect class="card" x="320" y="490" width="260" height="66" rx="8" stroke-width="1"/>
+  <text class="t lbl" x="336" y="514">VESC Tool</text>
+  <text class="t small dim" x="336" y="534">App to Use: UART, 115200 baud</text>
+
+  <rect class="warn" x="600" y="490" width="260" height="66" rx="8" stroke-width="1.5"/>
+  <text class="t lbl" x="616" y="514"><tspan class="accent">▲</tspan> Before connecting USB</text>
+  <text class="t small" x="616" y="534">unplug the 5 V lead from VIN.</text>
+  <text class="t small dim" x="616" y="550">Dashed pins stay unconnected.</text>
 </svg>

@@ -1,17 +1,43 @@
-# KAJO-Dash
+<p align="center">
+  <img src="tools/logo/brand/kajo-banner-github.svg" alt="KAJO-Dash" width="100%">
+</p>
 
-A 320x240 landscape dashboard for electric vehicles, built on the
-ESP32-2432S028R "Cheap Yellow Display". It shows live telemetry from a VESC or
-FarDriver motor controller, over a wire or Bluetooth.
+<p align="center">
+  <b>KAJO-Dash</b> is a 320x240 landscape dashboard for electric vehicles, built on the
+  ESP32-2432S028R "Cheap Yellow Display".<br>
+  It shows live telemetry from a VESC or FarDriver motor controller, over a wire or Bluetooth.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/licence-GPL--3.0--or--later-ff7900?style=flat-square&labelColor=1f2328" alt="Licence: GPL-3.0-or-later">
+  <img src="https://img.shields.io/badge/board-ESP32--2432S028R-ff7900?style=flat-square&labelColor=1f2328" alt="Board: ESP32-2432S028R">
+  <img src="https://img.shields.io/badge/built%20with-PlatformIO-ff7900?style=flat-square&labelColor=1f2328" alt="Built with PlatformIO">
+  <img src="https://img.shields.io/badge/status-pre--release-ff7900?style=flat-square&labelColor=1f2328" alt="Status: pre-release">
+</p>
+
+<p align="center">
+  <a href="#getting-started">Getting started</a> ·
+  <a href="docs/wiring.md">Wiring</a> ·
+  <a href="docs/development.md">Development</a> ·
+  <a href="docs/README.md">All docs</a>
+</p>
 
 <!-- Photos and videos of real builds go here. -->
 
-| | | | |
-| :---: | :---: | :---: | :---: |
-| ![Cyber HUD](preview_output/lvgl/01_cyber_hud.png) | ![Dual Gauge](preview_output/lvgl/02_dual_gauge.png) | ![Simple](preview_output/lvgl/03_simple.png) | ![Trace](preview_output/lvgl/10_trace.png) |
-| Cyber HUD | Dual Gauge | Simple | Trace |
-| ![Redline](preview_output/lvgl/09_redline.png) | ![Efficiency](preview_output/lvgl/12_efficiency.png) | ![Large Tiles](preview_output/lvgl/07_large_tiles.png) | ![Pixel Gauge](preview_output/lvgl/06_pixel_gauge.png) |
-| Redline | Efficiency | Large Tiles | Pixel Gauge |
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="preview_output/lvgl/01_cyber_hud.png" alt="Cyber HUD theme"><br>Cyber HUD</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/02_dual_gauge.png" alt="Dual Gauge theme"><br>Dual Gauge</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/03_simple.png" alt="Simple theme"><br>Simple</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/10_trace.png" alt="Trace theme"><br>Trace</td>
+  </tr>
+  <tr>
+    <td align="center" width="25%"><img src="preview_output/lvgl/09_redline.png" alt="Redline theme"><br>Redline</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/12_efficiency.png" alt="Efficiency theme"><br>Efficiency</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/07_large_tiles.png" alt="Large Tiles theme"><br>Large Tiles</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/06_pixel_gauge.png" alt="Pixel Gauge theme"><br>Pixel Gauge</td>
+  </tr>
+</table>
 
 These screenshots are real LVGL framebuffer captures, not mockups.
 [`contact_sheet.png`](preview_output/lvgl/contact_sheet.png) shows all twelve
