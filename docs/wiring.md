@@ -56,7 +56,53 @@ The display's ~250 mA returns down that same wire.
   1 A, shared with anything else on the CAN/PPM/SENSE 5 V pins.
 - Once the display is fed from the controller, **disconnect that 5 V before
   plugging in USB** to flash, or two supplies share one rail.
-- Keep the COMM cable short and away from the phase and battery leads.
+- Keep the COMM cable short and away from the phase and battery leads. See
+  [Cable and noise](#cable-and-noise).
+
+### Cable and noise
+
+Under heavy phase current a plain UART link can drop replies, especially on
+high-voltage controllers: the display updates less often under throttle, or
+briefly shows `WAITING FOR VESC`. The firmware rejects any reply whose CRC,
+length or framing is wrong, so noise costs updates rather than showing wrong
+numbers. Rule out motor detection first: poor motor parameters cause stutter
+under load that looks like a link problem.
+
+A shielded four-core cable helps. A USB 2.0 cable with its plugs cut off has
+exactly the conductors needed, with the data pair twisted and the ground
+running beside it:
+
+| USB wire | Usual colour | Use |
+| --- | --- | --- |
+| VBUS | red | VESC `5V` to CYD `VIN` |
+| GND | black | `GND` to `GND` on CN1 |
+| D+ | green | VESC `TX/SCL` to `IO27` |
+| D- | white | VESC `RX/SDA` to `IO22` |
+
+- **Check it with a meter first.** Charge-only cables lack the data pair, cheap
+  ones may have no shield or a floating one, and colours are not always
+  standard.
+- **Connect the shield to `GND` at the VESC end.** It may also go to `GND` at
+  the CYD end, as long as the CYD has no other ground (no USB, nothing to the
+  frame); otherwise leave that end open.
+- **Cut the USB plugs off and label the cable,** so it is never plugged into a
+  computer with the controller's 5 V and UART on it.
+- 28 AWG power conductors drop about 0.1 V per metre at the display's current.
+  Thicker ones (24 AWG) are better if available.
+
+The shield mainly blocks electric-field coupling from the phase wires, whose
+voltage swings by the full pack voltage on every PWM edge. It does little
+against the magnetic field of the phase current; that is handled by keeping the
+cable short, its conductors together, and its route away from the phase and
+battery leads. If replies still drop, in order:
+
+1. Clip a ferrite onto the cable near the CYD.
+2. Lower the baud rate, for example to 57600 or 38400, in both VESC Tool and
+   the display's controller Connection screen.
+3. Add an RC low-pass at each receive pin, for example 220 Ω in series and
+   1 nF to `GND` (about 0.2 µs against an 8.7 µs bit at 115200 baud).
+4. Use the Bluetooth link instead, or an isolated UART (digital isolator plus
+   isolated DC-DC).
 
 ### Controller configuration
 

@@ -1,0 +1,122 @@
+# Help pages for the kajo.bat menu, opened from each option's [?] column.
+#
+# "[n] Title" starts the page for menu option n. A blank line separates
+# paragraphs, and a line starting with "- " is a bullet. The menu wraps the
+# text to the window, so line breaks inside a paragraph do not matter. Lines
+# starting with "#" are comments. Keep it ASCII.
+
+[1] Simulator
+Builds and runs the interactive KAJO-Dash simulator: the real firmware screens,
+drawn by the same LVGL code, in a desktop window that you use with the mouse
+instead of the touch panel. No display hardware is needed.
+
+- Runs scripts\run-sim.ps1, which builds the cyd_simulator target of
+  tools\lvgl_native_preview with CMake.
+- The first build downloads SDL2 and takes a few minutes; later builds only
+  compile what changed.
+- Needs CMake, Visual Studio's C++ build tools and PowerShell.
+
+[2] Preview renders
+Regenerates the checked-in screenshots in preview_output\lvgl: every dashboard
+theme and menu screen, rendered at 320x240 by the real LVGL code, plus
+contact_sheet.png with all of them on one page.
+
+- Also regenerates the layout constants from tools\layout.json and the font
+  metrics the layout editor uses.
+- The first run builds a headless renderer with CMake. Needs Visual Studio's
+  C++ build tools, Python with Pillow, and LVGL from one PlatformIO build of the
+  kajo firmware.
+- Use it after a UI change to check clipping, alignment and wrapping at the
+  display's real size.
+
+[3] Layout editor
+Opens the dashboard layout editor for tools\layout.json: move and resize the
+dashboard's elements against the LVGL previews, and edit the 16x16 icons.
+
+- With the .NET 8 SDK it builds and opens a small desktop app. Without it, it
+  serves the editor with Python and opens it in your browser; keep that window
+  open while you edit.
+- The firmware build turns layout.json into C++ constants, so a change shows on
+  the display after the next flash.
+
+[4] Flash over USB
+Builds the kajo firmware with PlatformIO and writes it to a display connected
+by USB. The quickest way to try a change on real hardware.
+
+- Uses the first USB serial port it finds (CH340, CP210x, FTDI and the like),
+  skipping Bluetooth ports, or leaves the choice to PlatformIO when there is
+  none. To choose one, run scripts\upload_firmware_usb.bat COM4.
+- The build is unsigned and shows the plain version, such as v0.01, on the
+  display. The display's settings are kept.
+- Needs PlatformIO, and offers to install it into the project's .venv when
+  it is missing. The first build then downloads the ESP32 toolchain.
+- If it fails with "Wrong boot mode detected", hold BOOT, tap RST, and keep
+  holding BOOT until writing starts.
+
+[5] Package firmware
+Signs and packages the version in include\config.h, in one of two ways.
+
+- T, test package: built so the display shows v0.01-test, and written to
+  releases\test\ for your own boards, replacing the previous test package.
+  Nothing is committed or tagged and the version stays as it is, so make as
+  many as you like.
+- R, release: the version as it will be published. The Windows ZIP goes to
+  dist\; the .kajofw phone bundle, kajo-update.json and the signed firmware
+  go to releases\. It is added to RELEASES.md, committed and tagged, and then
+  include\config.h moves on to the next version. Needs a clean tree, and asks
+  once before it starts. Nothing is pushed.
+
+Either way it checks everything first (the tests, the signing key, PlatformIO,
+the uploader EXE), shows the plan, and asks for the signing-key password
+before it builds; if PlatformIO is missing, it offers to install it first.
+It needs the release signing key, which only the maintainer has. If building or packaging fails, nothing is left behind and it can simply
+be run again; if a git step of a release fails afterwards, the files stay and
+it says what to finish by hand. Edit include\config.h to choose a different
+next version.
+
+[6] Install package
+Installs the signed package of the version in include\config.h, a test
+package or release made with option 5, on a display. It asks how.
+
+- Over a USB cable: written with esptool from the project's Python
+  environment, so PlatformIO is not needed, and a blank board works too. The
+  display's settings are kept. If the display is not found, hold BOOT, tap
+  RST, and keep holding BOOT until writing starts.
+- Over Bluetooth: open Settings > Information > Bluetooth Link on the display
+  first; the uploader switches it to update mode. The display checks the
+  signature before installing, and an interrupted upload resumes where it
+  stopped. Needs Bluetooth on this PC.
+
+Either way the display restarts into the new firmware when it is done. The
+same installs run from the command line as kajo.bat --usb and kajo.bat --ble.
+
+[7] Fake VESC
+Builds and flashes a spare CYD as a fake VESC controller, so the dashboard's
+VESC Bluetooth link can be tested without a vehicle.
+
+- Flash the spare board with this, and use another board running the
+  dashboard as the receiver.
+- Like a real VESC it never speaks first: it answers the dashboard's requests,
+  and its on-screen controls set what it answers.
+- Never touches the dashboard's own build. Needs PlatformIO, and offers to
+  install it when it is missing. docs\test-senders.md has the details.
+
+[8] Fake FarDriver
+Builds and flashes a spare CYD as a fake FarDriver controller, so the
+dashboard's FarDriver Bluetooth link can be tested without a vehicle.
+
+- Flash the spare board with this, and use another board running the
+  dashboard as the receiver.
+- Like a real FarDriver it streams: set the packet rate and start streaming on
+  its screen.
+- Never touches the dashboard's own build. Needs PlatformIO, and offers to
+  install it when it is missing. docs\test-senders.md has the details.
+
+[9] Install on phone
+Builds the KAJO Companion Android app and installs it with adb on a phone
+connected by USB. Shown only when the private android-companion checkout is
+present.
+
+- Needs the Android SDK, and USB debugging enabled on the phone.
+- The app takes its version from include\config.h, so it pairs with the
+  firmware in this checkout.

@@ -1,4 +1,5 @@
 #include "ui_common.h"
+#include "ui_style.h"
 
 #include <string.h>
 
@@ -390,7 +391,10 @@ BatteryWidget makeBattery(lv_obj_t *parent, const cyd_layout::Item &item, lv_col
   return widget;
 }
 
-SegBatteryWidget makeSegBattery(lv_obj_t *parent, const cyd_layout::Item &item, lv_color_t outline, int blocks) {
+SegBatteryWidget makeSegBattery(lv_obj_t *parent, const cyd_layout::Item &item, int blocks) {
+  // An appearance change rebuilds the dashboard, so resolving it once is enough.
+  const bool light = dashboardLightModeActive();
+  const lv_color_t outline = light ? lv_color_black() : lv_color_white();
   const int w = item.w > 0 ? item.w : CYD_ICON_SIZE;
   const int h = item.h > 0 ? item.h : CYD_ICON_SIZE;
   const int count = constrain(blocks, 1, SEG_BATTERY_MAX_BLOCKS);
@@ -427,6 +431,8 @@ SegBatteryWidget makeSegBattery(lv_obj_t *parent, const cyd_layout::Item &item, 
   widget.count = count;
   widget.lastLit = -1;
   widget.lastColor = 0;
+  widget.light = light;
+  widget.blinking = false;
   // centre the row so any pixel that does not divide evenly is split between
   // the two ends rather than piling up on the right
   const int usedW = count * blockW + gap * (count - 1);
@@ -441,21 +447,48 @@ SegBatteryWidget makeSegBattery(lv_obj_t *parent, const cyd_layout::Item &item, 
   return widget;
 }
 
-void setSegBatteryLevel(SegBatteryWidget &widget, int percent, lv_color_t goodColor) {
+// Driven 100 -> 0 -> 100 by a playback animation: the block is shown in the
+// upper half of the range, so it starts visible and spends equal time on and
+// off. Only a real change touches the style, keeping the redraw to one flip.
+static void segBatteryBlinkCb(void *var, int32_t value) {
+  lv_obj_t *block = static_cast<lv_obj_t *>(var);
+  const lv_opa_t opa = value >= 50 ? LV_OPA_COVER : LV_OPA_TRANSP;
+  if (lv_obj_get_style_bg_opa(block, LV_PART_MAIN) != opa) lv_obj_set_style_bg_opa(block, opa, 0);
+}
+
+void setSegBatteryLevel(SegBatteryWidget &widget, int percent) {
   const int clamped = constrain(percent, 0, 100);
-  // Whole steps only, rounded down: a block lights when that tenth is actually
-  // there. Anything above empty keeps one lit so the pack never looks dead.
+  // Whole steps only, rounded down: a block lights when that step is actually
+  // there. Below one step the last block stays and blinks as the warning.
   int lit = clamped * widget.count / 100;
-  if (lit == 0 && clamped > 0) lit = 1;
-  const lv_color_t color = batteryLevelColorLv(clamped, goodColor);
+  const bool blinking = lit == 0;
+  if (blinking) lit = 1;
+  lv_color_t color;
+  if (widget.light) color = lv_color_black();
+  else if (lit <= 1) color = c565(cyd_ui::kBatteryCritical565);
+  else if (lit == 2) color = c565(cyd_ui::kBatteryLow565);
+  else color = c565(cyd_ui::kBatteryGood565);
   const uint32_t colorKey = lv_color_to32(color);
-  if (lit == widget.lastLit && colorKey == widget.lastColor) return;
+  if (lit == widget.lastLit && colorKey == widget.lastColor && blinking == widget.blinking) return;
   widget.lastLit = lit;
   widget.lastColor = colorKey;
+  if (widget.blinking && !blinking) lv_anim_del(widget.blocks[0], segBatteryBlinkCb);
   for (int i = 0; i < widget.count; i++) {
     lv_obj_set_style_bg_opa(widget.blocks[i], i < lit ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
     if (i < lit) lv_obj_set_style_bg_color(widget.blocks[i], color, 0);
   }
+  if (blinking && !widget.blinking) {
+    lv_anim_t anim;
+    lv_anim_init(&anim);
+    lv_anim_set_var(&anim, widget.blocks[0]);
+    lv_anim_set_exec_cb(&anim, segBatteryBlinkCb);
+    lv_anim_set_values(&anim, 100, 0);
+    lv_anim_set_time(&anim, cyd_ui::kBatteryBlinkMs);
+    lv_anim_set_playback_time(&anim, cyd_ui::kBatteryBlinkMs);
+    lv_anim_set_repeat_count(&anim, LV_ANIM_REPEAT_INFINITE);
+    lv_anim_start(&anim);
+  }
+  widget.blinking = blinking;
 }
 
 SegMeterWidget makeSegMeter(lv_obj_t *parent, const cyd_layout::Item &item, lv_color_t low, lv_color_t mid,

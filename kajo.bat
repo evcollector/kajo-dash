@@ -22,6 +22,7 @@ rem when that checkout provides this entry point.
 set "APP_HOOK=%PROJECT_DIR%\android-companion\kajo-app.bat"
 
 set "UPLOAD_MODE=ble"
+set "LAST_KEY=1"
 if /i "%~1"=="--ble" (
   shift
   goto updater
@@ -49,82 +50,94 @@ for /f "tokens=3" %%V in ('findstr /c:"#define CYD_FIRMWARE_VERSION_CODE" "%PROJ
 set "FW_CODE=%FW_CODE:UL=%"
 rem RELEASES.md lists releases oldest first, so the last row read is the newest.
 for /f "tokens=1-3 delims=| " %%A in ('findstr /r /c:"^| *[0-9][0-9.]* *| *[0-9]" "%PROJECT_DIR%\RELEASES.md" 2^>nul') do set "LAST_RELEASE=%%A (version code %%B, %%C)"
+rem One list feeds both menus. Each entry is a header line (=), a section
+rem heading (#), or "key|label|description".
+set MENU_ENTRIES="=KAJO-Dash %FW_NAME% in development   (version code %FW_CODE%)" "=Last release: %LAST_RELEASE%"
+set MENU_ENTRIES=%MENU_ENTRIES% "#Build and run" "1|Simulator|interactive virtual display" "2|Preview renders|regenerate preview_output\lvgl" "3|Layout editor|edit tools\layout.json"
+set MENU_ENTRIES=%MENU_ENTRIES% "#Firmware" "4|Flash over USB|build and install on a connected display" "5|Package firmware|test package, or a release to publish" "6|Install package|signed test package or release, by USB or Bluetooth"
+set MENU_ENTRIES=%MENU_ENTRIES% "#Test senders" "7|Fake VESC|flash a second board as a VESC" "8|Fake FarDriver|flash a second board as a FarDriver"
+if exist "%APP_HOOK%" set MENU_ENTRIES=%MENU_ENTRIES% "#Companion app" "9|Install on phone|build the APK and adb install it"
+
+rem The arrow-key menu reports 100 + the chosen number, or 110 to quit. Any other
+rem result means PowerShell could not run it, so fall back to a numbered prompt.
+set "MENU_KEY="
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPTS%\menu.ps1" -Selected "%LAST_KEY%" -HelpFile "%SCRIPTS%\menu_help.txt" %MENU_ENTRIES%
+set "MENU_RESULT=%errorlevel%"
+if "%MENU_RESULT%"=="110" goto quit
+if %MENU_RESULT% GEQ 101 if %MENU_RESULT% LEQ 109 set /a "MENU_KEY=MENU_RESULT-100"
+if not defined MENU_KEY call :plain_menu %MENU_ENTRIES%
+if not defined MENU_KEY goto quit
+rem The cursor starts on the last choice when the menu comes back.
+set "LAST_KEY=%MENU_KEY%"
+
+if "%MENU_KEY%"=="1" call :run "%SCRIPTS%\run_simulator_lvgl.bat"
+if "%MENU_KEY%"=="2" call :run "%SCRIPTS%\run_preview_lvgl.bat"
+if "%MENU_KEY%"=="3" call :run "%SCRIPTS%\run_layout_editor_lvgl.bat"
+if "%MENU_KEY%"=="4" call :run "%SCRIPTS%\upload_firmware_usb.bat"
+if "%MENU_KEY%"=="5" call :run "%SCRIPTS%\make_release.bat"
+if "%MENU_KEY%"=="6" call :menu_install
+if "%MENU_KEY%"=="7" call :run "%SCRIPTS%\upload_vesc_test.bat"
+if "%MENU_KEY%"=="8" call :run "%SCRIPTS%\upload_fardriver_test.bat"
+if "%MENU_KEY%"=="9" if exist "%APP_HOOK%" call :run "%APP_HOOK%"
+goto menu
+
+rem Option 6: install the signed package of the version in config.h, over
+rem either link. The same menu component, with Q going back.
+:menu_install
+set INSTALL_ENTRIES="=Install the signed package of %FW_NAME%" "=A test package or release made with option 5"
+set INSTALL_ENTRIES=%INSTALL_ENTRIES% "#Install" "1|Over a USB cable|the display connected to this PC" "2|Over Bluetooth|the display showing Settings > Information > Bluetooth Link"
+set "INSTALL_KEY="
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPTS%\menu.ps1" -QuitLabel "Back" %INSTALL_ENTRIES%
+set "MENU_RESULT=%errorlevel%"
+if "%MENU_RESULT%"=="110" exit /b 0
+if "%MENU_RESULT%"=="101" set "INSTALL_KEY=1"
+if "%MENU_RESULT%"=="102" set "INSTALL_KEY=2"
+if defined INSTALL_KEY goto menu_install_run
+rem The numbered fallback reports through MENU_KEY, which the main menu is
+rem still reading, so hand its answer over and put option 6 back.
+call :plain_menu %INSTALL_ENTRIES%
+set "INSTALL_KEY=%MENU_KEY%"
+set "MENU_KEY=6"
+:menu_install_run
+if "%INSTALL_KEY%"=="1" set "UPLOAD_MODE=usb"
+if "%INSTALL_KEY%"=="2" set "UPLOAD_MODE=ble"
+if not "%INSTALL_KEY%"=="1" if not "%INSTALL_KEY%"=="2" exit /b 0
+cls
+set "FROM_MENU=1"
+call :updater
+set "FROM_MENU="
+exit /b 0
+
+rem The numbered fallback: the same entries as plain text and a CHOICE prompt.
+rem Sets MENU_KEY, or leaves it empty to quit. Branches use goto rather than
+rem blocks because the header text contains parentheses.
+:plain_menu
 cls
 echo.
-echo   KAJO-Dash %FW_NAME% in development   (version code %FW_CODE%)
-echo   Last release: %LAST_RELEASE%
-echo   ==========================================
+:plain_menu_entry
+if "%~1"=="" goto plain_menu_choose
+set "MENU_ENTRY=%~1"
+shift
+if "%MENU_ENTRY:~0,1%"=="=" goto plain_menu_header
+if "%MENU_ENTRY:~0,1%"=="#" goto plain_menu_section
+for /f "tokens=1-3 delims=|" %%A in ("%MENU_ENTRY%") do echo     %%A. %%B - %%C
+goto plain_menu_entry
+:plain_menu_header
+echo   %MENU_ENTRY:~1%
+goto plain_menu_entry
+:plain_menu_section
 echo.
-echo   Build and run
-echo     1. Simulator             interactive virtual display
-echo     2. Preview renders       regenerate preview_output\lvgl
-echo     3. Layout editor         edit tools\layout.json
+echo   %MENU_ENTRY:~1%
+goto plain_menu_entry
+:plain_menu_choose
 echo.
-echo   Firmware
-echo     4. Flash over USB        build and install on a connected display
-echo     5. Package firmware      test package, or a release to publish
-echo     6. Upload over Bluetooth install this version's signed package
-echo.
-echo   Test senders
-echo     7. Fake VESC             flash a second board as a VESC
-echo     8. Fake FarDriver        flash a second board as a FarDriver
-echo.
-if exist "%APP_HOOK%" (
-  echo   Companion app
-  echo     9. Install on phone      build the APK and adb install it
-  echo.
-)
 echo     Q. Quit
 echo.
-
-rem The key list stays fixed even without the app: CHOICE reports a key by its
-rem position, so the app keeps the last number and Q keeps its place. Without
-rem the app, 9 just redraws the menu.
 choice /c 123456789Q /n /m "  Choose: "
-if errorlevel 255 goto quit
-if errorlevel 10 goto quit
-if errorlevel 9 (
-  if exist "%APP_HOOK%" call :run "%APP_HOOK%"
-  goto menu
-)
-if errorlevel 8 (
-  call :run "%SCRIPTS%\upload_fardriver_test.bat"
-  goto menu
-)
-if errorlevel 7 (
-  call :run "%SCRIPTS%\upload_vesc_test.bat"
-  goto menu
-)
-if errorlevel 6 (
-  cls
-  set "UPLOAD_MODE=ble"
-  set "FROM_MENU=1"
-  call :updater
-  set "FROM_MENU="
-  goto menu
-)
-if errorlevel 5 (
-  call :run "%SCRIPTS%\make_release.bat"
-  goto menu
-)
-if errorlevel 4 (
-  call :run "%SCRIPTS%\upload_firmware_usb.bat"
-  goto menu
-)
-if errorlevel 3 (
-  call :run "%SCRIPTS%\run_layout_editor_lvgl.bat"
-  goto menu
-)
-if errorlevel 2 (
-  call :run "%SCRIPTS%\run_preview_lvgl.bat"
-  goto menu
-)
-if errorlevel 1 (
-  call :run "%SCRIPTS%\run_simulator_lvgl.bat"
-  goto menu
-)
-rem CHOICE returns zero if interrupted. Exit instead of launching a tool.
-goto quit
+rem CHOICE returns 10 for Q, and zero or 255 if interrupted or failing.
+if errorlevel 10 exit /b 0
+for %%N in (1 2 3 4 5 6 7 8 9) do if errorlevel %%N set "MENU_KEY=%%N"
+exit /b 0
 
 :run
 cls

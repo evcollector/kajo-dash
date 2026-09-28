@@ -55,6 +55,8 @@ static void showDashboard(const fs::path &output, DashboardMode mode, const char
   DashboardValues values = {};
   getLiveDashboardValues(values);
   updateDashboardMode(mode, values, true);
+  // Hardware fills this graph in over five minutes of riding.
+  if (mode == MODE_EFFICIENCY) previewSeedEfficiency();
   capture(output, name);
 }
 
@@ -223,14 +225,14 @@ int main(int argc, char **argv) {
       if (stopAfterSelected()) return 0;
     }
 
-    if (selected("11_main_menu_page_1")) {
+    if (selected("11_settings_page_2")) {
       uiPreviewSetSettingsCategory(0);
       uiPreviewSetDashboardMode(MODE_HUD); uiShow(SCREEN_MENU);
-      capture(output, "11_main_menu_page_1"); if (stopAfterSelected()) return 0;
+      capture(output, "11_settings_page_2"); if (stopAfterSelected()) return 0;
     }
-    if (selected("11_display_settings")) {
+    if (selected("11_settings_page_1")) {
       uiPreviewSetSettingsCategory(1); uiShow(SCREEN_MENU);
-      capture(output, "11_display_settings"); if (stopAfterSelected()) return 0;
+      capture(output, "11_settings_page_1"); if (stopAfterSelected()) return 0;
     }
     if (selected("21_gauge_ranges_manual")) {
       automaticGaugeRanges = false;
@@ -390,6 +392,37 @@ int main(int argc, char **argv) {
       capture(output, "13_dashboard_demo");
       dashboardDemoModeEnabled = false;
       setDemoMode(false);
+      if (stopAfterSelected()) return 0;
+    }
+    // The shared segmented battery at each warning step: amber at two blocks,
+    // red at one, and a blinking last block below that, shown in both phases.
+    const struct {
+      const char *name;
+      DashboardMode mode;
+      int percent;
+      bool light;
+      uint32_t blinkMs;
+    } batteryStates[] = {
+        {"13_battery_two_bars", MODE_GAUGE, 45, false, 0},
+        {"13_battery_one_bar", MODE_HUD, 25, false, 0},
+        {"13_battery_critical", MODE_HUD, 8, false, 0},
+        {"13_battery_critical_blink_off", MODE_HUD, 8, false, 500},
+        {"13_battery_critical_light", MODE_TRACE, 8, true, 0},
+    };
+    for (const auto &state : batteryStates) {
+      if (!selected(state.name)) continue;
+      const DashboardAppearanceMode appearance = dashboardAppearanceMode;
+      if (state.mode == MODE_TRACE) previewSeedTrace();
+      uiPreviewSetDashboardMode(state.mode);
+      if (state.light) dashboardAppearanceMode = DASH_APPEARANCE_LIGHT;
+      showRestingDashboard();
+      DashboardValues values = {};
+      getLiveDashboardValues(values);
+      values.batteryPercent = state.percent;
+      updateDashboardMode(state.mode, values, true);
+      if (state.blinkMs) cyd::preview::advanceTime(state.blinkMs);
+      capture(output, state.name);
+      dashboardAppearanceMode = appearance;
       if (stopAfterSelected()) return 0;
     }
     if (selected("13_dashboard_fardriver_fields")) {

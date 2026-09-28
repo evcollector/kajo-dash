@@ -1,6 +1,7 @@
 # Compile every PlatformIO environment that is expected to remain buildable.
 # Pinning PlatformIO itself makes CI changes deliberate, just like the platform
-# and library versions pinned in platformio.ini.
+# and library versions pinned in platformio.ini. scripts\platformio.bat installs
+# the same version for local builds; change the two together.
 name: Firmware builds
 
 on:

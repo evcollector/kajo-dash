@@ -212,11 +212,14 @@ def find_platformio() -> str | None:
         found = shutil.which(name)
         if found:
             return found
-    # The PlatformIO IDE extension installs the CLI without putting it on PATH.
-    for name in ("platformio.exe", "pio.exe", "platformio", "pio"):
-        candidate = Path.home() / ".platformio" / "penv" / ("Scripts" if os.name == "nt" else "bin") / name
-        if candidate.is_file():
-            return str(candidate)
+    # The PlatformIO IDE extension installs the CLI without putting it on PATH,
+    # and scripts\platformio.bat installs it into the project's .venv.
+    scripts = "Scripts" if os.name == "nt" else "bin"
+    for environment in (Path.home() / ".platformio" / "penv", ROOT / ".venv"):
+        for name in ("platformio.exe", "pio.exe", "platformio", "pio"):
+            candidate = environment / scripts / name
+            if candidate.is_file():
+                return str(candidate)
     return None
 
 
@@ -365,8 +368,8 @@ def check(mode: str, key: Path | None = None, interactive: bool = True,
         plan.problems.append(problem)
     plan.platformio = find_platformio()
     if not plan.platformio:
-        plan.problems.append("PlatformIO was not found. Install PlatformIO Core or the PlatformIO IDE "
-                             "extension, then run this again.")
+        plan.problems.append("PlatformIO was not found. Run this from kajo.bat or scripts\\make_release.bat, "
+                             "which offer to install it, or install PlatformIO yourself.")
     if not package_usb.BOOT_APP0.is_file():
         plan.problems.append(f"the Arduino core's boot_app0.bin is missing ({package_usb.BOOT_APP0}); "
                              "build the firmware once with PlatformIO to install it.")
@@ -670,7 +673,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"To publish: git push origin {plan.branch} {plan.tag}, then attach the Windows ZIP, "
               f"firmware-v{plan.code}.kajofw and {INDEX_NAME} to a GitHub release for {plan.tag}.")
     else:
-        print(f"Install it with option 6 in kajo.bat (Bluetooth), kajo.bat --usb (cable), or the "
+        print(f"Install it with option 6 in kajo.bat, over a USB cable or Bluetooth, or with the "
               f"ZIP's own launcher. The display shows {plan.label}.")
     return 0
 

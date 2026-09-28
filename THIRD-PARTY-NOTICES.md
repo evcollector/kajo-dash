@@ -141,6 +141,7 @@ record of what that screen has to list.
 | Component | Version | Licence | Text |
 | --- | --- | --- | --- |
 | Jetpack Compose and AndroidX | BOM 2025.02.00 | Apache-2.0 | `licenses/Apache-2.0.txt` |
+| Material Icons Extended | via Compose BOM | Apache-2.0 | `licenses/Apache-2.0.txt` |
 | Kotlin stdlib and coroutines | via Kotlin plugin | Apache-2.0 | `licenses/Apache-2.0.txt` |
 | Android BLE Library | 2.11.0 | BSD-3-Clause | `licenses/BSD-3-Clause-Android-BLE-Library.txt` |
 | LVGL | 8.4.0 | MIT | `licenses/MIT-LVGL.txt` |

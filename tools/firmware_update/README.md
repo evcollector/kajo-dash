@@ -146,7 +146,7 @@ The user extracts the complete Windows updater ZIP, opens Settings > Information
 > Bluetooth Link on the display, double-clicks `Install or Update KAJO-Dash.bat`
 and chooses **2. Update over Bluetooth**.
 
-In a source checkout, use menu option 6 in `kajo.bat` or `kajo.bat --ble`.
+In a source checkout, use menu option 6 in `kajo.bat` (Install package) or `kajo.bat --ble`.
 The release packager copies that same script under the name above; without the
 development scripts directory it opens the two-choice installer menu.
 

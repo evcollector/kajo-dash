@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 580" width="900" height="580" role="img" aria-labelledby="title desc">
   <title id="title">CYD to VESC UART wiring</title>
-  <desc id="desc">Four wires from the VESC COMM connector to the CYD. VESC 5V goes to VIN on the CYD power connector. VESC GND, RX/SDA and TX/SCL go to GND, IO22 and IO27 on the CYD CN1 connector, so the CYD transmits on IO22 into VESC RX and receives on IO27 from VESC TX. All other pins stay unconnected.</desc>
+  <desc id="desc">Four wires from the VESC COMM connector to the CYD. VESC 5V goes to VIN on the CYD power connector. VESC GND, RX/SDA and TX/SCL go to GND, IO22 and IO27 on the CYD CN1 connector, so the CYD transmits on IO22 into VESC RX and receives on IO27 from VESC TX. All other pins stay unconnected. A shielded four-core cable, such as a USB 2.0 cable with its plugs cut off, carries all four, with the shield connected to GND at the VESC end.</desc>
   <style>
     .bg { fill: #ffffff; stroke: #d0d7de; }
     .board { fill: #f5dc6a; stroke: #b8981f; }
@@ -31,6 +31,7 @@
     .end-rx { fill: #0969da; }
     .pill { fill: #ffffff; stroke-width: 1.5; }
     .card { fill: #f6f8fa; stroke: #d0d7de; }
+    .shield { fill: #f6f8fa; stroke: #8c959f; stroke-dasharray: 2 2; }
     .warn { fill: #fff4e6; stroke: #ff7900; }
     @media (prefers-color-scheme: dark) {
       .bg { fill: #0d1117; stroke: #30363d; }
@@ -53,6 +54,7 @@
       .end-rx { fill: #58a6ff; }
       .pill { fill: #0d1117; }
       .card { fill: #161b22; stroke: #30363d; }
+      .shield { fill: #161b22; stroke: #6e7681; }
       .warn { fill: #2a1a08; stroke: #ff7900; }
     }
   </style>
@@ -146,6 +148,16 @@
   <text class="t small mono end-rx" x="450" y="331" text-anchor="middle" font-weight="700">IO22 TX → RX</text>
   <rect class="pill w-tx" x="392" y="351" width="116" height="22" rx="11"/>
   <text class="t small mono end-tx" x="450" y="366" text-anchor="middle" font-weight="700">IO27 RX ← TX</text>
+
+  <!-- Cable: shielded four-core, drawn as a cross-section -->
+  <circle class="shield" cx="358" cy="438" r="21" stroke-width="2.5"/>
+  <circle class="end-5v" cx="351" cy="431" r="5"/>
+  <circle class="end-gnd" cx="365" cy="431" r="5"/>
+  <circle class="end-tx" cx="351" cy="445" r="5"/>
+  <circle class="end-rx" cx="365" cy="445" r="5"/>
+  <text class="t lbl" x="390" y="428">Shielded 4-core cable</text>
+  <text class="t small dim" x="390" y="445">e.g. USB 2.0, plugs cut off</text>
+  <text class="t small dim" x="390" y="461">Shield to GND at the VESC end</text>
 
   <!-- Notes -->
   <rect class="card" x="40" y="490" width="260" height="66" rx="8" stroke-width="1"/>

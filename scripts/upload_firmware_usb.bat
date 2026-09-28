@@ -2,24 +2,16 @@
 setlocal
 
 for %%I in ("%~dp0..") do set "PROJECT_DIR=%%~fI\"
-set "PIO=pio"
 set "UPLOAD_PORT="
+set "RESULT=1"
 
 if not "%~1"=="" (
   set "UPLOAD_PORT=%~1"
 )
 
-where pio >nul 2>nul
-if errorlevel 1 (
-  set "PIO=%USERPROFILE%\.platformio\penv\Scripts\pio.exe"
-)
-
-if not exist "%PIO%" (
-  echo PlatformIO CLI was not found.
-  echo Install PlatformIO or check this path:
-  echo   %USERPROFILE%\.platformio\penv\Scripts\pio.exe
-  exit /b 1
-)
+rem Sets PIO, offering to install PlatformIO when it is missing.
+call "%~dp0platformio.bat"
+if errorlevel 1 goto finish
 
 cd /d "%PROJECT_DIR%"
 
@@ -30,10 +22,10 @@ if not defined UPLOAD_PORT (
 )
 
 if defined UPLOAD_PORT (
-  echo Building and uploading LVGL test to %UPLOAD_PORT%...
+  echo Building and uploading KAJO-Dash to %UPLOAD_PORT%...
   "%PIO%" run -e kajo -t upload --upload-port %UPLOAD_PORT%
 ) else (
-  echo Building and uploading LVGL test using PlatformIO auto-detected port...
+  echo Building and uploading KAJO-Dash using PlatformIO's auto-detected port...
   "%PIO%" run -e kajo -t upload
 )
 
@@ -43,9 +35,16 @@ if errorlevel 1 (
   echo If you see "Wrong boot mode detected", GPIO0/BOOT was not held low during reset.
   echo Hold BOOT, tap RST/EN, keep holding BOOT until "Connecting..." changes, then release BOOT.
   echo If auto-detection picked the wrong port, specify one explicitly, for example:
-  echo   upload_lvgl.bat COM4
-  exit /b 1
+  echo   scripts\upload_firmware_usb.bat COM4
+  goto finish
 )
 
 echo.
-echo LVGL test upload complete.
+echo KAJO-Dash upload complete.
+set "RESULT=0"
+
+:finish
+rem Keep the result on screen: kajo.bat redraws its menu straight afterwards.
+echo.
+pause
+exit /b %RESULT%

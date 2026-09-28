@@ -20,6 +20,9 @@ void setDashboardStartupSweepEnabled(bool enabled);
 #ifdef CYD_LVGL_PREVIEW
 // Preview-only: seeds the Trace history so a rendered still shows a plot.
 void previewSeedTrace();
+// Preview-only: fills the Efficiency graph with demo-ride history. Call after
+// the dashboard is built, which clears the history.
+void previewSeedEfficiency();
 // Preview-only: settles the dashboard's startup sweep immediately, leaving
 // every instrument at its resting value (tests and rendered stills).
 void previewFinishStartupSweep();

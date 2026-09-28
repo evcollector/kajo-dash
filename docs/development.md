@@ -18,7 +18,11 @@ from `platformio.ini`.
 ## The `kajo.bat` menu
 
 On Windows, every workflow below has an entry in `kajo.bat` at the project root:
-double-click it and pick a number. The individual scripts live in `scripts/`
+double-click it, move with the arrow keys or W/S and press Enter, or press an
+entry's number. Right or D moves to an entry's `[?]`, and Enter there opens a
+page explaining what it does and needs; those pages are in
+`scripts\menu_help.txt`. The menu itself is `scripts\menu.ps1`; without
+PowerShell it falls back to a plain numbered prompt. The individual scripts live in `scripts/`
 and can still be run directly; this page names them that way.
 
 | # | Entry | Script |
@@ -28,11 +32,10 @@ and can still be run directly; this page names them that way.
 | 3 | Layout editor | `scripts\run_layout_editor_lvgl.bat` |
 | 4 | Flash over USB | `scripts\upload_firmware_usb.bat` |
 | 5 | Package firmware: test package or release | `scripts\make_release.bat [--test \| --release]` |
-| 6 | Upload over Bluetooth | `kajo.bat --ble [release.json] [uploader options]` |
+| 6 | Install package, over a USB cable or Bluetooth | `kajo.bat --usb [release.json] [--port COMx] [--erase-all]`, `kajo.bat --ble [release.json] [uploader options]` |
 | 7 | Fake VESC | `scripts\upload_vesc_test.bat` |
 | 8 | Fake FarDriver | `scripts\upload_fardriver_test.bat` |
 | 9 | Install the companion app (private checkout only) | `android-companion\kajo-app.bat` |
-| — | Install a signed package over USB | `kajo.bat --usb [release.json] [--port COMx] [--erase-all]` |
 
 On other platforms, use the `pio` commands directly.
 
@@ -210,8 +213,9 @@ signing key and use the Bluetooth uploader for your own builds. See
 
 ### Installing a signed release from a checkout
 
-Choose **6. Upload over Bluetooth** in `kajo.bat`, or run `kajo.bat --ble`. On
-the display, first open **Settings > Information > Bluetooth Link**. The
+Choose **6. Install package** in `kajo.bat` and pick **Over Bluetooth**, or run
+`kajo.bat --ble`. On the display, first open **Settings > Information >
+Bluetooth Link**. The
 launcher selects a protocol 3 manifest matching the version in
 `include/config.h`, checking the root, then `releases/`, then the test package
 in `releases/test/` (newest first in each directory). It uses the standalone
@@ -219,7 +223,7 @@ uploader EXE when available, otherwise prepares its Python environment and
 starts the upload. After the uploader finishes, press a key to return to the
 menu.
 
-`kajo.bat --usb` writes the same signed package over a USB cable with esptool,
+**Over a USB cable**, or `kajo.bat --usb`, writes the same signed package with esptool,
 without PlatformIO, as the release ZIP's **1. Install over USB cable** does. It
 only considers packages with a `-usb.json` layout beside them, which the
 release builder writes. The display's settings are kept unless `--erase-all` is

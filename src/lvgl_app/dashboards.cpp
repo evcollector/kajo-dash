@@ -81,6 +81,7 @@ struct DashWidgets {
   lv_obj_t *motorUnit;
   lv_obj_t *battUnit;
   SegBatteryWidget segBatt;                 // top-bar charge indicator
+  lv_obj_t *topBattPct;  // Ride Console: top-bar % while battPct stays in the PACK card
   SegMeterWidget powerMeter;                // Simple: dense theme-colour effort meter
   lv_obj_t *rangeUnit;
   lv_obj_t *energyRate;                     // Trace: Wh per distance unit
@@ -1633,9 +1634,7 @@ static void buildHud(lv_obj_t *scr, const DashboardValues &v) {
   lv_obj_t *oemLabel = makeLabelFont(scr, HUD_OEM, "", accent, layoutFontToLv(HUD_OEM.font));
   setFittedText(oemLabel, HUD_OEM, dashOemName(), layoutFontToLv(HUD_OEM.font));
   dw.battPct = makeTopBatteryLabel(scr, HUD_TOP_BATT_PCT, t.battPct, whiteLv());
-  // outline in the accent, blocks in the charge color: the contrast is what
-  // makes the level readable at a glance
-  dw.segBatt = makeSegBattery(scr, HUD_TOP_BATT_ICON, accent, 5);
+  dw.segBatt = makeSegBattery(scr, HUD_TOP_BATT_ICON, 5);
 
   lv_obj_t *voltsIcon = makeLayoutIcon(scr, HUD_VOLTS_ICON, CYD_ICON_VOLTAGE, accent);
   dw.volts = makeLabel(scr, HUD_VOLTS, t.voltageWithUnit, whiteLv());
@@ -1667,7 +1666,7 @@ static void buildHud(lv_obj_t *scr, const DashboardValues &v) {
   dw.energyRate = makeLabel(scr, HUD_RATE, text, whiteLv());
   registerDataSlot(7, makeLabel(scr, HUD_RATE_LABEL, energyRateLabel(), whiteLv()), dw.energyRate, NULL, rateIcon);
 
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   hudSweepSpeed = displaySpeedValue();
   hudSweepPower = displayPowerValue();
   sweepSpeedWith(dw.speed, hudSpeedSweep, v);
@@ -1716,7 +1715,7 @@ static void updateHud(const DashboardValues &v) {
   if (slowDue) {
     char text[24];
     setLabelText(dw.battPct, t.battPct);
-    setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+    setSegBatteryLevel(dw.segBatt, v.batteryPercent);
     setLabelText(dw.trip, t.trip);
     setLabelText(dw.odo, t.odo);
     setLabelText(dw.avg, t.avg);
@@ -1755,7 +1754,7 @@ static void buildGauge(lv_obj_t *scr, const DashboardValues &v) {
   lv_obj_t *oemLabel = makeLabelFont(scr, GAUGE_OEM, "", accent, layoutFontToLv(GAUGE_OEM.font));
   setFittedText(oemLabel, GAUGE_OEM, dashOemName(), layoutFontToLv(GAUGE_OEM.font));
   dw.battPct = makeTopBatteryLabel(scr, GAUGE_BATTERY_PCT, t.battPct, whiteLv());
-  dw.segBatt = makeSegBattery(scr, GAUGE_BATTERY_ICON, accent, 5);
+  dw.segBatt = makeSegBattery(scr, GAUGE_BATTERY_ICON, 5);
 
 
   // Redline-style lit-tick dials on the full circular 140deg/260deg sweep:
@@ -1846,7 +1845,7 @@ static void buildGauge(lv_obj_t *scr, const DashboardValues &v) {
   setTickDialValue(dw.powerDial, displayPowerValue());
   setTickNeedleValue(dw.speedNeedle, displaySpeedValue());
   setTickNeedleValue(dw.powerNeedle, displayPowerValue());
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   sweepSpeedWith(dw.speed, gaugeSpeedSweep, v);
   sweepPowerWith(dw.power, gaugePowerSweep, v);
 }
@@ -1881,7 +1880,7 @@ static void updateGauge(const DashboardValues &v) {
   }
   if (slowDue) {
     setLabelText(dw.battPct, t.battPct);
-    setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+    setSegBatteryLevel(dw.segBatt, v.batteryPercent);
     setLabelText(dw.tripUnit, distanceUnitLabel());
     setLabelText(dw.odoUnit, distanceUnitLabel());
     setLabelText(dw.avgUnit, speedUnitLabel());
@@ -1941,7 +1940,7 @@ static void buildSimple(lv_obj_t *scr, const DashboardValues &v) {
   lv_obj_t *oem = makeLabelFont(scr, SIMPLE_OEM, "", accent, layoutFontToLv(SIMPLE_OEM.font));
   setFittedText(oem, SIMPLE_OEM, dashOemName(), layoutFontToLv(SIMPLE_OEM.font));
   dw.battPct = makeTopBatteryLabel(scr, SIMPLE_BATTERY, t.battPct, whiteLv());
-  dw.segBatt = makeSegBattery(scr, SIMPLE_BATTERY_ICON, accent, 5);
+  dw.segBatt = makeSegBattery(scr, SIMPLE_BATTERY_ICON, 5);
 
   // speed owns the left half and takes the biggest font its digits allow
   dw.speed = makeLabel(scr, SIMPLE_SPEED, t.speed, whiteLv());
@@ -1985,7 +1984,7 @@ static void buildSimple(lv_obj_t *scr, const DashboardValues &v) {
   registerDataSlot(1, tripCaption, dw.trip, dw.tripUnit);
   registerDataSlot(2, odoCaption, dw.odo, dw.odoUnit);
 
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   setSegMeterValue(dw.powerMeter, displayPowerValue(), powerBarMax());
   centerValueUnitOnBaseline(dw.range, dw.rangeUnit,
                             SIMPLE_BATTERY_CARD.x + SIMPLE_BATTERY_CARD.w / 2, 5);
@@ -2008,7 +2007,7 @@ static void updateSimple(const DashboardValues &v) {
   if (slowDue) {
     const BatteryStats stats = dashBatteryStats();
     setLabelText(dw.battPct, t.battPct);
-    setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+    setSegBatteryLevel(dw.segBatt, v.batteryPercent);
     formatAvailableRange(text, sizeof(text), stats.rangeKm, false);
     setLabelText(dw.range, text);
     centerValueUnitOnBaseline(dw.range, dw.rangeUnit,
@@ -2393,7 +2392,7 @@ static void buildPixelMono(lv_obj_t *scr, const DashboardValues &v) {
   lv_obj_t *monoOem = makeLabelFont(scr, PIXEL_MONO_OEM, "", white, layoutFontToLv(PIXEL_MONO_OEM.font));
   setFittedText(monoOem, PIXEL_MONO_OEM, dashOemName(), layoutFontToLv(PIXEL_MONO_OEM.font));
   dw.battPct = makeTopBatteryLabel(scr, PIXEL_MONO_BATTERY, t.battPct, white);
-  dw.segBatt = makeSegBattery(scr, PIXEL_MONO_BATTERY_ICON, white, 5);
+  dw.segBatt = makeSegBattery(scr, PIXEL_MONO_BATTERY_ICON, 5);
 
   makeRect(scr, PIXEL_MONO_SPEED_BOX, white);
   dw.speed = makeLabel(scr, PIXEL_MONO_SPEED, t.speed, white);
@@ -2433,7 +2432,7 @@ static void buildPixelMono(lv_obj_t *scr, const DashboardValues &v) {
   registerDataSlot(6, timeCaption, dw.uptime2);
 
   setLabelText(dw.speed, t.speed);
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, white);
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   if (dashHas(TELEMETRY_FIELD_SPEED)) sweepNumber(dw.speed, v.speedKmh, speedGaugeMax());
 }
 
@@ -2448,7 +2447,7 @@ static void updatePixelMono(const DashboardValues &v) {
   }
   if (slowDue) {
     setLabelText(dw.battPct, t.battPct);
-    setSegBatteryLevel(dw.segBatt, v.batteryPercent, themeColor(0xFFFF));
+    setSegBatteryLevel(dw.segBatt, v.batteryPercent);
     snprintf(text, sizeof(text), "%s %s", t.trip, distanceUnitLabel());
     setLabelText(dw.trip, text);
     snprintf(text, sizeof(text), "%s %s", t.odo, distanceUnitLabel());
@@ -3092,7 +3091,8 @@ static void buildBigReadout(lv_obj_t *scr, const DashboardValues &v) {
   dw.uptime = makeLabel(scr, BIG_READOUT_TIME, t.uptime, whiteLv());
   lv_obj_t *bigOem = makeLabelFont(scr, BIG_READOUT_OEM, "", accent, F2);
   setFittedText(bigOem, BIG_READOUT_OEM, dashOemName(), F2);
-  dw.segBatt = makeSegBattery(scr, BIG_READOUT_BATTERY_ICON, accent, 5);
+  dw.topBattPct = makeTopBatteryLabel(scr, BIG_READOUT_BATTERY, t.battPct, whiteLv());
+  dw.segBatt = makeSegBattery(scr, BIG_READOUT_BATTERY_ICON, 5);
 
   // Hero card: the speed owns most of the width, power sits behind a hairline.
   makeBig2Surface(scr, BIG2_MARGIN, BIG2_HERO_Y, BIG2_WIDTH, BIG2_HERO_H);
@@ -3157,7 +3157,7 @@ static void buildBigReadout(lv_obj_t *scr, const DashboardValues &v) {
   registerDataSlot(2, thermalCaption, dw.motor);
   registerDataSlot(3, rideCaption, dw.range);
 
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, accent);
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   sweepSpeedWith(dw.speed, bigReadoutSpeedSweep, v);
   sweepPowerWith(dw.power, bigReadoutPowerSweep, v);
 }
@@ -3185,7 +3185,8 @@ static void updateBigReadout(const DashboardValues &v) {
   }
   if (slowDue) {
     setLabelText(dw.battPct, t.battPct);
-    setSegBatteryLevel(dw.segBatt, v.batteryPercent, accent);
+    setLabelText(dw.topBattPct, t.battPct);
+    setSegBatteryLevel(dw.segBatt, v.batteryPercent);
     const BatteryStats stats = dashBatteryStats();
     formatAvailableEnergyRate(value, sizeof(value), stats.tripWhPerKm, true);
     setLabelText(dw.energyRate, value);
@@ -3266,8 +3267,8 @@ static void buildRedline(lv_obj_t *scr, const DashboardValues &v) {
   makeLayoutIcon(scr, REDLINE_CLOCK_ICON, CYD_ICON_UPTIME, color);
   dw.uptime = makeTopTimeLabel(scr, REDLINE_UPTIME, t.uptime, whiteLv());
   dw.battPct = makeTopBatteryLabel(scr, REDLINE_BATTERY_PCT, t.battPct, whiteLv());
-  dw.segBatt = makeSegBattery(scr, REDLINE_BATTERY_ICON, color, 5);
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+  dw.segBatt = makeSegBattery(scr, REDLINE_BATTERY_ICON, 5);
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
 
   // lit-tick dial (start 218deg, sweep 104deg): individual small line
   // objects instead of one lv_meter — a meter would be a screen-sized widget
@@ -3391,7 +3392,7 @@ static void updateRedline(const DashboardValues &v) {
   }
   if (slowDue) {
     setLabelText(dw.battPct, t.battPct);
-    setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+    setSegBatteryLevel(dw.segBatt, v.batteryPercent);
     const bool tripMoved = setRedlineStableTightText(dw.trip, REDLINE_TRIP, t.trip);
     formatAvailableRange(value, sizeof(value), dashBatteryStats().rangeKm);
     const bool rangeMoved = setRedlineStableTightText(dw.range, REDLINE_RANGE, value);
@@ -3573,7 +3574,7 @@ static void buildTrace(lv_obj_t *scr, const DashboardValues &v) {
   lv_obj_t *traceOem = makeLabelFont(scr, TRACE_OEM, "", accent, layoutFontToLv(TRACE_OEM.font));
   setFittedText(traceOem, TRACE_OEM, dashOemName(), layoutFontToLv(TRACE_OEM.font));
   dw.battPct = makeTopBatteryLabel(scr, TRACE_BATTERY, t.battPct, whiteLv());
-  dw.segBatt = makeSegBattery(scr, TRACE_BATTERY_ICON, accent, 5);
+  dw.segBatt = makeSegBattery(scr, TRACE_BATTERY_ICON, 5);
 
   dw.speed = makeLabel(scr, TRACE_SPEED, t.speed, whiteLv());
   configureFittedLabel(dw.speed, TRACE_SPEED, speedFitTemplate(), layoutFontToLv(TRACE_SPEED.font));
@@ -3639,7 +3640,7 @@ static void buildTrace(lv_obj_t *scr, const DashboardValues &v) {
   registerDataSlot(4, tripCaption, dw.trip);
 
   setLabelText(dw.speed, t.speed);
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   centerValueUnitOnBaseline(dw.power, dw.powerUnit, 70, 4, -3);
   if (dashHas(TELEMETRY_FIELD_SPEED)) sweepNumber(dw.speed, v.speedKmh, speedGaugeMax());
   // One way only: the reveal ends with the whole history on screen.
@@ -3665,7 +3666,7 @@ static void updateTrace(const DashboardValues &v) {
   }
   if (slowDue) {
     setLabelText(dw.battPct, t.battPct);
-    setSegBatteryLevel(dw.segBatt, v.batteryPercent, greenLv());
+    setSegBatteryLevel(dw.segBatt, v.batteryPercent);
     snprintf(text, sizeof(text), "%s %s", t.trip, distanceUnitLabel());
     setLabelText(dw.trip, text);
     const BatteryStats stats = dashBatteryStats();
@@ -3998,8 +3999,8 @@ static void buildMinimal(lv_obj_t *scr, const DashboardValues &v) {
                                      rangeText, accent, &rangeCaption, &rangeIcon);
   dw.battPct = makeTopBatteryLabel(scr, HUD_TOP_BATT_PCT, t.battPct, whiteLv());
   const Item minimalBatteryIcon = HUD_TOP_BATT_ICON;
-  dw.segBatt = makeSegBattery(scr, minimalBatteryIcon, whiteLv(), 5);
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, whiteLv());
+  dw.segBatt = makeSegBattery(scr, minimalBatteryIcon, 5);
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   lv_obj_t *oem = makeLabelAt(scr, 160, 6, dashOemName(), labelLv(), F2, 3);
   lv_obj_set_width(oem, 150);
   lv_obj_set_x(oem, 85);
@@ -4028,7 +4029,7 @@ static void updateMinimal(const DashboardValues &v) {
     // way this theme's own build and every other theme do.
     const DashTexts t = fmtTexts(v);
     setLabelText(dw.battPct, t.battPct);
-    setSegBatteryLevel(dw.segBatt, v.batteryPercent, whiteLv());
+    setSegBatteryLevel(dw.segBatt, v.batteryPercent);
     const BatteryStats stats = dashBatteryStats();
     formatAvailableRange(text, sizeof(text), stats.rangeKm, true);
     setLabelText(dw.range, text);
@@ -4364,9 +4365,8 @@ static void resetEfficiencyHistory() {
 
 // Sample actual simulated seconds, including skipped seconds at high compression.
 // Never invent history from before this ride began.
-static void seedEfficiencyHistory(const BatteryStats &stats) {
+static void seedEfficiencyHistoryUntil(const BatteryStats &stats, unsigned seconds) {
   const float fallback = stats.tripWhPerKm > 0.0F ? stats.tripWhPerKm : stats.lifetimeWhPerKm;
-  const unsigned seconds = (unsigned)demoRideSeconds();
   efficiencyHistoryCount = min((unsigned)EFFICIENCY_HISTORY_SAMPLES, seconds);
   for (int i = 0; i < efficiencyHistoryCount; ++i) {
     const DemoRide ride = demoRideAt(seconds - efficiencyHistoryCount + i + 1);
@@ -4374,6 +4374,10 @@ static void seedEfficiencyHistory(const BatteryStats &stats) {
     efficiencyLiveHistory[i] = (uint16_t)constrain((int)lroundf(rate * 10), 0, EFFICIENCY_SCALE_MAX_X10);
   }
   efficiencyHistoryLastMs = seconds * 1000U;
+}
+
+static void seedEfficiencyHistory(const BatteryStats &stats) {
+  seedEfficiencyHistoryUntil(stats, (unsigned)demoRideSeconds());
 }
 
 // The three gridlines are the window's peak, its floor, and the midpoint
@@ -4414,6 +4418,15 @@ static void pushEfficiencyHistory(int valueX10) {
 // Native regression hooks: test both a real empty ride and the seeded preview.
 void previewResetEfficiencyHistory() {
   resetEfficiencyHistory();
+  prepareEfficiencyGraph();
+  updateEfficiencyGraphStatLabels();
+  if (efficiencyGraphObj) lv_obj_invalidate(efficiencyGraphObj);
+}
+// The still previews are not in demo mode, so the ride clock is idle and the
+// graph would be empty. Fill it from the demo ride's first ten minutes, which
+// matches the preview's 00:10:00 ride timer.
+void previewSeedEfficiency() {
+  seedEfficiencyHistoryUntil(dashBatteryStats(), 600);
   prepareEfficiencyGraph();
   updateEfficiencyGraphStatLabels();
   if (efficiencyGraphObj) lv_obj_invalidate(efficiencyGraphObj);
@@ -4475,8 +4488,8 @@ static void buildEfficiency(lv_obj_t *scr, const DashboardValues &v) {
   lv_obj_t *oem = makeLabelFont(scr, oemItem, "", topColor, layoutFontToLv(oemItem.font));
   setFittedText(oem, oemItem, dashOemName(), layoutFontToLv(oemItem.font));
   dw.battPct = makeTopBatteryLabel(scr, batteryTextItem, t.battPct, topColor);
-  dw.segBatt = makeSegBattery(scr, batteryIconItem, topColor, 5);
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, topColor);
+  dw.segBatt = makeSegBattery(scr, batteryIconItem, 5);
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
 
   const float displayedRate = stats.tripWhPerKm > 0.0F ? stats.tripWhPerKm : stats.lifetimeWhPerKm;
   efficiencyDialSpeed = v.speedKmh;
@@ -4616,7 +4629,7 @@ static void updateEfficiency(const DashboardValues &v) {
   if (dashHas(TELEMETRY_FIELD_BATTERY_SOC)) snprintf(text, sizeof(text), "%d%%", v.batteryPercent);
   else snprintf(text, sizeof(text), "-");
   setLabelText(dw.battPct, text);
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent, themeColor(0xFFFF));
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   formatAvailableRange(text, sizeof(text), stats.rangeKm, true);
   setLabelText(dw.range, text);
   formatAvailableEnergyRate(text, sizeof(text), stats.tripWhPerKm, true);

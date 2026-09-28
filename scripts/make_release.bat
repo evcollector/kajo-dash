@@ -54,6 +54,8 @@ if errorlevel 1 (
 )
 
 :build
+rem Offers to install PlatformIO when it is missing; the builder finds it in .venv.
+call "%~dp0platformio.bat"
 cd /d "%PROJECT_DIR%"
 "%VENV_PY%" "%BUILDER%" %*
 

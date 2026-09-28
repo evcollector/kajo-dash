@@ -24,6 +24,8 @@
 
 <!-- Photos and videos of real builds go here. -->
 
+## Themes
+
 <table>
   <tr>
     <td align="center" width="25%"><img src="preview_output/lvgl/01_cyber_hud.png" alt="Cyber HUD theme"><br>Cyber HUD</td>
@@ -37,11 +39,39 @@
     <td align="center" width="25%"><img src="preview_output/lvgl/07_large_tiles.png" alt="Large Tiles theme"><br>Large Tiles</td>
     <td align="center" width="25%"><img src="preview_output/lvgl/06_pixel_gauge.png" alt="Pixel Gauge theme"><br>Pixel Gauge</td>
   </tr>
+  <tr>
+    <td align="center" width="25%"><img src="preview_output/lvgl/04_bar_graph.png" alt="Bar Graph theme"><br>Bar Graph</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/05_pixel_mono.png" alt="Pixel Mono theme"><br>Pixel Mono</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/08_big_readout.png" alt="Big Readout theme"><br>Big Readout</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/11_minimal_ride.png" alt="Minimal Ride theme"><br>Minimal Ride</td>
+  </tr>
 </table>
 
+Every theme also has a light appearance, and its own accent colour, background and data fields.
+
+## Settings and ride replay
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="preview_output/lvgl/11_settings_page_1.png" alt="Settings menu, page 1 of 2"><br>Settings</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/13_dash_ui_selector.png" alt="Theme selector grid"><br>Theme selector</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/14_dash_ui_colors.png" alt="Theme customisation: accent colour and appearance"><br>Theme colours</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/25_ride_logs.png" alt="Ride log list on the microSD card"><br>Ride logs</td>
+  </tr>
+  <tr>
+    <td align="center" width="25%"><img src="preview_output/lvgl/25_replay.png" alt="Ride replay with speed, power and voltage charts"><br>Ride replay</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/25_replay_four.png" alt="Ride replay with four charts"><br>Replay, four charts</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/25_replay_fields.png" alt="Choosing what a replay chart shows"><br>Chart fields</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/25_replay_summary.png" alt="Ride summary"><br>Ride summary</td>
+  </tr>
+</table>
+
+Rides logged to the microSD card can be replayed on the display: scrub through the ride, chart up to four
+values at once, and read the ride summary.
+
 These screenshots are real LVGL framebuffer captures, not mockups.
-[`contact_sheet.png`](preview_output/lvgl/contact_sheet.png) shows all twelve
-themes and every settings screen.
+[`contact_sheet.png`](preview_output/lvgl/contact_sheet.png) shows every theme in dark and light, every
+settings screen, and the ride replay views.
 
 ## Features
 
@@ -102,7 +132,7 @@ found, hold BOOT, tap RST, and keep holding BOOT until writing starts.
 Later updates use the same launcher: open **Settings > Information > Bluetooth
 Link** on the display and choose **2. Update over Bluetooth**. No cable needed.
 
-To build from source instead, install
+To build from source instead, you need
 [PlatformIO](https://docs.platformio.org/en/latest/core/installation/index.html):
 
 ```bash
@@ -112,7 +142,8 @@ pio run -e kajo -t upload
 ```
 
 On Windows you can double-click `kajo.bat` in the checkout and choose
-**4. Flash over USB** instead.
+**4. Flash over USB** instead. If PlatformIO is missing, it offers to install
+it for you.
 
 ### 2. Connect the controller
 
@@ -135,6 +166,9 @@ controller and pairs with it.
 - Leave `3.3V`, `ADC1`, `ADC2` and `PowerSW` unconnected.
 - In VESC Tool, set **App to Use** to `UART` and the baud rate to 115200.
 - Unplug the 5 V lead before connecting USB to the CYD.
+- If updates drop out under throttle, use a short shielded cable routed away
+  from the phase leads; a USB 2.0 cable with its plugs cut off works. See
+  [Cable and noise](docs/wiring.md#cable-and-noise).
 
 [docs/wiring.md](docs/wiring.md) has the full reasoning, electrical notes, a
 bring-up order and the CYD pin map.

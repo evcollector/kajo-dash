@@ -534,8 +534,6 @@ const char *telemetryFaultLabel(uint8_t code) {
 }
 
 lv_color_t batteryLevelColorLv(int percent, lv_color_t goodColor) {
-  if (!chromeAccentActive && accentRenderMode == MODE_HUD && accentTheme == ACCENT_DEFAULT &&
-      dashboardLightModeActive()) return lv_color_black();
   if (percent <= 15) return c565(0xF800);
   if (percent <= 35) return c565(0xFFE0);
   return goodColor;

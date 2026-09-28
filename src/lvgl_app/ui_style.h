@@ -49,6 +49,15 @@ constexpr uint16_t kIdleControlBorder565 = 0x4208;
 constexpr uint16_t kActiveControlSurface565 = 0x3186;
 constexpr uint16_t kPanelSurface565 = COLOR565_PANEL;
 
+// Segmented dashboard battery. One fixed scheme for every theme, independent of
+// the accent: in dark mode a white frame with green blocks that turn amber at
+// two blocks left and red at one; in light mode frame and blocks are black.
+// Below one block's worth the last block blinks in either mode.
+constexpr uint16_t kBatteryGood565 = COLOR565_GREEN;
+constexpr uint16_t kBatteryLow565 = 0xFD80;  // yellowish orange
+constexpr uint16_t kBatteryCritical565 = 0xF800;
+constexpr uint32_t kBatteryBlinkMs = 500;  // each of the on and off phases
+
 inline lv_color_t chromeAccent() { return c565(kChromeAccent565); }
 inline lv_color_t controlSurface() { return c565(kControlSurface565); }
 inline lv_color_t idleControlBorder() { return c565(kIdleControlBorder565); }

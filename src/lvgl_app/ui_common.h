@@ -93,16 +93,19 @@ void setBatteryLevel(BatteryWidget &widget, int percent, lv_color_t goodColor);
 // per step of charge. A block count that divides 100 (5 blocks = 20 % each)
 // reads at a glance in a way a sliding fill does not. Fewer blocks buy width:
 // the interior needs count*blockW + (count-1) px, plus 7 px of chrome.
+// Colors are fixed by the widget (cyd_ui::kBattery* in ui_style.h), not the
+// theme, and follow the dashboard's light/dark appearance at build time.
 constexpr int SEG_BATTERY_MAX_BLOCKS = 12;
 struct SegBatteryWidget {
   lv_obj_t *blocks[SEG_BATTERY_MAX_BLOCKS];
   int count;
   int lastLit;
   uint32_t lastColor;
+  bool light;
+  bool blinking;
 };
-SegBatteryWidget makeSegBattery(lv_obj_t *parent, const cyd_layout::Item &item, lv_color_t outline,
-                                int blocks = 10);
-void setSegBatteryLevel(SegBatteryWidget &widget, int percent, lv_color_t goodColor);
+SegBatteryWidget makeSegBattery(lv_obj_t *parent, const cyd_layout::Item &item, int blocks = 10);
+void setSegBatteryLevel(SegBatteryWidget &widget, int percent);
 
 // Segmented meter. Blocks light left to right, but each block's colour is
 // fixed by its position on the scale, so the same block always means the same

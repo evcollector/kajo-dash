@@ -108,6 +108,14 @@ light Cyber HUD uses black outlines, meters, icons, text, and battery blocks.
 Explicit accent choices retain their color. Do not restore layered polygon
 shading beneath its frequently updated readouts.
 
+The segmented top-bar battery (`makeSegBattery` / `setSegBatteryLevel`) is the
+same in every theme that uses it and ignores the accent. In dark appearance it
+has a white frame and green blocks, amber (`cyd_ui::kBatteryLow565`) at two
+blocks left and red at one. In light appearance the frame and blocks are always
+black. Below one block's worth the last block blinks (`kBatteryBlinkMs` on,
+then off) in either appearance. The `13_battery_*` preview states cover each
+step. Do not pass theme colors to it or restyle it per theme.
+
 ## Overlays that outlive their screen
 
 An overlay parented to `lv_scr_act()` — the recovery-hold ring, the developer
