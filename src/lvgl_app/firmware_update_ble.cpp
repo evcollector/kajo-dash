@@ -582,9 +582,11 @@ bool startServer() {
   NimBLEAdvertising *advertising = NimBLEDevice::getAdvertising();
   if (!advertising) return false;
   advertising->reset();
+  // Scan response first: the name then goes there and the 128-bit service
+  // UUID fits in the advertisement itself, where filtered scans see it.
+  advertising->enableScanResponse(true);
   advertising->setName("KAJO-Dash Firmware Update");
   advertising->addServiceUUID(FIRMWARE_UPDATE_SERVICE_UUID);
-  advertising->enableScanResponse(true);
   if (!NimBLEDevice::startAdvertising()) return false;
   serverStarted = true;
   notifyStatus();
@@ -654,12 +656,19 @@ void firmwareUpdateBleService() {
   }
   if (!updateModeActive || serverStarted) return;
   const bool controllerReleased = controllerQuiesceForFirmwareUpdate();
-  if (rideLoggerStatus().recording || !controllerReleased) {
+  // Bluetooth Link hands over while its phone may still be attached: its
+  // disconnect is asynchronous. This build has one BLE connection slot, so
+  // advertising cannot start (BLE_HS_ENOMEM) until that link has closed.
+  NimBLEServer *existingServer = NimBLEDevice::isInitialized() ? NimBLEDevice::getServer() : nullptr;
+  const bool phoneReleased = !existingServer || existingServer->getConnectedCount() == 0;
+  if (rideLoggerStatus().recording || !controllerReleased || !phoneReleased) {
     if (millis() - prepareStartedMs >= kPrepareTimeoutMs) {
       updateModeActive = false;
       rideLoggerSetSuspended(false);
       controllerManagerResume();
-      publishStatus(FIRMWARE_UPDATE_BLE_ERROR, "Could not release Bluetooth or ride logger",
+      publishStatus(FIRMWARE_UPDATE_BLE_ERROR,
+                    phoneReleased ? "Could not release Bluetooth or ride logger"
+                                  : "Phone did not disconnect from Bluetooth Link",
                     FIRMWARE_UPDATE_BLE_ERR_PREPARE_TIMEOUT);
     }
     return;

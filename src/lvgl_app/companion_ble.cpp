@@ -323,9 +323,11 @@ bool startServer() {
   NimBLEAdvertising *advertising = NimBLEDevice::getAdvertising();
   if (!advertising) return false;
   advertising->reset();
+  // Scan response first: the name then goes there and the 128-bit service
+  // UUID fits in the advertisement itself, where filtered scans see it.
+  advertising->enableScanResponse(true);
   advertising->setName("KAJO Companion");
   advertising->addServiceUUID(COMPANION_SERVICE_UUID);
-  advertising->enableScanResponse(true);
   if (!NimBLEDevice::startAdvertising()) return false;
   serverStarted = true;
   sessionDeadlineMs = millis() + kAdvertisingTimeoutMs;
