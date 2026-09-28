@@ -6,12 +6,28 @@
 
 constexpr int TFT_BACKLIGHT_PIN = 21;
 
-// Monotonic release number covered by the signed OTA manifest. Increment this
-// for every firmware release that may be installed wirelessly.
+// The version being worked towards: the next release, not the last one. The
+// release builder (option 5 in kajo.bat) releases whatever these say, records
+// it in RELEASES.md, and then moves them on to the next version. Edit them by
+// hand to choose a different next version.
+//
+// Monotonic release number covered by the signed OTA manifest. The display
+// asks for confirmation before installing a lower one.
 #define CYD_FIRMWARE_VERSION_CODE 1UL
-// Human-readable build name, shown on the boot splash. The numeric code above
-// stays the monotonic value OTA compares for rollback; this is display only.
+// Human-readable name. The numeric code above stays the monotonic value OTA
+// compares for rollback; this is display only.
 #define CYD_FIRMWARE_VERSION_NAME "0.01"
+
+// What the display shows as its version, on the boot splash and in Settings.
+// Test packages from the release builder are built with
+// CYD_FIRMWARE_TEST_BUILD (the kajo_test_package environment), so a board
+// running one says so; they carry the same version code as the release they
+// lead up to.
+#ifdef CYD_FIRMWARE_TEST_BUILD
+#define CYD_FIRMWARE_VERSION_LABEL CYD_FIRMWARE_VERSION_NAME "-test"
+#else
+#define CYD_FIRMWARE_VERSION_LABEL CYD_FIRMWARE_VERSION_NAME
+#endif
 
 // VESC UART on the CN1 connector (GND / IO22 / IO27 / 3V3): one JST cable
 // carries the whole link. GPIO16/17 must stay free — on the CYD they are

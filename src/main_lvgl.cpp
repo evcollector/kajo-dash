@@ -857,7 +857,7 @@ static void drawSplash() {
                      triangle.x2, triangle.y2, triangle.color);
   }
   char line[48];
-  snprintf(line, sizeof(line), "Dash Firmware v%s", CYD_FIRMWARE_VERSION_NAME);
+  snprintf(line, sizeof(line), "Dash Firmware v%s", CYD_FIRMWARE_VERSION_LABEL);
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   // Font 2 is already present for calibration/recovery. No new font payload.

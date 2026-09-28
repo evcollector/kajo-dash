@@ -21,6 +21,11 @@ if errorlevel 1 exit /b 1
 "%VENV_PY%" -m PyInstaller "%UPLOADER%" --noconfirm --clean --onefile --console --name "KAJO Firmware Uploader" --paths "%TOOL_DIR%" --collect-data esptool --distpath "%DIST_DIR%" --workpath "%WORK_DIR%" --specpath "%WORK_DIR%"
 if errorlevel 1 exit /b 1
 
+rem The release builder rebuilds the EXE whenever this record no longer
+rem matches its inputs, so an old uploader is never packaged by mistake.
+"%VENV_PY%" "%~dp0uploader_inputs.py" --stamp
+if errorlevel 1 exit /b 1
+
 echo.
 echo Standalone uploader created:
 echo   %DIST_DIR%\KAJO Firmware Uploader.exe

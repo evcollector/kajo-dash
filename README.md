@@ -167,6 +167,7 @@ is unambiguous, and a second hold confirms the settings reset.
 | [Wiring](docs/wiring.md) | Controller wiring, power, pin map |
 | [Development](docs/development.md) | Building, simulator, preview renderer, tests, releases |
 | [Firmware updates](tools/firmware_update/README.md) | Bluetooth uploader, signing, installing your own builds |
+| [Releases](RELEASES.md) | Every published firmware version, with its firmware SHA-256 |
 | [Test senders](docs/test-senders.md) | Flash a spare CYD as a fake VESC or FarDriver |
 | [All docs](docs/README.md) | Protocols, formats, design contracts |
 

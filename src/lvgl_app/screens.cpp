@@ -6124,10 +6124,8 @@ static void showSubmenu() {
                txt("Not reported", "Ei ilmoitettu", "Nicht gemeldet", "Non indiqué", "No informado",
                    "Non riportato"));
     displayModuleInfo(hardwareValue, sizeof(hardwareValue));
-    snprintf(displayFirmware, sizeof(displayFirmware), "%s %s", __DATE__, __TIME__);
-
-    snprintf(displayFirmware, sizeof(displayFirmware), "v%lu  |  %s", (unsigned long)CYD_FIRMWARE_VERSION_CODE,
-             __DATE__);
+    // The same name the boot splash shows; the version code is for OTA only.
+    snprintf(displayFirmware, sizeof(displayFirmware), "v%s  |  %s", CYD_FIRMWARE_VERSION_LABEL, __DATE__);
 
     makeLabelAt(scr, 8, 48,
                 txt("VEHICLE & CONTROLLER", "AJONEUVO JA OHJAIN", "FAHRZEUG & CONTROLLER",

@@ -35,43 +35,59 @@ def configured_version_code() -> int | None:
     return int(match.group(1)) if match else None
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Sign a KAJO-Dash firmware binary for Bluetooth upload")
-    parser.add_argument("--firmware", type=Path, required=True)
-    parser.add_argument("--private-key", type=Path, required=True)
-    parser.add_argument("--version-code", type=int,
-                        help="defaults to CYD_FIRMWARE_VERSION_CODE in include/config.h")
-    parser.add_argument("--output", type=Path,
-                        help="defaults to releases/firmware-v<version>.json")
-    parser.add_argument("--password-env", default="CYD_RELEASE_KEY_PASSWORD",
-                        help="environment variable containing the PEM password; prompts when unset")
-    args = parser.parse_args()
+class ReleaseKeyError(ValueError):
+    """The key opened, but it is not one this firmware can trust."""
 
-    if args.version_code is None:
-        args.version_code = configured_version_code()
-        if args.version_code is None:
-            parser.error(f"could not read CYD_FIRMWARE_VERSION_CODE from {CONFIG_HEADER}")
-    if args.output is None:
-        args.output = ROOT / "releases" / f"firmware-v{args.version_code}.json"
 
-    if args.output.exists():
-        parser.error(f"refusing to overwrite release manifest: {args.output}")
-    output = args.output.resolve()
+def key_needs_password(private_key_path: Path) -> bool:
+    return b"ENCRYPTED" in private_key_path.read_bytes()
+
+
+def load_private_key(private_key_path: Path, password: str | None) -> ec.EllipticCurvePrivateKey:
+    """Open the release key and check it is the pair of the public key compiled in.
+
+    A wrong or missing password raises ValueError. A key of the wrong type, or
+    one that is not the pair of include/firmware_update_public_key.h, raises
+    ReleaseKeyError: no password can fix either.
+    """
+    try:
+        private_key = serialization.load_pem_private_key(
+            private_key_path.read_bytes(), password=password.encode("utf-8") if password is not None else None)
+    except TypeError as exc:
+        # cryptography's way of saying a password was missing, or was given
+        # for a key that has none.
+        raise ValueError(str(exc)) from exc
+    if not isinstance(private_key, ec.EllipticCurvePrivateKey) or not isinstance(private_key.curve, ec.SECP256R1):
+        raise ReleaseKeyError("private key must be ECDSA P-256 (secp256r1)")
+    compiled_point = bytes(int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{2})", PUBLIC_HEADER.read_text()))
+    private_point = private_key.public_key().public_bytes(
+        serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+    if len(compiled_point) != 65 or private_point != compiled_point:
+        raise ReleaseKeyError("private key does not match the public release key compiled into this firmware")
+    return private_key
+
+
+def check_outputs_free(output: Path, firmware: Path) -> None:
+    """Refuse to overwrite any part of an existing release set."""
+    output = output.resolve()
+    if output.exists():
+        raise FileExistsError(f"refusing to overwrite release manifest: {output}")
+    release_image_path = output.with_suffix(".bin")
+    if release_image_path.exists() and release_image_path != firmware.resolve():
+        raise FileExistsError(f"refusing to overwrite release firmware: {release_image_path}")
+    if output.with_suffix(".zlib").exists():
+        raise FileExistsError(f"refusing to overwrite compressed transport: {output.with_suffix('.zlib')}")
+
+
+def sign_release(firmware: Path, private_key: ec.EllipticCurvePrivateKey, version_code: int, output: Path) -> Path:
+    """Write output (.json) and its .bin and .zlib siblings: a signed release set."""
+    check_outputs_free(output, firmware)
+    if not 0 <= version_code <= 0xFFFFFFFF:
+        raise ValueError("version-code must fit an unsigned 32-bit integer")
+    output = output.resolve()
     release_image_path = output.with_suffix(".bin")
     transport_path = output.with_suffix(".zlib")
-    source_image_path = args.firmware.resolve()
-    if release_image_path.exists() and release_image_path != source_image_path:
-        parser.error(f"refusing to overwrite release firmware: {release_image_path}")
-    if transport_path.exists():
-        parser.error(f"refusing to overwrite compressed transport: {transport_path}")
-    if not 0 <= args.version_code <= 0xFFFFFFFF:
-        parser.error("version-code must fit an unsigned 32-bit integer")
-    configured = configured_version_code()
-    if configured is not None and configured != args.version_code:
-        parser.error(
-            f"--version-code {args.version_code} does not match "
-            f"CYD_FIRMWARE_VERSION_CODE {configured} in include/config.h; the signed "
-            "manifest would claim a version the firmware does not report")
+    source_image_path = firmware.resolve()
     image = source_image_path.read_bytes()
     digest = hashlib.sha256(image).digest()
     transport_parts = []
@@ -80,22 +96,9 @@ def main() -> int:
         transport_parts.append(struct.pack("<H", len(compressed)) + compressed)
     transport = b"".join(transport_parts)
     transport_digest = hashlib.sha256(transport).digest()
-    unsigned = ReleaseManifest(args.version_code, len(image), digest, len(transport), transport_digest,
+    unsigned = ReleaseManifest(version_code, len(image), digest, len(transport), transport_digest,
                                bytes(64), release_image_path, transport_path)
 
-    private_pem = args.private_key.read_bytes()
-    password = os.environ.get(args.password_env)
-    if password is None and b"ENCRYPTED" in private_pem:
-        password = getpass.getpass("Release-key password: ")
-    private_key = serialization.load_pem_private_key(
-        private_pem, password=password.encode("utf-8") if password is not None else None)
-    if not isinstance(private_key, ec.EllipticCurvePrivateKey) or not isinstance(private_key.curve, ec.SECP256R1):
-        parser.error("private key must be ECDSA P-256 (secp256r1)")
-    compiled_point = bytes(int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]{2})", PUBLIC_HEADER.read_text()))
-    private_point = private_key.public_key().public_bytes(
-        serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
-    if len(compiled_point) != 65 or private_point != compiled_point:
-        parser.error("private key does not match the public release key compiled into this firmware")
     der_signature = private_key.sign(unsigned.canonical_bytes(), ec.ECDSA(hashes.SHA256()))
     r, s = decode_dss_signature(der_signature)
     raw_signature = r.to_bytes(32, "big") + s.to_bytes(32, "big")
@@ -105,7 +108,7 @@ def main() -> int:
     payload = {
         "protocol": PROTOCOL_VERSION,
         "target": TARGET_NAME,
-        "version_code": args.version_code,
+        "version_code": version_code,
         "image": image_reference,
         "size": len(image),
         "sha256": digest.hex(),
@@ -125,6 +128,50 @@ def main() -> int:
     print(f"Firmware: {release_image_path} ({len(image)} bytes)")
     print(f"SHA-256: {digest.hex()}")
     print(f"Compressed transport: {transport_path} ({len(transport)} bytes, {len(transport) * 100 / len(image):.1f}%)")
+    return output
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Sign a KAJO-Dash firmware binary for Bluetooth upload")
+    parser.add_argument("--firmware", type=Path, required=True)
+    parser.add_argument("--private-key", type=Path, required=True)
+    parser.add_argument("--version-code", type=int,
+                        help="defaults to CYD_FIRMWARE_VERSION_CODE in include/config.h")
+    parser.add_argument("--output", type=Path,
+                        help="defaults to releases/firmware-v<version>.json")
+    parser.add_argument("--password-env", default="CYD_RELEASE_KEY_PASSWORD",
+                        help="environment variable containing the PEM password; prompts when unset")
+    args = parser.parse_args()
+
+    if args.version_code is None:
+        args.version_code = configured_version_code()
+        if args.version_code is None:
+            parser.error(f"could not read CYD_FIRMWARE_VERSION_CODE from {CONFIG_HEADER}")
+    if args.output is None:
+        args.output = ROOT / "releases" / f"firmware-v{args.version_code}.json"
+
+    # Everything that can be checked without the key is, before the password prompt.
+    try:
+        check_outputs_free(args.output, args.firmware)
+    except FileExistsError as exc:
+        parser.error(str(exc))
+    if not 0 <= args.version_code <= 0xFFFFFFFF:
+        parser.error("version-code must fit an unsigned 32-bit integer")
+    configured = configured_version_code()
+    if configured is not None and configured != args.version_code:
+        parser.error(
+            f"--version-code {args.version_code} does not match "
+            f"CYD_FIRMWARE_VERSION_CODE {configured} in include/config.h; the signed "
+            "manifest would claim a version the firmware does not report")
+
+    password = os.environ.get(args.password_env)
+    if password is None and key_needs_password(args.private_key):
+        password = getpass.getpass("Release-key password: ")
+    try:
+        private_key = load_private_key(args.private_key, password)
+        sign_release(args.firmware, private_key, args.version_code, args.output)
+    except (ValueError, FileExistsError) as exc:
+        parser.error(str(exc))
     return 0
 
 

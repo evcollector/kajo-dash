@@ -39,15 +39,20 @@ if not exist "%SCRIPTS%\" (
 )
 
 :menu
-rem Re-read on every redraw: a release (option 5) bumps it.
+rem Re-read on every redraw: a release (option 5) moves config.h on to the next
+rem version and adds a row to RELEASES.md.
 set "FW_NAME=?"
 set "FW_CODE=?"
+set "LAST_RELEASE=none yet"
 for /f "tokens=3" %%V in ('findstr /c:"#define CYD_FIRMWARE_VERSION_NAME" "%PROJECT_DIR%\include\config.h" 2^>nul') do set "FW_NAME=%%~V"
 for /f "tokens=3" %%V in ('findstr /c:"#define CYD_FIRMWARE_VERSION_CODE" "%PROJECT_DIR%\include\config.h" 2^>nul') do set "FW_CODE=%%V"
 set "FW_CODE=%FW_CODE:UL=%"
+rem RELEASES.md lists releases oldest first, so the last row read is the newest.
+for /f "tokens=1-3 delims=| " %%A in ('findstr /r /c:"^| *[0-9][0-9.]* *| *[0-9]" "%PROJECT_DIR%\RELEASES.md" 2^>nul') do set "LAST_RELEASE=%%A (version code %%B, %%C)"
 cls
 echo.
-echo   KAJO-Dash %FW_NAME%   (version code %FW_CODE%)
+echo   KAJO-Dash %FW_NAME% in development   (version code %FW_CODE%)
+echo   Last release: %LAST_RELEASE%
 echo   ==========================================
 echo.
 echo   Build and run
@@ -57,8 +62,8 @@ echo     3. Layout editor         edit tools\layout.json
 echo.
 echo   Firmware
 echo     4. Flash over USB        build and install on a connected display
-echo     5. Build a release       next version, sign, package, tag
-echo     9. Upload over Bluetooth install an already-signed release
+echo     5. Package firmware      test package, or a release to publish
+echo     9. Upload over Bluetooth install this version's signed package
 echo.
 echo   Test senders
 echo     6. Fake VESC             flash a second board as a VESC
@@ -185,6 +190,8 @@ set "KEEP_OPEN="
 set "EXIT_CODE=0"
 set "REQUIRED_VERSION="
 if exist "%PACKAGE_DIR%include\config.h" for /f "tokens=3" %%V in ('findstr /c:"#define CYD_FIRMWARE_VERSION_CODE" "%PACKAGE_DIR%include\config.h"') do set "REQUIRED_VERSION=%%V"
+set "REQUIRED_VERSION_NAME=this version"
+if exist "%PACKAGE_DIR%include\config.h" for /f "tokens=3" %%V in ('findstr /c:"#define CYD_FIRMWARE_VERSION_NAME" "%PACKAGE_DIR%include\config.h"') do set "REQUIRED_VERSION_NAME=%%~V"
 if defined REQUIRED_VERSION set "REQUIRED_VERSION=!REQUIRED_VERSION:UL=!"
 
 rem A public release ZIP contains this launcher, the standalone uploader EXE,
@@ -216,13 +223,16 @@ shift
 if defined MANIFEST goto upd_collect_arguments
 for /f "delims=" %%F in ('dir /b /a-d /o-d "%PACKAGE_DIR%*.json" 2^>nul') do call :upd_consider_manifest "%PACKAGE_DIR%%%F"
 for /f "delims=" %%F in ('dir /b /a-d /o-d "%PACKAGE_DIR%releases\*.json" 2^>nul') do call :upd_consider_manifest "%PACKAGE_DIR%releases\%%F"
+rem Test packages from option 5 carry the version code of the release they lead up to.
+for /f "delims=" %%F in ('dir /b /a-d /o-d "%PACKAGE_DIR%releases\test\*.json" 2^>nul') do call :upd_consider_manifest "%PACKAGE_DIR%releases\test\%%F"
 if defined MANIFEST goto upd_collect_arguments
 
 
 echo No compatible signed firmware release was found beside this launcher.
 echo.
 if exist "%PACKAGE_DIR%scripts\" (
-  echo Build a signed release with menu option 5, then try again.
+  echo Make a test package or a release of %REQUIRED_VERSION_NAME% with menu option 5,
+  echo then try again.
 ) else (
   echo Download and extract the complete Windows updater ZIP from the project's
   echo GitHub Releases page, then run this launcher from the extracted folder.

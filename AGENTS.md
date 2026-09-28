@@ -70,7 +70,7 @@ tools, protocols, and internal data formats should move forward together.
 Do not add compatibility shims for superseded prototype versions unless the
 user explicitly requests one; prefer a clear version failure or a clean reset.
 
-Revisit this section once a signed release (a `v*` tag built by
-`scripts\make_release.bat` / `kajo.bat` option 5) is published: from then on,
+Revisit this section once a signed release is published, which `RELEASES.md`
+records (a `v*` tag built by `kajo.bat` option 5, **R**): from then on,
 settings, ride logs, and update protocols installed on real devices may need
 an explicit migration path.

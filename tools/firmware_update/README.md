@@ -6,14 +6,21 @@ key whose public half is compiled into the firmware. The uploader and the
 display firmware must use the same OTA protocol version; older variants are not
 supported.
 
-For an ordinary release, none of the individual commands below need to be run by
-hand -- choose option 5 in `kajo.bat` (or double-click `scripts\make_release.bat`)
-and press Enter through the prompts. It picks the next version number, builds,
-signs and packages, then commits and tags the bump locally. The rest of this
-file documents what it does, and is what
-you want when something needs doing differently.
+For a test package or an ordinary release, none of the individual commands
+below need to be run by hand -- choose option 5 in `kajo.bat` (or double-click
+`scripts\make_release.bat`), pick **T** or **R**, check the plan it prints and
+type the key password. It packages the version in `include/config.h`: a test
+package goes to `releases\test\` and shows as `0.01-test` on the display; a
+release goes to `releases\` and `dist\`, is recorded in `RELEASES.md`, committed
+and tagged, and then moves `include/config.h` on to the next version. A failed
+step changes nothing, so it can simply be run again. "Test packages and
+releases" in `docs/development.md` and the docstring of `make_release.py` have
+the details, including the unattended `--yes` mode. The rest of this file
+documents what it does, and is what you want when something needs doing
+differently.
 
-Create a dedicated virtual environment and install the uploader dependencies:
+`scripts\make_release.bat` creates the project's virtual environment on first
+use. To set it up by hand instead:
 
 ```powershell
 py -3 -m venv .venv
@@ -37,8 +44,9 @@ Commit the generated public-key header, increment
 copy the private key into the uploader directory.
 
 `CYD_FIRMWARE_VERSION_CODE` in `include/config.h` is the number the display
-reports about itself and the number OTA compares for rollback. Increment it for
-every release that may be installed wirelessly. Do not reset it through OTA:
+reports about itself and the number OTA compares for rollback. The release
+builder moves it on after every release; test packages share the code of the
+release they lead up to. Do not reset it through OTA:
 going backwards is intentionally treated as a downgrade and needs confirmation
 on the panel, so rebase with a wired flash instead. Protocol version `3` is a
 separate wire-format identifier and must not be reset with the firmware
@@ -100,6 +108,13 @@ ZIP contains no signing key and is suitable for a GitHub Release attachment.
 The uploader EXE bundles esptool for the USB install.
 `build_windows_uploader.bat` passes `--collect-data esptool` so that esptool's
 flasher stubs travel with it.
+
+After a successful build, `build_windows_uploader.bat` records what the EXE was
+built from in `KAJO Firmware Uploader.inputs` beside it: a fingerprint of the
+uploader's modules, its requirements and build script, and the installed package
+versions, plus the EXE's own hash (see `uploader_inputs.py`). The release
+builder rebuilds the EXE whenever that record is missing or no longer matches,
+so an uploader from before a change is never packaged by mistake.
 
 ## End user: first install over USB
 
