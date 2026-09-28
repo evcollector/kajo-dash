@@ -63,44 +63,44 @@ echo.
 echo   Firmware
 echo     4. Flash over USB        build and install on a connected display
 echo     5. Package firmware      test package, or a release to publish
-echo     9. Upload over Bluetooth install this version's signed package
+echo     6. Upload over Bluetooth install this version's signed package
 echo.
 echo   Test senders
-echo     6. Fake VESC             flash a second board as a VESC
-echo     7. Fake FarDriver        flash a second board as a FarDriver
+echo     7. Fake VESC             flash a second board as a VESC
+echo     8. Fake FarDriver        flash a second board as a FarDriver
 echo.
 if exist "%APP_HOOK%" (
   echo   Companion app
-  echo     8. Install on phone      build the APK and adb install it
+  echo     9. Install on phone      build the APK and adb install it
   echo.
 )
 echo     Q. Quit
 echo.
 
 rem The key list stays fixed even without the app: CHOICE reports a key by its
-rem position, so dropping 8 would shift 9 and Q onto the wrong branches. Without
-rem the app, 8 just redraws the menu.
+rem position, so the app keeps the last number and Q keeps its place. Without
+rem the app, 9 just redraws the menu.
 choice /c 123456789Q /n /m "  Choose: "
 if errorlevel 255 goto quit
 if errorlevel 10 goto quit
 if errorlevel 9 (
+  if exist "%APP_HOOK%" call :run "%APP_HOOK%"
+  goto menu
+)
+if errorlevel 8 (
+  call :run "%SCRIPTS%\upload_fardriver_test.bat"
+  goto menu
+)
+if errorlevel 7 (
+  call :run "%SCRIPTS%\upload_vesc_test.bat"
+  goto menu
+)
+if errorlevel 6 (
   cls
   set "UPLOAD_MODE=ble"
   set "FROM_MENU=1"
   call :updater
   set "FROM_MENU="
-  goto menu
-)
-if errorlevel 8 (
-  if exist "%APP_HOOK%" call :run "%APP_HOOK%"
-  goto menu
-)
-if errorlevel 7 (
-  call :run "%SCRIPTS%\upload_fardriver_test.bat"
-  goto menu
-)
-if errorlevel 6 (
-  call :run "%SCRIPTS%\upload_vesc_test.bat"
   goto menu
 )
 if errorlevel 5 (

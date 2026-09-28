@@ -28,9 +28,10 @@ and can still be run directly; this page names them that way.
 | 3 | Layout editor | `scripts\run_layout_editor_lvgl.bat` |
 | 4 | Flash over USB | `scripts\upload_firmware_usb.bat` |
 | 5 | Package firmware: test package or release | `scripts\make_release.bat [--test \| --release]` |
-| 6 | Fake VESC | `scripts\upload_vesc_test.bat` |
-| 7 | Fake FarDriver | `scripts\upload_fardriver_test.bat` |
-| 9 | Upload over Bluetooth | `kajo.bat --ble [release.json] [uploader options]` |
+| 6 | Upload over Bluetooth | `kajo.bat --ble [release.json] [uploader options]` |
+| 7 | Fake VESC | `scripts\upload_vesc_test.bat` |
+| 8 | Fake FarDriver | `scripts\upload_fardriver_test.bat` |
+| 9 | Install the companion app (private checkout only) | `android-companion\kajo-app.bat` |
 | — | Install a signed package over USB | `kajo.bat --usb [release.json] [--port COMx] [--erase-all]` |
 
 On other platforms, use the `pio` commands directly.
@@ -209,7 +210,7 @@ signing key and use the Bluetooth uploader for your own builds. See
 
 ### Installing a signed release from a checkout
 
-Choose **9. Upload over Bluetooth** in `kajo.bat`, or run `kajo.bat --ble`. On
+Choose **6. Upload over Bluetooth** in `kajo.bat`, or run `kajo.bat --ble`. On
 the display, first open **Settings > Information > Bluetooth Link**. The
 launcher selects a protocol 3 manifest matching the version in
 `include/config.h`, checking the root, then `releases/`, then the test package
@@ -239,7 +240,7 @@ that version in one of two ways:
   environment, so the display shows `0.01-test` on the boot splash and in
   Settings, signed and packaged into `releases\test\` for your own boards. It
   replaces the previous test package, commits nothing, tags nothing and leaves
-  the version alone, so make as many as you like. Install one with option 9,
+  the version alone, so make as many as you like. Install one with option 6,
   `kajo.bat --usb`, or the launcher inside its ZIP. It carries the same version
   code as the release it leads up to, so the release later installs over it
   without a downgrade prompt.

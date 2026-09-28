@@ -670,7 +670,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"To publish: git push origin {plan.branch} {plan.tag}, then attach the Windows ZIP, "
               f"firmware-v{plan.code}.kajofw and {INDEX_NAME} to a GitHub release for {plan.tag}.")
     else:
-        print(f"Install it with option 9 in kajo.bat (Bluetooth), kajo.bat --usb (cable), or the "
+        print(f"Install it with option 6 in kajo.bat (Bluetooth), kajo.bat --usb (cable), or the "
               f"ZIP's own launcher. The display shows {plan.label}.")
     return 0
 
