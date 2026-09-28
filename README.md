@@ -103,9 +103,10 @@ without migration until the first one.
 
 ## Safety
 
-This displays telemetry. It does not control the vehicle, and it is not safety
-equipment. Range, state of charge and wear estimates are derived, not measured,
-and will drift from reality; check anything important with VESC Tool or a meter.
+Currently this firmware just displays and records telemetry (Though profiles and settings adjustment support is coming). 
+It does not control the vehicle, and it is not safety equipment. 
+Range, state of charge and wear estimates are derived, and can drift from reality;
+check anything important with VESC Tool or a meter.
 Wiring mistakes on an electric vehicle can destroy a controller or start a fire.
 If you are unsure about the wiring, do not guess.
 
@@ -115,35 +116,62 @@ If you are unsure about the wiring, do not guess.
   flash, no PSRAM.
 - **Controller:** a VESC-based controller (UART or Bluetooth), or a FarDriver
   (Bluetooth).
-- **For a wired link:** four jumper wires or a JST cable to the controller's
-  COMM port.
-- **Optional:** a microSD card for ride logging.
+- **For a wired link:** four jumper wires (shielding might be useful on higher voltage systems) or a JST cable to the controller's COMM port.
+- **Optional:** a microSD card for ride logging. Can be anything, from a hundred MB and up.
 
 ## Getting started
 
 ### 1. Flash the firmware
 
-On Windows, download `KAJO-Dash-Firmware-v…-Windows.zip` from the latest
-release and extract it. Connect the display with a USB data cable, double-click
-`Install or Update KAJO-Dash.bat` and choose **1. Install over USB cable**.
-Nothing else needs installing: no Python, no PlatformIO. If the display is not
-found, hold BOOT, tap RST, and keep holding BOOT until writing starts.
+The easiest way is the Windows installer. It needs nothing else installed: no
+Python, no PlatformIO.
 
-Later updates use the same launcher: open **Settings > Information > Bluetooth
-Link** on the display and choose **2. Update over Bluetooth**. No cable needed.
+1. Download `KAJO-Dash-Firmware-v…-Windows.zip` from the
+   [latest release](https://github.com/evcollector/kajo-dash/releases/latest).
+2. Extract every file from the ZIP (right-click it, **Extract All**).
+3. Connect the CYD to the computer with a USB **data** cable. Charge-only
+   cables do not work.
+4. Double-click `Install or Update KAJO-Dash.bat`.
+5. Choose **1. Install over USB cable**.
+6. Leave the cable connected until the display restarts into KAJO-Dash.
 
-To build from source instead, you need
-[PlatformIO](https://docs.platformio.org/en/latest/core/installation/index.html):
+**Display not found?** Hold the **BOOT** button on the CYD, tap **RST**, and
+keep holding BOOT until writing starts. If no USB device shows up at all, the
+installer links the USB drivers the board needs (Windows usually installs them
+by itself).
+
+Reinstalling keeps the settings already on the display.
+
+> [!NOTE]
+> No release has been published yet. Until the first one, use
+> [Build from source](#build-from-source) below.
+
+**Updating later** needs no cable:
+
+1. Download and extract the newer release, as above.
+2. On the display, open **Settings > Information > Bluetooth Link**.
+3. Double-click `Install or Update KAJO-Dash.bat` and choose
+   **2. Update over Bluetooth**.
+4. Keep the display powered until it verifies the update and restarts.
+
+<a name="build-from-source"></a>
+<details>
+<summary><b>Build from source</b> (macOS, Linux, or developers)</summary>
+
+<br>
+
+You need [PlatformIO](https://docs.platformio.org/en/latest/core/installation/index.html):
 
 ```bash
-git clone <this repository>
+git clone https://github.com/evcollector/kajo-dash.git
 cd kajo-dash
 pio run -e kajo -t upload
 ```
 
-On Windows you can double-click `kajo.bat` in the checkout and choose
-**4. Flash over USB** instead. If PlatformIO is missing, it offers to install
-it for you.
+On Windows you can instead double-click `kajo.bat` in the checkout and choose
+**4. Flash over USB**. If PlatformIO is missing, it offers to install it.
+
+</details>
 
 ### 2. Connect the controller
 
