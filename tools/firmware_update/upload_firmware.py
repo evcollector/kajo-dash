@@ -31,6 +31,7 @@ from protocol import (
     signature_commands,
     transport_sectors,
 )
+from usb_flash import DEFAULT_BAUD, flash_release
 
 COMPANION_SERVICE_UUID = "7c7d7f00-2aa7-4f62-a497-6a9b02d14d00"
 COMPANION_CONTROL_UUID = "7c7d7f01-2aa7-4f62-a497-6a9b02d14d00"
@@ -271,6 +272,12 @@ async def upload(args) -> None:
             print("The display will restart automatically five seconds after verification.")
 
 
+def install_over_usb(args) -> None:
+    release = load_release_manifest(args.manifest, args.firmware)
+    flash_release(args.manifest, release, args.port, args.baud, args.erase_all)
+    print("Firmware written and verified. The display is restarting.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Upload a signed firmware release to a KAJO-Dash display")
     parser.add_argument("manifest", type=Path, help="signed release JSON produced by sign_firmware.py")
@@ -281,14 +288,28 @@ def main() -> int:
     parser.add_argument("--reboot", action="store_true", help="restart immediately after device verification")
     parser.add_argument("--reboot-staged", action="store_true",
                         help="restart an image already verified by the display without starting another transfer")
+    wired = parser.add_argument_group("USB install", "a first install, or a display that no longer starts")
+    wired.add_argument("--usb", action="store_true",
+                       help="install over a USB cable instead of Bluetooth")
+    wired.add_argument("--port", help="serial port such as COM5 (default: the one USB serial adapter found)")
+    wired.add_argument("--baud", type=int, default=DEFAULT_BAUD)
+    wired.add_argument("--erase-all", action="store_true",
+                       help="erase the whole flash first, which also resets the display's settings")
     args = parser.parse_args()
     try:
-        asyncio.run(upload(args))
+        if args.usb:
+            install_over_usb(args)
+        else:
+            asyncio.run(upload(args))
     except KeyboardInterrupt:
+        if args.usb:
+            print("\nInstall interrupted. The display may not start until a complete install "
+                  "has been run again.", file=sys.stderr)
+            return 130
         print("\nUpload interrupted; reconnect to resume from the device-reported offset.", file=sys.stderr)
         return 130
     except Exception as exc:
-        print(f"Upload failed: {exc}", file=sys.stderr)
+        print(f"{'Install' if args.usb else 'Upload'} failed: {exc}", file=sys.stderr)
         return 1
     return 0
 

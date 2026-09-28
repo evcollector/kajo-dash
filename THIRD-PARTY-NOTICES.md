@@ -29,7 +29,13 @@ and `NOTICE`, and the `licenses/` texts alongside the signed firmware.
 | NimBLE-Arduino | 2.5.1 | Apache-2.0 | `licenses/Apache-2.0-NimBLE-Arduino.txt` |
 | mbedTLS (`ecdsa`, `sha256`) | via ESP-IDF | Apache-2.0 | `licenses/Apache-2.0.txt` |
 | miniz (`esp32/rom/miniz.h`) | via ESP-IDF ROM | MIT | — |
+| ESP-IDF second-stage bootloader | via the Arduino core | Apache-2.0 | `licenses/Apache-2.0.txt` |
 | Rajdhani (SemiBold, Bold) | Indian Type Foundry | SIL OFL 1.1 | `licenses/OFL-1.1-Rajdhani.txt` |
+
+The bootloader is a separate image rather than part of the `.bin`, but the
+Windows updater ZIP ships it, with the partition table and the Arduino core's
+`boot_app0.bin` (an all-`0xFF` OTA-data reset), so the release can be installed
+over USB on a blank board. It is covered by the same notices.
 
 ### Arduino core for ESP32
 
@@ -93,9 +99,11 @@ commit the WebView2 runtime into this repository.
 ## Redistributed in the Windows firmware uploader
 
 The PyInstaller executable in the Windows release ZIP bundles the uploader's
-Python runtime and BLE dependencies. The package includes these licence texts
-alongside the executable. Recheck the inventory when rebuilding the executable
-with different dependency versions.
+Python runtime, its BLE dependencies, and esptool for the USB install. The
+package includes these licence texts alongside the executable. Recheck the
+inventory when rebuilding the executable with different dependency versions:
+PyInstaller's `Analysis-00.toc` in `.pio/pyinstaller-firmware-uploader/` lists
+what was bundled.
 
 | Component | Version used for this inventory | Licence | Text |
 | --- | --- | --- | --- |
@@ -103,8 +111,23 @@ with different dependency versions.
 | bleak | 1.1.1 | MIT | `licenses/MIT-Bleak.txt` |
 | PyWinRT runtime and projections | 3.2.1 | MIT | `licenses/MIT-PyWinRT.txt` |
 | typing_extensions | 4.16.0 | PSF-2.0 | `licenses/PSF-Typing-Extensions.txt` |
+| esptool | 4.12.0 | GPL-2.0-or-later | `licenses/GPL-2.0-esptool.txt` |
+| esptool legacy flasher stub (`stub_flasher/1`) | 1.11.1 | GPL-2.0-or-later | `licenses/GPL-2.0-esptool.txt` |
+| esp-flasher-stub (`stub_flasher/2`) | 0.7.0 | Apache-2.0 OR MIT | `licenses/MIT-esp-flasher-stub.txt` |
+| pySerial | 3.5 | BSD-3-Clause | `licenses/BSD-3-Clause-pySerial.txt` |
+| IntelHex | 2.3.0 | BSD-3-Clause | `licenses/BSD-3-Clause-IntelHex.txt` |
 | PyInstaller bootloader and loader | 6.22.2 | GPL-2.0-or-later with bootloader exception | `licenses/PyInstaller-COPYING.txt` |
 | PyInstaller runtime hooks | 6.22.2 | Apache-2.0 | `licenses/Apache-2.0.txt` |
+
+esptool and its legacy flasher stub are GPL-2.0-or-later, which this project
+takes under GPL-3.0, the same licence as the rest of the uploader. Their
+corresponding source is Espressif's published release, at
+<https://github.com/espressif/esptool/tree/v4.12.0> and
+<https://github.com/espressif/esptool-legacy-flasher-stub/releases/tag/v1.11.1>;
+the uploader's own source, including how it calls esptool, is in
+`tools/firmware_update/`. esptool pulls in further packages for commands the
+uploader never runs (espsecure, espefuse); PyInstaller leaves them out because
+nothing imports them, so they are not listed.
 
 ## Redistributed in the Android companion APK
 

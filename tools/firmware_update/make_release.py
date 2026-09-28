@@ -268,7 +268,10 @@ def main() -> int:
          "--firmware", str(FIRMWARE_BIN), "--private-key", str(key)], "signing")
 
     rule("Package")
-    artifacts = [manifest]
+    # Straight after signing, while .pio/build/kajo still holds the signed
+    # build: the USB layout takes that build's bootloader and partition table.
+    run([sys.executable, str(TOOLS / "package_usb.py"), str(manifest)], "USB layout")
+    artifacts = [manifest, manifest.with_name(f"{manifest.stem}-usb.json")]
     if confirm("Build the .kajofw phone bundle and kajo-update.json?", True):
         run([sys.executable, str(TOOLS / "package_kajofw.py"), str(manifest),
              "--version-name", new_name], ".kajofw packaging")

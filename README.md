@@ -93,7 +93,16 @@ If you are unsure about the wiring, do not guess.
 
 ### 1. Flash the firmware
 
-The first install is over USB and needs
+On Windows, download `KAJO-Dash-Firmware-v…-Windows.zip` from the latest
+release and extract it. Connect the display with a USB data cable, double-click
+`Install or Update KAJO-Dash.bat` and choose **1. Install over USB cable**.
+Nothing else needs installing: no Python, no PlatformIO. If the display is not
+found, hold BOOT, tap RST, and keep holding BOOT until writing starts.
+
+Later updates use the same launcher: open **Settings > Information > Bluetooth
+Link** on the display and choose **2. Update over Bluetooth**. No cable needed.
+
+To build from source instead, install
 [PlatformIO](https://docs.platformio.org/en/latest/core/installation/index.html):
 
 ```bash
@@ -102,13 +111,8 @@ cd kajo-dash
 pio run -e kajo -t upload
 ```
 
-On Windows you can double-click `kajo.bat` and choose **4. Flash over USB**
-instead. If the upload fails with `Wrong boot mode detected`, hold BOOT, tap
-RST, and keep holding BOOT until the upload starts.
-
-After that, updates can go over Bluetooth: download the Windows updater ZIP
-from a release, open **Settings > Information > Bluetooth Link** on the
-display, and run `Update KAJO-Dash Firmware.bat`. No Python or cable needed.
+On Windows you can double-click `kajo.bat` in the checkout and choose
+**4. Flash over USB** instead.
 
 ### 2. Connect the controller
 

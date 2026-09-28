@@ -31,6 +31,7 @@ and can still be run directly; this page names them that way.
 | 6 | Fake VESC | `scripts\upload_vesc_test.bat` |
 | 7 | Fake FarDriver | `scripts\upload_fardriver_test.bat` |
 | 9 | Upload over Bluetooth | `kajo.bat --ble [release.json] [uploader options]` |
+| — | Install a signed release over USB | `kajo.bat --usb [release.json] [--port COMx] [--erase-all]` |
 
 On other platforms, use the `pio` commands directly.
 
@@ -215,6 +216,12 @@ version, checking the root and then `releases/` (newest first in each
 directory). It uses the standalone uploader EXE when available, otherwise
 prepares its Python environment and starts the upload. After the uploader
 finishes, press a key to return to the menu.
+
+`kajo.bat --usb` writes the same signed release over a USB cable with esptool,
+without PlatformIO, as the release ZIP's **1. Install over USB cable** does. It
+only considers releases with a `-usb.json` layout beside them, which the
+release builder writes. The display's settings are kept unless `--erase-all` is
+passed.
 
 ### Building a release
 

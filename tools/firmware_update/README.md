@@ -1,4 +1,4 @@
-# Signed Bluetooth firmware uploader
+# Signed firmware uploader: Bluetooth updates and USB installs
 
 The display accepts firmware only while its Firmware Update screen is active
 and only when the fixed manifest is signed by the offline ECDSA P-256 release
@@ -63,6 +63,21 @@ This produces three public files with matching stems: `.json`, `.bin`, and
 `.zlib`. The JSON uses relative sibling paths, so the set can be moved to
 another computer. The private key is never copied into `releases`.
 
+Straight after signing, while `.pio\build\kajo` still holds the signed build,
+add the USB install layout:
+
+```powershell
+.\.venv\Scripts\python tools\firmware_update\package_usb.py releases\firmware-v5.json
+```
+
+It copies that build's bootloader and partition table, and the Arduino core's
+`boot_app0.bin`, beside the release as `firmware-v5-bootloader.bin`,
+`-partitions.bin` and `-boot_app0.bin`, and records where each image goes in
+`firmware-v5-usb.json` (the format is in `usb_flash.py`). It refuses if the
+build directory no longer holds the signed image. None of these files is
+signed: a USB install needs physical access, and the display's signature check
+only guards the Bluetooth path.
+
 ## Maintainer: build the public Windows package
 
 Build the standalone uploader and package it with a signed release:
@@ -77,22 +92,48 @@ tools\firmware_update\build_windows_uploader.bat
 ```
 
 The resulting `dist\KAJO-Dash-Firmware-v5-Windows.zip` contains the uploader EXE,
-double-click launcher, signed JSON/bin/zlib set, short instructions, and copies
-of `LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.md` and the `licenses/` texts. It
-contains no signing key and is suitable for a GitHub Release attachment.
+double-click launcher, signed JSON/bin/zlib set, its USB install layout, short
+instructions, and copies of `LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.md` and
+the `licenses/` texts. The packager refuses a release without a USB layout. The
+ZIP contains no signing key and is suitable for a GitHub Release attachment.
+
+The uploader EXE bundles esptool for the USB install.
+`build_windows_uploader.bat` passes `--collect-data esptool` so that esptool's
+flasher stubs travel with it.
+
+## End user: first install over USB
+
+The user extracts the complete Windows updater ZIP, connects the display with a
+USB data cable, double-clicks `Install or Update KAJO-Dash.bat` and chooses
+**1. Install over USB cable**. The uploader picks the one USB serial adapter
+(CH340/CH9102, CP210x, FTDI), ignoring Bluetooth serial ports, and asks which
+one if there are several. It checks the release against its signed manifest
+and the USB layout, then writes the bootloader, partition table, OTA-data reset
+and firmware with esptool, which verifies each image and resets the board. NVS
+is never written, so a reinstall keeps the display's settings; `--erase-all`
+starts clean.
+
+If the board does not enter its download mode by itself, the uploader explains
+the BOOT/RST sequence and offers another attempt. A transfer that fails after
+connecting is retried at 115200 baud. When no adapter is found, it says so and
+links the CH340 and CP210x drivers, which Windows usually installs by itself.
+
+In a source checkout, run `kajo.bat --usb`, or call the uploader directly:
+
+```powershell
+.\.venv\Scripts\python tools\firmware_update\upload_firmware.py `
+  releases\firmware-v5.json --usb --port COM4
+```
 
 ## End user: install an update
 
 The user extracts the complete Windows updater ZIP, opens Settings > Information
-> Bluetooth Link on the display, and double-clicks:
-
-```bat
-"Update KAJO-Dash Firmware.bat"
-```
+> Bluetooth Link on the display, double-clicks `Install or Update KAJO-Dash.bat`
+and chooses **2. Update over Bluetooth**.
 
 In a source checkout, use menu option 9 in `kajo.bat` or `kajo.bat --ble`.
 The release packager copies that same script under the name above; without the
-development scripts directory it starts the updater directly.
+development scripts directory it opens the two-choice installer menu.
 
 The public launcher selects the bundled protocol 3 manifest, discovers Bluetooth Link,
 asks the display to switch to its signed OTA service, transfers and verifies the

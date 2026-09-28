@@ -28,6 +28,8 @@ either layout.
 `brand/png/kajo-banner-youtube-road-fade.png` follows the wider reference
 composition with clean mountain and tree ends; only the outer tips of the
 orange road borders fade into black. Its SVG is in `brand/`.
+`brand/png/kajo-banner-github.png` uses the same road-fade composition at 3:1;
+its editable source is `brand/kajo-banner-github.svg`.
 Logos are flat; only the scenes carry the soft ring and road
 glow of the original splash illustration, and in the scenes the mountain range
 overlaps the foot of the wordmark as it does there. The central mountains and

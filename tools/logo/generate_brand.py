@@ -186,13 +186,18 @@ RIGHT_WIDE_BOUNDED_RIDGE = [(0, 146, 7), (30, 130, 1), (60, 149, 6),
                             (175, 174, 3), (190, 182, 1)]
 
 
-def outer_mountains(edge, side, ridge):
+def outer_mountains(edge, side, ridge, *, seam_overlap=0):
     """Continue the reference silhouette with varied peaks and narrow facets."""
     top = [(edge + side * d, y) for d, y, _ in ridge]
     dark_top = [(edge + side * d, y + rim) for d, y, rim in ridge]
+    if seam_overlap:
+        # Extend under the central polygon so antialiasing cannot expose a join.
+        top[0] = (edge - side * seam_overlap, top[0][1])
+        dark_top[0] = (edge - side * seam_overlap, dark_top[0][1])
     far = top[-1][0]
-    out = [f'<path fill="#52555a" d="{poly(top + [(far, 185), (edge, 185)])}"/>',
-           f'<path fill="#171a1d" d="{poly(dark_top + [(far, 185), (edge, 185)])}"/>']
+    inner = edge - side * seam_overlap
+    out = [f'<path fill="#52555a" d="{poly(top + [(far, 185), (inner, 185)])}"/>',
+           f'<path fill="#171a1d" d="{poly(dark_top + [(far, 185), (inner, 185)])}"/>']
     inward = -side
     for d, y, _ in ridge[1:]:
         if y < 140:
@@ -215,13 +220,25 @@ def pine(x, base, h):
     return f'<path fill="#000000" d="{poly(pts)}"/>'
 
 
-def outer_trees(edge, side, extent, seed, *, taper=False):
+def outer_trees(edge, side, extent, seed, *, taper=False,
+                ground_width=None, ridge=None):
     rnd = random.Random(seed)
     out, distance = [], 9.0
     while distance < extent + 15:
         x = edge + side * distance
         base = rnd.uniform(177, 181)
         height = rnd.uniform(20, 29)
+        if ground_width is not None and ridge is not None:
+            if distance >= ridge[-1][0]:
+                break
+            cx = ground_width / 2
+            slope = max(0, min(1, (abs(x - cx) - 6) / (cx - 6)))
+            base = HORIZON + (182 - HORIZON) * slope + 2
+            for (d0, y0, _), (d1, y1, _) in zip(ridge, ridge[1:]):
+                if distance <= d1:
+                    ridge_y = y0 + (y1 - y0) * (distance - d0) / (d1 - d0)
+                    height = min(height, base - ridge_y - 2)
+                    break
         if taper:
             height *= max(0, min(1, (extent - distance) / 32))
         if height >= 3:
@@ -264,16 +281,22 @@ def scene(width: float, height: float = 240.0, *, include_brand=True,
     if core_left > 0:
         parts.append(outer_mountains(core_left, -1,
                                      LEFT_WIDE_BOUNDED_RIDGE if wide_bounded else
-                                     LEFT_BOUNDED_RIDGE if bounded else LEFT_OUTER_RIDGE))
+                                     LEFT_BOUNDED_RIDGE if bounded else LEFT_OUTER_RIDGE,
+                                     seam_overlap=2 if wide_bounded else 0))
     if core_right < width - 1:
         parts.append(outer_mountains(core_right, 1,
                                      RIGHT_WIDE_BOUNDED_RIDGE if wide_bounded else
-                                     RIGHT_BOUNDED_RIDGE if bounded else RIGHT_OUTER_RIDGE))
+                                     RIGHT_BOUNDED_RIDGE if bounded else RIGHT_OUTER_RIDGE,
+                                     seam_overlap=2 if wide_bounded else 0))
     parts.append(f'<g transform="translate({f(core_left)} 0)">{CORE_MOUNTAINS}</g>')
     if core_left > 0:
-        parts.append(outer_trees(core_left, -1, core_left, 17, taper=bounded))
+        parts.append(outer_trees(core_left, -1, core_left, 17, taper=bounded,
+                                 ground_width=width if wide_bounded else None,
+                                 ridge=LEFT_WIDE_BOUNDED_RIDGE if wide_bounded else None))
     if core_right < width - 1:
-        parts.append(outer_trees(core_right, 1, width - core_right, 31, taper=bounded))
+        parts.append(outer_trees(core_right, 1, width - core_right, 31, taper=bounded,
+                                 ground_width=width if wide_bounded else None,
+                                 ridge=RIGHT_WIDE_BOUNDED_RIDGE if wide_bounded else None))
     parts.append(f'<g transform="translate({f(core_left)} 0)">{CORE_TREES}</g>')
     # Ground: black foreground that meets the horizon at the road.
     parts.append(f'<path fill="{BLACK}" d="{poly([(0, 182), (cx - 6, HORIZON), (cx + 6, HORIZON), (width, 182), (width, height), (0, height)])}"/>')
@@ -396,6 +419,25 @@ def youtube_banner_road_fade():
             + landscape + '</g>')
 
 
+def github_banner_road_fade():
+    """Fit the same road-fade composition into the 3:1 README banner."""
+    scene_w = 700.0
+    landscape_scale = 0.65
+    landscape_left = (720 - scene_w * landscape_scale) / 2
+    landscape_top = 63.0
+    brand_scale = landscape_scale * 1.25
+    brand_left = 360 - scene_w / 2 * brand_scale
+    brand_top = landscape_top + (481.625 - 540.0) * landscape_scale / YT_SCALE
+    landscape = scene(scene_w, include_brand=False, include_background=False,
+                      include_defs=False, bounded=True, wide_bounded=True,
+                      road_end_fade=True)
+    return (GLOW + f'<rect width="720" height="240" fill="{BLACK}"/>'
+            + f'<g transform="translate({f(brand_left)} {f(brand_top)}) scale({f(brand_scale)})">'
+            + scene_brand(scene_w / 2) + '</g>'
+            + f'<g transform="translate({f(landscape_left)} {f(landscape_top)}) scale({f(landscape_scale)})">'
+            + landscape + '</g>')
+
+
 # ── Writers ──────────────────────────────────────────────────────────────────
 def svg(w, h, body, title, bg=None, pixel_scale=4):
     rect = f'<rect width="{f(w)}" height="{f(h)}" fill="{bg}"/>' if bg else ""
@@ -467,7 +509,9 @@ def main():
     write("kajo-hero-4x3.svg", svg(320, 240, scene(320), "KAJO hero - boot splash scene, 4:3"))
     write("kajo-hero-16x9.svg", svg(426.667, 240, scene(426.667), "KAJO hero - boot splash scene, 16:9"))
     # GitHub: a 3:1 README header and the 2:1 repository social preview.
-    write("kajo-banner-github.svg", svg(720, 240, scene(720), "KAJO banner - GitHub README header, 3:1"))
+    write("kajo-banner-github.svg",
+          svg(720, 240, github_banner_road_fade(),
+              "KAJO banner - GitHub README header, road-fade style, 3:1"))
     write("kajo-social-preview.svg", svg(480, 240, scene(480), "KAJO social preview - 2:1"))
     write("kajo-banner-youtube.svg", svg(YT_W, YT_H, youtube_banner(),
                                          "KAJO YouTube channel banner, 2560x1440", pixel_scale=1))

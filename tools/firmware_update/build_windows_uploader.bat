@@ -18,7 +18,7 @@ if not exist "%VENV_PY%" (
 "%VENV_PY%" -m pip install -r "%REQUIREMENTS%" "pyinstaller>=6,<7"
 if errorlevel 1 exit /b 1
 
-"%VENV_PY%" -m PyInstaller "%UPLOADER%" --noconfirm --clean --onefile --console --name "KAJO Firmware Uploader" --paths "%TOOL_DIR%" --distpath "%DIST_DIR%" --workpath "%WORK_DIR%" --specpath "%WORK_DIR%"
+"%VENV_PY%" -m PyInstaller "%UPLOADER%" --noconfirm --clean --onefile --console --name "KAJO Firmware Uploader" --paths "%TOOL_DIR%" --collect-data esptool --distpath "%DIST_DIR%" --workpath "%WORK_DIR%" --specpath "%WORK_DIR%"
 if errorlevel 1 exit /b 1
 
 echo.
