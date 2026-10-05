@@ -4,7 +4,8 @@ Open **Settings → Logging → Ride logs**, then select a completed ride. The r
 still being recorded is listed as `RIDE n | RECORDING` and cannot be opened
 until it closes; the list rescans the card when it does. Replay
 opens paused. Tap or drag anywhere in the chart bands to seek and pause.
-The bottom buttons skip back 10 seconds, play/pause, or skip ahead. Three quick
+The bottom row is, left to right, zoom out, skip back 10 seconds, play/pause,
+skip ahead and zoom in. Three quick
 taps on the same skip button (each within 0.7 s of the last) widen both skip
 buttons to 30 seconds; they return to 10 seconds once left alone for 2 seconds.
 Skipping keeps playback running; only a chart touch pauses. The header rate
@@ -13,6 +14,23 @@ then restarts it. Back retains the ride-list page. Replay does not
 automatically return Home.
 
 The header row is Back, the title, the chart button and the rate button.
+
+**Zoom.** The corner buttons zoom the chart in and out, each step halving or
+doubling the stretch of the ride it shows, around the cursor: the moment under
+the cursor keeps its place on screen unless the end of the ride is in the way.
+The change animates over about 280 ms, the traces stretching about the cursor
+and contracting the same way on zoom out, and a second tap during it carries on
+from the frame in flight. A thin track under the charts shows where the view
+sits in the ride, with the stretch on screen lit in the accent colour; the
+whole ride has no track. The buttons dim, and stop answering, at the limits:
+zoom out on the whole ride, zoom in at the narrowest view, where a recorded
+reading is two columns wide (about 29 s at 5 Hz, 14 s at 10 Hz); a ride too
+short for that does not zoom. Zoomed in, everything else works on the view:
+a tap or drag seeks within it, playback runs through it, and when the cursor
+leaves it (running off the end, or a skip) the chart turns the page, to the
+next stretch of the same width with the cursor a tenth of the way in, or nine
+tenths going back. The ride's scales stay those of the whole ride, so a zoomed
+trace is directly comparable with the full one.
 
 - **Title** (`REPLAY RIDE n` over the elapsed/total time) opens the ride
   summary: duration, distance, average and top speed, battery at start and
@@ -89,13 +107,47 @@ indicates skipped CRC-invalid records.
   mid-ride counter reset the list counts only the part after the reset.
 - Seeking uses elapsed timestamps and returns the preceding recorded sample,
   without inventing intermediate values. Samples older than max(1 second,
-  three recording periods) are unavailable. Sequential playback reuses the
-  read cache; large/backward seeks use the bucket index.
-- On ESP32 a cancellable worker reads 1,012-byte chunks (23 records) through the logger's
-  serialized SD task. LVGL never performs the scan or seeks synchronously.
-  Memory is independent of ride length: about 11 KB for the parser, its read
-  cache and the UI overview together, plus a 6 KB worker stack. Initial loading scans the file;
-  hardware SD-card load times remain to be measured.
+  three recording periods) are unavailable. A forward seek resumes the previous
+  scan from where it stopped, so playback at any rate reads each record once;
+  backward seeks, and jumps that leave the previous scan behind, start from the
+  bucket index.
+- On ESP32 a cancellable worker reads 2,024-byte chunks (46 records) through the
+  logger's serialized SD task. LVGL never performs the scan or seeks
+  synchronously. Memory is independent of ride length: about 11.5 KB for the
+  parser (its overview and read cache) and 9.4 KB for the UI's copy of the
+  overview, plus a 6 KB worker stack and the logger's 2 KB transfer buffer.
+  Initial loading scans the file.
+- Every read is a round trip through the writer task, so reads are what loading
+  and seeking cost. The writer keeps the ride it is reading open between chunks
+  instead of reopening it for each one, which in the Arduino file layer meant
+  three path lookups and a 4 KB stdio refill for about 1 KB of data. A 27 minute
+  ride loads in 180 reads at 5 Hz and 356 at 10 Hz (372 and 740 with 1,012-byte
+  chunks). 100x playback needs about one read per frame at 5 Hz and two at 10 Hz
+  (it needed five and nine); a tap or drag costs one to five. `cyd_ride_replay`
+  asserts these budgets. Hardware SD-card load times remain to be measured.
+- Zoomed views are built from windows. The overview is 128 buckets, too coarse
+  once the chart shows a fraction of the ride, so zooming asks the reader for a
+  window: the chart's own 288 columns for that stretch. Each column holds, per
+  field, the lowest reading in its slice of time as a position 0 to 254 in the
+  ride's scale (one byte; 255 for nothing), exactly the overview's rule at a finer
+  grain. Where the recording is sparser than the columns a reading is held across
+  the columns up to the next one, as far as the recording's own gap limit allows,
+  so the chart steps as the data does, and a real hole stays a hole; a corrupt
+  reading or a missing field ends the run. The reader scans only that stretch,
+  starting from the overview's index, a couple of reads at a time with seeks
+  answered between slices. A 27 minute ride at 10 Hz costs 180 reads for half of
+  it, then 91, 47, 25, 14 and 9 for each further step (at 5 Hz 90, 46, 24, 13 and
+  7, the narrowest view coming a step sooner); `cyd_ride_replay` builds them
+  against an independent definition of each column. Until a window arrives the overview is stretched over the view, and a
+  window takes over from it without any repositioning, because it is built for
+  exactly the view on screen. Windows are built one at a time and a newer
+  request replaces an older one; the columns are allocated on the first zoom
+  (2.3 KB in the reader, 2.3 KB for the screen's copy) so a ride that is never
+  zoomed pays nothing.
+- Playback nearing the end of a window (60 % of the way) asks for the next page
+  while there is time, so its columns are usually waiting when the cursor
+  arrives; a skip or seek that lands somewhere new asks when it lands, and the
+  stretched overview covers the short wait.
 - Replay owns separate samples and a playback clock. It does not inject data
   into controller snapshots, battery statistics, live dashboards or logging.
   Active recording files are rejected by the existing logger export path.
@@ -120,7 +172,8 @@ ctest --test-dir tools/lvgl_native_preview/build_simulator -C Release -R 'cyd_(r
 Other capture names: `25_replay_edge`, `25_replay_playing`, `25_replay_gap`,
 `25_replay_no_card`, `25_replay_regen`, `25_replay_swap`, `25_replay_summary`, `25_replay_delete`,
 `25_replay_charts`, `25_replay_charts_two`, `25_replay_fields`,
-`25_replay_four`, `25_replay_four_low`, `25_replay_phase`, `25_replay_two`, `25_replay_one`, `25_ride_logs`, `25_ride_logs_recording`, `25_ride_logs_clearing`, `25_ride_logs_cleared` and `25_ride_logs_clear_failed`. Add `--lang=fi` (or en/de/fr/es/it)
+`25_replay_four`, `25_replay_four_low`, `25_replay_phase`, `25_replay_two`, `25_replay_one`,
+`25_replay_zoom`, `25_replay_zoom_max`, `25_replay_zoom_four`, `25_ride_logs`, `25_ride_logs_recording`, `25_ride_logs_clearing`, `25_ride_logs_cleared` and `25_ride_logs_clear_failed`. Add `--lang=fi` (or en/de/fr/es/it)
 to check translations. Firmware compile: `platformio run -e kajo`.
 
 `python tools/render_lvgl_native.py` also renders every `25_replay*` state into
@@ -139,8 +192,19 @@ summary, deleting a ride
 card removal/reopening and separation from live data. Physical CYD touch,
 SD latency and simultaneous recording still need a device smoke test.
 
+`cyd_replay_zoom` drives the real screen through the zoom buttons: every step
+in and out (each frame of the animation compared with a repaint from scratch),
+the limits and the dimmed buttons, two quick taps, zooming at either end of the
+ride, coming back out to exactly the picture the ride opened with, playing
+through many page turns at 100x, with a slow reader (windows arriving over many
+ticks, prefetched pages arriving in time at 50x) and with a very slow one (the
+stretched overview standing in until the window arrives), skips and taps that
+leave the view in both directions, a layout change while zoomed, and the cost
+of an animation frame.
+
 Rendering follows Efficiency: cached per-column heights and clipped horizontal
-fill spans. Horizontal gridlines are omitted. Replay keeps flat colors. Each
+fill spans, and damage that is as small as the change (below). Horizontal
+gridlines are omitted. Replay keeps flat colors. Each
 column uses its bucket's minimum for both the trace and the fill edge, so the
 fill cannot rise above the visible line. Neither is smoothed, so a column
 that touches the top or bottom of a band is a moment the ride reached that
@@ -153,3 +217,29 @@ original recorded samples.
 Left labels, right-aligned against the plot, show the scale maximum at the top
 and the minimum at the bottom of the band. Speed starts at zero; signed power
 and current include zero, while voltage fits the ride range.
+
+### Repainting
+
+Between ticks only the overlay is repainted. The cursor lines and each chart's
+dot and bubble are kept as data (`ReplayOverlay` in `ride_replay_screen.inc`),
+and a tick invalidates the old and new place of whatever differs from the last
+tick: a strip around the cursor, a bubble (just its text when only its value
+changed), a dot. A tick that changed nothing paints nothing. The traces
+underneath repaint only where one of those areas reaches them; the whole chart
+repaints only when the ride finishes loading, the layout changes, or the card
+goes. LVGL pads every dirty area by 5 px, which the figures below include. Old
+and new places that touch are invalidated as one area, because LVGL holds 32
+dirty areas per frame and repaints the whole screen beyond that.
+
+`cyd_replay_redraw` drives the real screen through taps, drags, every playback
+rate, skips, every chart layout, both popups and card removal. After each step
+it renders what is dirty, repaints the whole screen, and requires the two to be
+the same picture: it fails if the old cursor, a dot or a stale value is left
+behind. It also budgets the flushed pixels. On the 47 minute test ride, per
+100 ms tick, a paused replay flushes nothing, playing at 1x about 1,100 pixels,
+10x 6,200 and 100x 12,700, where every tick used to flush 55,000 to 59,000. A
+tap or one drag step is 15,000 to 17,000 (59,000 before). At 100x about a third
+of that is the header's elapsed-time label, which changes every tick. These are
+display-transfer figures on the 40 MHz panel link, not measured ESP32 frame
+times; see [dashboard rendering performance](dashboard-rendering-performance.md)
+for the table and how to measure on the device.

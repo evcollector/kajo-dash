@@ -740,6 +740,23 @@ int main(int argc, char **argv) {
       uiPreviewRideReplay(2000000, false); uiPreviewRideReplayLayout(1, fields); capture(output, "25_replay_one");
       if (stopAfterSelected()) return 0;
     }
+    // Zoomed in: the chart shows a window around the cursor and the track
+    // under the charts shows where that window sits in the ride. Zoom steps
+    // halve the stretch; the last step is where a reading is two columns wide.
+    if (selected("25_replay_zoom")) {
+      uiPreviewRideReplay(1170000, false); uiPreviewRideReplayZoom(3); capture(output, "25_replay_zoom");
+      if (stopAfterSelected()) return 0;
+    }
+    if (selected("25_replay_zoom_max")) {
+      uiPreviewRideReplay(1170000, false); uiPreviewRideReplayZoom(6); capture(output, "25_replay_zoom_max");
+      if (stopAfterSelected()) return 0;
+    }
+    if (selected("25_replay_zoom_four")) {
+      const uint8_t fields[4] = {ride_replay::kSpeed, ride_replay::kPower, ride_replay::kCurrent, ride_replay::kBattery};
+      uiPreviewRideReplay(1170000, false); uiPreviewRideReplayLayout(4, fields); uiPreviewRideReplayZoom(2);
+      capture(output, "25_replay_zoom_four");
+      if (stopAfterSelected()) return 0;
+    }
     if (selected("25_replay_no_card")) { previewSetCardState(false,false); uiPreviewRideReplay(0,false); capture(output,"25_replay_no_card"); previewSetCardState(true,false); if(stopAfterSelected())return 0; }
 
     if (selected("26_reset_submenu")) { showSubmenu(output, SUBMENU_RESET, 0, false, "26_reset_submenu"); if (stopAfterSelected()) return 0; }

@@ -349,6 +349,7 @@ bool rideLoggerReadFileChunk(uint32_t rideId, uint32_t offset, uint8_t *out, siz
   }
   return true;
 }
+void rideLoggerReleaseRead() {}
 void previewSetLoggingState(RideLoggingMode mode, bool recording) {
   previewLogging.mode = mode;
   previewLogging.recording = recording;

@@ -74,6 +74,11 @@ telemetry task builds and CRCs each record after a controller poll and pushes
 it onto a 64-slot queue; the `ride-logger` task owns the card exclusively and
 is the only thing that opens it. Replay reads, phone downloads, catalog scans
 and deletions all travel the same queue, so a read cannot collide with a write.
+The ride being read stays open between chunks (a 27 minute ride is a few hundred
+reads, and reopening the file for each one dominated loading it). The writer drops
+that handle before it deletes, wipes or starts anything, when the reader says it
+is done, and after two idle seconds: the FatFS build has file locking off, so
+removing an open file would damage the volume.
 
 The writer buffers records in 1 KB of RAM and flushes when the next record
 would not fit, when 1.5 s has passed, or when the ride stops. Ride IDs come

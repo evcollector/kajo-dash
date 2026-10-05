@@ -37,6 +37,11 @@ bool runRecoveryCalibration();
 #ifdef CYD_LVGL_PREVIEW
 void uiPreviewRideReplay(uint32_t position, bool playing=false);
 void uiPreviewRideReplayLayout(uint8_t count, const uint8_t fields[4]);
+// Jumps to a zoom level about the cursor without the animation.
+void uiPreviewRideReplayZoom(uint8_t level);
+// The zoom level, the stretch of ride on screen (ms), and whether the reader's
+// own columns for it have arrived rather than the overview stretched over it.
+void uiPreviewReplayView(uint8_t &zoom, uint32_t &start, uint32_t &end, bool &detail);
 // 0 summary, 1 chart layout, 2 the field list for the second chart,
 // 3 the delete confirmation.
 void uiPreviewRideReplayPopup(uint8_t popup);

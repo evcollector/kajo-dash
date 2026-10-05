@@ -175,6 +175,12 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
   add_executable(cyd_efficiency_redraw_test efficiency_redraw_test.cpp ${HOST_SUPPORT_SOURCES} ${FIRMWARE_SOURCES})
   configure_cyd_host_target(cyd_efficiency_redraw_test)
   add_test(NAME cyd_efficiency_redraw COMMAND cyd_efficiency_redraw_test)
+  add_executable(cyd_replay_redraw_test replay_redraw_test.cpp ${HOST_SUPPORT_SOURCES} ${FIRMWARE_SOURCES})
+  configure_cyd_host_target(cyd_replay_redraw_test)
+  add_test(NAME cyd_replay_redraw COMMAND cyd_replay_redraw_test)
+  add_executable(cyd_replay_zoom_test replay_zoom_test.cpp ${HOST_SUPPORT_SOURCES} ${FIRMWARE_SOURCES})
+  configure_cyd_host_target(cyd_replay_zoom_test)
+  add_test(NAME cyd_replay_zoom COMMAND cyd_replay_zoom_test)
 
   # The vehicle field model builds no widgets of its own, so it is tested
   # against the settings logic and the host stubs rather than through the

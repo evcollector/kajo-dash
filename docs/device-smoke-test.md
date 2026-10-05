@@ -132,6 +132,28 @@ and any failed step. Test both original and alternate CYD panels.
 - [ ] Removing the card while recording stops safely and reports the failure.
 - [ ] Saved ride catalog is newest-first and invalid/truncated files do not
       crash browsing.
+- [ ] A ride of about 30 minutes (a demo ride will do) opens within a few
+      seconds, and replay keeps up with it: 100x playback, dragging the cursor
+      and the skip buttons follow the touch without the cursor trailing. Time
+      the open and note the rate it was recorded at.
+- [ ] Replay repaints only the cursor, dots and bubbles between ticks. Playing
+      at 1x and 100x, dragging, tapping and skipping leave no extra cursor
+      line, dot or bubble text behind; the `LVGL perf` serial reports show far
+      fewer `pixels_s` at 1x than before (about 55,000 per tick became about
+      1,100 natively).
+- [ ] Replay zoom: the corner buttons zoom the chart in and out about the
+      cursor with a short stretch animation, the track under the charts shows
+      the view's place in the ride, and the buttons dim at the whole ride and at
+      the narrowest view. Zoom in two or three steps on a 30 minute ride and note
+      how long the stretched overview stays before the crisp trace replaces it;
+      play zoomed at 10x and 100x through several page turns without a stall or a
+      stale trace, and skip across pages both ways. Compare the `LVGL perf` serial
+      reports during the animation with the figures in
+      `dashboard-rendering-performance.md`.
+- [ ] Replay holds its ride file open between reads. Deleting that ride from the
+      summary, leaving replay, and opening another ride all leave the card and
+      the ride list intact; so does a new ride starting in the background while
+      one is open in replay.
 - [ ] Ride logs > Clear SD > Clear keeps the dialog open with a filling bar and
       a removed-file count, says SD CARD CLEARED only after the wipe finishes,
       then returns to an empty list on its own. With a card holding a few

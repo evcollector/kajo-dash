@@ -310,6 +310,9 @@ bool rideLoggerReadSeries(uint32_t rideId, RideLogSeriesField field, uint32_t st
                           uint8_t &pointCount);
 bool rideLoggerReadFileChunk(uint32_t rideId, uint32_t offset, uint8_t *buffer, size_t capacity,
                              size_t &bytesRead, uint32_t &fileBytes);
+// The writer keeps the ride it is reading open between chunks. This lets it
+// drop that file now; an idle timeout covers a reader that never says so.
+void rideLoggerReleaseRead();
 
 // Called from the telemetry task only.
 void batteryStatsUpdate(const VescCounters &counters);

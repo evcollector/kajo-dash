@@ -66,8 +66,8 @@ Every theme also has a light appearance, and its own accent colour, background a
   </tr>
 </table>
 
-Rides logged to the microSD card can be replayed on the display: scrub through the ride, chart up to four
-values at once, and read the ride summary.
+Rides logged to the microSD card can be replayed on the display: scrub through the ride, zoom in on a
+stretch of it, chart up to four values at once, and read the ride summary.
 
 These screenshots are real LVGL framebuffer captures, not mockups.
 [`contact_sheet.png`](preview_output/lvgl/contact_sheet.png) shows every theme in dark and light, every

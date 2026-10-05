@@ -204,6 +204,16 @@ phase current are the pair most often charted together, so their colours are
 orange and lime rather than two shades of one hue. Fills are opaque
 and flat; they do not follow the dashboard accent or gradients.
 
+The bottom row is zoom out, skip back, play/pause, skip ahead and zoom in, canonical
+navigation buttons 34, 70, 88, 70 and 34 px wide at the standard control gap, the
+whole row spanning the screen between the edge insets. The play/pause and zoom
+glyphs are drawn over the button (a magnifying glass with a minus or a plus). A
+zoom button with nowhere to go draws its glyph in the muted colour and stops
+being clickable, so there is no pressed flash either. Zoomed in, a 2 px track in
+the muted colour sits under the charts with the visible stretch lit in the
+chrome accent; the whole ride shows no track. The icons carry no text, so the
+row needs no translation.
+
 The header's title is a button that opens the ride summary; the 44 px chart
 button beside the rate button draws the current layout as coloured bars and
 opens the chart picker. The popups use the confirmation dialog's dimmed scrim
@@ -231,9 +241,12 @@ on screen. Never derive the switch from the current values. Missing data shows `
 screenshot commands.
 
 Replay uses Efficiency-style cached column heights and clipped horizontal fill
-runs, with max and min labels and no horizontal gridlines. Speed starts at zero;
-power, pack current and phase current include zero and extend below it when
-the ride contains negative values. Power adds `(regen)` to the signed callout.
+runs, with max and min labels and no horizontal gridlines. Cursor, dots and
+bubbles are an overlay the screen repaints on its own: a moved bubble or a new
+value invalidates those areas, never the whole chart (see
+[ride replay](ride-replay.md)). Speed starts at zero; power, pack current and
+phase current include zero and extend below it when the ride contains negative
+values. Power adds `(regen)` to the signed callout.
 
 Replay overview curves smooth per-bucket means and round only after column
 interpolation. Do not overlay raw min/max strokes; cursor bubbles retain the

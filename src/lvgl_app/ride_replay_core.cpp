@@ -1,12 +1,22 @@
 #include "ride_replay_core.h"
 #include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <new>
 namespace ride_replay {
 static uint16_t u16(const uint8_t *p) { return uint16_t(p[0]) | uint16_t(p[1]) << 8; }
 static uint32_t u32(const uint8_t *p) { return uint32_t(p[0]) | uint32_t(p[1]) << 8 | uint32_t(p[2]) << 16 | uint32_t(p[3]) << 24; }
+// CRC-16/CCITT, a nibble at a time: a quarter of the work of the bitwise loop
+// and 32 bytes of table. Every record is checked on every read, and building a
+// zoomed window checks thousands.
 uint16_t crc16(const uint8_t *p, size_t n) {
+  static const uint16_t kNibble[16] = {0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
+                                       0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef};
   uint16_t c = 0xffff;
-  while (n--) { c ^= uint16_t(*p++) << 8; for (int i=0;i<8;i++) c = c & 0x8000 ? (c<<1)^0x1021 : c<<1; }
+  while (n--) {
+    c = uint16_t(c << 4) ^ kNibble[(c >> 12) ^ (*p >> 4)];
+    c = uint16_t(c << 4) ^ kNibble[(c >> 12) ^ (*p++ & 0xf)];
+  }
   return c;
 }
 bool Core::bytes(uint32_t offset, uint8_t *out, size_t count) {
@@ -64,8 +74,10 @@ bool Core::wrappedFirst(uint32_t index, const Sample &sample) const {
   return index == 0 && sample.time >= UINT32_MAX - kStartupWrapWindowMs &&
          sample.time > overview.duration;
 }
+Core::~Core() { delete window_; }
 bool Core::load(Reader reader, void *context, uint32_t rideId) {
   reader_=reader; context_=context; cacheOffset_=UINT32_MAX; fileBytes_=0; error=Error::None;
+  build_.active=false; buildFailed_=false;
   // Do not create a full Overview temporary on the small ESP32 task stack.
   for(auto &bucket:overview.buckets) bucket=Bucket{};
   for(unsigned f=0;f<kFields;f++) overview.low[f]=overview.high[f]=0;
@@ -172,8 +184,11 @@ bool Core::sampleAt(uint32_t time, Sample &out) {
   Sample candidate;
   bool found=false;
   // Playback advances through the cached records instead of rereading an
-  // entire overview bucket on every frame. Large/backward seeks use the index.
-  if(seekValid_ && time>=seekTime_ && time-seekTime_<=1000) {
+  // entire overview bucket on every frame. Any forward seek that lands at or
+  // past the previous scan resumes from where it stopped: at 100x a frame moves
+  // about a hundred records, and none of them is read twice. Backward seeks, and
+  // jumps that leave the previous scan behind, start from the bucket index.
+  if(seekValid_ && time>=seekTime_ && seekIndex_>=first) {
     first=seekIndex_;candidate=seekCandidate_;found=seekFound_;
   }
   uint32_t i=first;
@@ -192,5 +207,84 @@ bool Core::sampleAt(uint32_t time, Sample &out) {
     if (time-candidate.time>std::max(1000U,unsigned(overview.periodMs)*3)) out.mask=0;
   }
   return true;
+}
+// ── Zoom windows ─────────────────────────────────────────────────────────────
+static constexpr int kNever = -(1 << 28);  // no reading is held for this field
+uint8_t Core::quantize(unsigned field, float value) const {
+  const float range = build_.high[field] - build_.low[field];
+  if (!(range > 0)) return 0;
+  const float position = (value - build_.low[field]) / range;
+  return uint8_t(lroundf(254.0f * std::min(1.0f, std::max(0.0f, position))));
+}
+// Columns after the held reading's own, up to `upTo`, take its value if they
+// have none: the signal did not change until the next reading arrived. The run
+// stops at the recording's gap limit, so a real hole in the ride stays a hole.
+void Core::fillHold(unsigned field, int upTo) {
+  const int held = build_.hold[field];
+  if (held == kNever) return;
+  const int last = std::min(upTo, held + build_.holdColumns);
+  for (int c = std::max(0, held + 1); c <= last; c++) {
+    uint8_t &cell = window_->level[c][field];
+    if (cell == kNoLevel) cell = build_.holdLevel[field];
+  }
+}
+void Core::finishWindow() {
+  for (unsigned f = 0; f < kFields; f++) fillHold(f, int(kWindowColumns) - 1);
+  build_.active = false;
+}
+bool Core::beginWindow(uint32_t start, uint32_t end, const float low[kFields], const float high[kFields]) {
+  build_.active = false;
+  buildFailed_ = false;
+  if (error != Error::None || !overview.records || end <= start) return false;
+  if (!window_) window_ = new (std::nothrow) Window;
+  if (!window_) return false;
+  window_->start = start;
+  window_->end = end;
+  memset(window_->level, kNoLevel, sizeof(window_->level));
+  build_.gapLimit = std::max(1000U, unsigned(overview.periodMs) * 3);
+  build_.holdColumns = int(uint64_t(build_.gapLimit) * (kWindowColumns - 1) / (end - start));
+  for (unsigned f = 0; f < kFields; f++) {
+    build_.low[f] = low[f];
+    build_.high[f] = high[f];
+    build_.hold[f] = kNever;
+    build_.holdLevel[f] = kNoLevel;
+  }
+  // Begin a gap limit early: readings that old still hold into the first columns.
+  const uint32_t from = start > build_.gapLimit ? start - build_.gapLimit : 0;
+  unsigned bucket = std::min<unsigned>(kBuckets - 1, uint64_t(from) * kBuckets / std::max(1U, overview.duration));
+  while (bucket > 0 && overview.buckets[bucket].firstRecord == UINT32_MAX) bucket--;
+  build_.index = overview.buckets[bucket].firstRecord == UINT32_MAX ? 0 : overview.buckets[bucket].firstRecord;
+  build_.active = true;
+  return true;
+}
+bool Core::stepWindow(unsigned maxRecords) {
+  if (!build_.active) return true;
+  const int64_t span = int64_t(window_->end) - int64_t(window_->start);
+  for (unsigned n = 0; n < maxRecords; n++) {
+    if (build_.index >= overview.records) { finishWindow(); return true; }
+    const uint32_t index = build_.index++;
+    Sample s;
+    if (!record(index, s) || wrappedFirst(index, s)) {
+      if (error != Error::None) { buildFailed_ = true; build_.active = false; return true; }
+      // A reading that cannot be trusted ends any run of held values.
+      for (unsigned f = 0; f < kFields; f++) build_.hold[f] = kNever;
+      continue;
+    }
+    const int64_t scaled = (int64_t(s.time) - int64_t(window_->start)) * (int64_t(kWindowColumns) - 1) + span / 2;
+    const int64_t column = scaled >= 0 ? scaled / span : -((-scaled + span - 1) / span);  // floor
+    if (column > int64_t(kWindowColumns) - 1) { finishWindow(); return true; }  // time order: nothing later is inside
+    for (unsigned f = 0; f < kFields; f++) {
+      if (!(s.mask & (1U << f))) { build_.hold[f] = kNever; continue; }
+      const uint8_t level = quantize(f, s.value[f]);
+      if (column >= 0) {
+        fillHold(f, int(column) - 1);
+        uint8_t &cell = window_->level[column][f];
+        if (cell == kNoLevel || level < cell) cell = level;
+      }
+      build_.hold[f] = int(std::max<int64_t>(column, -(1 << 20)));
+      build_.holdLevel[f] = level;
+    }
+  }
+  return false;
 }
 }

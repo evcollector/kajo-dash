@@ -34,10 +34,13 @@ enum WriterMessageKind : uint8_t {
   WRITER_EXPORT,
   WRITER_DELETE_RIDE,  // payload.header.rideId names the ride
   WRITER_WIPE_CARD,    // every file on the card, not only ride logs
+  WRITER_CLOSE_READ,   // drop the ride file held open for reading
 };
 
 enum ExportRequestKind : uint8_t { EXPORT_NONE, EXPORT_SERIES, EXPORT_FILE };
 
+// Copied by value between the caller and the writer task, so it carries no
+// payload: callers run on small task stacks, and a read moves 2 KB.
 struct ExportRequest {
   ExportRequestKind kind;
   uint32_t rideId;
@@ -45,10 +48,8 @@ struct ExportRequest {
   uint32_t startSeconds;
   uint32_t endSeconds;
   uint8_t maximumPoints;
-  RideLogSeriesPoint points[36];
   uint8_t pointCount;
   uint32_t offset;
-  uint8_t buffer[1008];
   size_t capacity;
   size_t bytesRead;
   uint32_t fileBytes;
@@ -110,6 +111,10 @@ Preferences loggerPrefs;
 SemaphoreHandle_t exportMutex = nullptr;
 SemaphoreHandle_t exportDone = nullptr;
 ExportRequest exportRequest = {};
+// The payloads of the request in flight. Only the writer task fills them, and a
+// caller copies its share out before releasing exportMutex.
+RideLogSeriesPoint exportPoints[36];
+uint8_t exportBuffer[ride_replay::kReadBytes];
 
 bool sessionOpen = false;
 bool storageNeededByUi = false;
@@ -572,6 +577,25 @@ bool ridePath(uint32_t rideId, char *path, size_t size) {
   return true;
 }
 
+// The ride a replay or a phone download is reading stays open between requests.
+// Opening a file costs several directory and FAT lookups and the reads that
+// follow are cheap sequential ones, so loading a ride in chunks used to spend
+// most of its time reopening it. Anything that could remove or replace the file
+// closes the handle first (see the top of the writer loop): this FatFS build
+// has file locking off, so deleting an open file would damage the volume.
+File readFile;
+uint32_t readFileRide = 0;
+uint32_t readFileBytes = 0;
+uint32_t readFilePosition = 0;
+uint32_t readFileLastMs = 0;
+constexpr uint32_t kReadFileIdleMs = 2000;
+
+void closeReadFile() {
+  if (readFile) readFile.close();
+  readFile = File();
+  readFileRide = 0;
+}
+
 void processExportRequest(bool sessionActive, const char *sessionPath) {
   ExportRequest &request = exportRequest;
   request.success = false;
@@ -584,19 +608,42 @@ void processExportRequest(bool sessionActive, const char *sessionPath) {
     xSemaphoreGive(exportDone);
     return;
   }
+  if (request.kind == EXPORT_FILE) {
+    if (!readFile || readFileRide != request.rideId) {
+      closeReadFile();
+      readFile = SD.open(path, FILE_READ);
+      if (!readFile) {
+        xSemaphoreGive(exportDone);
+        return;
+      }
+      readFileRide = request.rideId;
+      readFileBytes = static_cast<uint32_t>(readFile.size());
+      readFilePosition = 0;
+    }
+    readFileLastMs = millis();
+    request.fileBytes = readFileBytes;
+    // Sequential reads continue where the last one stopped, without a seek.
+    if (request.offset <= readFileBytes && (request.offset == readFilePosition || readFile.seek(request.offset))) {
+      const size_t wanted =
+          min<size_t>(min<size_t>(request.capacity, sizeof(exportBuffer)), readFileBytes - request.offset);
+      request.bytesRead = wanted ? readFile.read(exportBuffer, wanted) : 0;
+      readFilePosition = request.offset + static_cast<uint32_t>(request.bytesRead);
+      request.success = request.bytesRead > 0 || request.offset == readFileBytes;
+      // A short read means the card or the file misbehaved: start afresh next time.
+      if (request.bytesRead != wanted) closeReadFile();
+    } else {
+      closeReadFile();
+    }
+    xSemaphoreGive(exportDone);
+    return;
+  }
   File file = SD.open(path, FILE_READ);
   if (!file) {
     xSemaphoreGive(exportDone);
     return;
   }
   request.fileBytes = static_cast<uint32_t>(file.size());
-  if (request.kind == EXPORT_FILE) {
-    if (request.offset <= request.fileBytes && file.seek(request.offset)) {
-      const size_t available = request.fileBytes - request.offset;
-      request.bytesRead = file.read(request.buffer, min(request.capacity, available));
-      request.success = request.bytesRead > 0 || request.offset == request.fileBytes;
-    }
-  } else if (request.kind == EXPORT_SERIES) {
+  if (request.kind == EXPORT_SERIES) {
     RideFileHeader header = {};
     const bool headerOk = file.read((uint8_t *)&header, sizeof(header)) == sizeof(header) &&
                           memcmp(header.magic, "KAJL", 4) == 0 && header.version == kLogVersion &&
@@ -626,7 +673,7 @@ void processExportRequest(bool sessionActive, const char *sessionPath) {
           count++;
         }
         if (count) {
-          RideLogSeriesPoint &point = request.points[request.pointCount++];
+          RideLogSeriesPoint &point = exportPoints[request.pointCount++];
           point.elapsedSeconds = static_cast<uint16_t>(min<uint32_t>(elapsed, UINT16_MAX));
           point.value = static_cast<int32_t>(sum / count);
         }
@@ -661,6 +708,7 @@ void publishCardState(bool ready, bool checking, bool ioFailure) {
 
 void abandonCard(size_t &buffered, bool ioFailure) {
   buffered = 0;
+  closeReadFile();
   SD.end();
   publishCardState(false, false, ioFailure);
   // Drain explicitly: resetting the queue silently loses an export request
@@ -695,6 +743,12 @@ void writerTask(void *) {
     portENTER_CRITICAL(&loggerMux);
     if (deleteAllPending) deleteRequested = true;
     portEXIT_CRITICAL(&loggerMux);
+    // The ride file held for reading must never outlive anything that could
+    // remove or replace it: only reads, and the records appended to a different
+    // file, may find it still open.
+    if (deleteRequested || (received && message.kind != WRITER_EXPORT && message.kind != WRITER_RECORD &&
+                            message.kind != WRITER_WAKE))
+      closeReadFile();
     if (received && message.kind == WRITER_EXPORT && deleteRequested) {
       exportRequest.success = false;
       xSemaphoreGive(exportDone);
@@ -707,12 +761,14 @@ void writerTask(void *) {
       message.kind = WRITER_WAKE;
     }
     const uint32_t now = millis();
+    if (readFile && now - readFileLastMs >= kReadFileIdleMs) closeReadFile();
     // A wipe is always serviced, even if the UI has already left the ride
     // list: skipping it here would lose the request.
     const bool needed = storageIsNeeded() || sessionActive || buffered > 0 ||
                         (received && (message.kind == WRITER_EXPORT || message.kind == WRITER_WIPE_CARD));
 
     if (!needed) {
+      closeReadFile();
       setCardChecking(false);
       wasNeeded = false;
       continue;  // Keep an existing mount warm, but perform no SD transactions.
@@ -733,6 +789,7 @@ void writerTask(void *) {
 
     if (!mounted) {
       if ((int32_t)(now - nextMountAttemptMs) >= 0) {
+        closeReadFile();
         SD.end();
         mounted = SD.begin(CYD_SD_CS_PIN, sdSpi, 20000000U);
         if (mounted) {
@@ -1227,7 +1284,10 @@ bool rideLoggerCatalogEntry(uint8_t index, RideLogSummary &entry) {
 }
 
 static bool exportOutstanding = false;
-static bool runExportRequest(ExportRequest &request) {
+// bytesOut and pointsOut receive the payload while exportMutex is still held,
+// before the next request can overwrite it.
+static bool runExportRequest(ExportRequest &request, uint8_t *bytesOut = nullptr,
+                             RideLogSeriesPoint *pointsOut = nullptr) {
   if (!writerQueue || !exportMutex || !exportDone ||
       xSemaphoreTake(exportMutex, pdMS_TO_TICKS(2000)) != pdTRUE) return false;
   if (exportOutstanding) {
@@ -1245,8 +1305,12 @@ static bool runExportRequest(ExportRequest &request) {
   const bool completed = queued && xSemaphoreTake(exportDone, pdMS_TO_TICKS(6000)) == pdTRUE;
   exportOutstanding = queued && !completed;
   if (completed) request = exportRequest;
+  const bool ok = completed && request.success;
+  if (ok && bytesOut && request.bytesRead) memcpy(bytesOut, exportBuffer, request.bytesRead);
+  if (ok && pointsOut && request.pointCount)
+    memcpy(pointsOut, exportPoints, request.pointCount * sizeof(RideLogSeriesPoint));
   xSemaphoreGive(exportMutex);
-  return completed && request.success;
+  return ok;
 }
 
 bool rideLoggerReadSeries(uint32_t rideId, RideLogSeriesField field, uint32_t startSeconds,
@@ -1260,9 +1324,8 @@ bool rideLoggerReadSeries(uint32_t rideId, RideLogSeriesField field, uint32_t st
   request.endSeconds = endSeconds;
   request.maximumPoints = maximumPoints;
   request.maximumPoints = min<uint8_t>(request.maximumPoints, 36);
-  const bool ok = runExportRequest(request);
+  const bool ok = runExportRequest(request, nullptr, points);
   pointCount = request.pointCount;
-  if (ok && points && pointCount) memcpy(points, request.points, pointCount * sizeof(RideLogSeriesPoint));
   return ok;
 }
 
@@ -1272,10 +1335,16 @@ bool rideLoggerReadFileChunk(uint32_t rideId, uint32_t offset, uint8_t *buffer, 
   request.kind = EXPORT_FILE;
   request.rideId = rideId;
   request.offset = offset;
-  request.capacity = min<size_t>(capacity, sizeof(request.buffer));
-  const bool ok = runExportRequest(request);
+  request.capacity = min<size_t>(capacity, sizeof(exportBuffer));
+  const bool ok = runExportRequest(request, buffer);
   bytesRead = request.bytesRead;
   fileBytes = request.fileBytes;
-  if (ok && buffer && bytesRead) memcpy(buffer, request.buffer, bytesRead);
   return ok;
+}
+
+void rideLoggerReleaseRead() {
+  if (!writerQueue) return;
+  WriterMessage message = {};
+  message.kind = WRITER_CLOSE_READ;
+  xQueueSend(writerQueue, &message, 0);
 }

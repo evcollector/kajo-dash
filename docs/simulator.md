@@ -58,8 +58,9 @@ ctest --test-dir tools/lvgl_native_preview/build_simulator -C Release --output-o
 | --- | --- |
 | `cyd_runtime_input` | real tap/drag/long-press navigation through actual LVGL callbacks |
 | `cyd_ride_replay` | ride-log parsing, CRCs, gaps, seeking, summary totals |
+| `cyd_replay_zoom` | replay zoom: buttons, animation, windows built by the reader, page turns |
 | `cyd_ride_log_policy` | ride start/pause/stop decisions |
-| `cyd_dashboard_redraw`, `cyd_efficiency_redraw` | partial-redraw correctness |
+| `cyd_dashboard_redraw`, `cyd_efficiency_redraw`, `cyd_replay_redraw` | partial-redraw correctness |
 | `cyd_gauge_ranges` | automatic gauge-range learning |
 | `cyd_demo_ride` | demo-mode ride generation |
 | `cyd_vehicle_fields` | vehicle configuration fields |
