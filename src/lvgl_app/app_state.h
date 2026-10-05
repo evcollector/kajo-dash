@@ -552,8 +552,10 @@ struct DemoRide {
   float km;       // covered since the cycle began
   float wh;       // net energy drawn since the cycle began
   float seconds;  // elapsed in this cycle
+  float regenWh;  // energy returned by regen since the cycle began
 };
-DemoRide demoRideAt(float seconds);
+// Pass totals = false when only speed and power are needed (history graphs).
+DemoRide demoRideAt(float seconds, bool totals = true);
 DemoRide demoRidePeak();
 extern uint8_t demoTimeScale;
 void serviceDemoMode();

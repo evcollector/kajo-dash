@@ -1905,64 +1905,162 @@ bool uiUpdatesHeld() {
   return (int32_t)(uiUpdatesHeldUntilMs - millis()) > 0;  // signed: survives wrap
 }
 
-// One interpolated ride profile: 500 W nominal / 1500 W peak, about 25 km/h.
-// Repeating road conditions do not reset the trip or battery.
+// One 120 s lap of keyframed speed. The ride launches from a standstill once and
+// then keeps rolling: every lap dips to a slow kDemoMinKmh instead of stopping.
+// Power is not a second table: it is derived from that speed by a small
+// road-load model (rolling resistance, air drag, acceleration, drivetrain and
+// regen losses), so speed and power always agree. Each lap's speed above the
+// minimum is scaled by a deterministic per-lap factor so the ride does not repeat
+// identically; the first lap is the unscaled reference. The ride ends when the
+// simulated pack is empty and the demo then starts a new one.
 uint8_t demoTimeScale = 1;
 static bool demoPreviewActive = false;
 static const float kDemoPackWh = 13.0F * 3.0F * 3.5F * 3.7F;
+static const float kDemoPackOhm = 0.062F;     // the figure the battery stats report
+static const float kDemoLapSeconds = 120.0F;
 static const float kDemoTimes[]  = {0, 5, 15, 45, 60, 80, 95, 105, 115, 120};
-static const float kDemoSpeeds[] = {0, 0, 33, 33, 28, 34, 32, 26, 0, 0};
-static const float kDemoPowers[] = {0, 0, 1500, 400, 900, 420, 200, 0, -200, 0};
+static const float kDemoMinKmh = 7.0F;
+static const float kDemoSpeeds[] = {7, 7, 33, 33, 28, 34, 32, 26, 7, 7};
 static const int kDemoPointCount = sizeof(kDemoTimes) / sizeof(kDemoTimes[0]);
+static const float kDemoMassKg = 100.0F;      // bike and rider
+static const float kDemoRollN = 0.009F * 9.81F;  // rolling resistance per kg
+static const float kDemoDrag = 0.5F * 1.2F * 0.75F;  // air density x CdA / 2
+static const float kDemoDriveEff = 0.85F;
+static const float kDemoRegenEff = 0.6F;
+static const float kDemoLapSpread = 0.08F;    // laps run 92-108 % of the reference
+static const int kDemoMaxLaps = 64;
 struct DemoSession { double seconds = 0; uint32_t lastMs = 0; bool running = false; };
 static DemoSession demoSession, previewSession;
 
-static float demoIntegral(const float *values, float seconds, bool regen = false) {
+static uint32_t demoHash(uint32_t value, uint32_t salt) {
+  uint32_t h = value * 2654435761UL ^ salt * 0x9E3779B9UL;
+  h ^= h >> 15; h *= 2246822519UL; h ^= h >> 13;
+  return h;
+}
+// Deterministic -1..1 noise: a function of the ride clock, never of call order,
+// so replays and the preview renders stay reproducible.
+static float demoNoise(uint32_t tick, uint32_t salt) {
+  return (demoHash(tick, salt) & 0xFFFF) / 32767.5F - 1.0F;
+}
+static float demoLapScale(int lap) {
+  return lap <= 0 ? 1.0F : 1.0F + kDemoLapSpread * demoNoise((uint32_t)lap, 0x51);
+}
+
+struct DemoSample { float speedKmh; float watts; };
+// Keyframe speed for a lap: lap 0 starts from rest, the rest hold the minimum.
+static float demoKeySpeed(int i, int lap, float scale) {
+  const float raw = lap == 0 && i < 2 ? 0.0F : kDemoSpeeds[i];
+  return kDemoMinKmh + (raw - kDemoMinKmh) * scale;
+}
+static DemoSample demoSampleAt(float phase, int lap, float scale) {
+  DemoSample out = {};
+  for (int i = 0; i < kDemoPointCount - 1; ++i) {
+    if (phase > kDemoTimes[i + 1]) continue;
+    const float span = kDemoTimes[i + 1] - kDemoTimes[i];
+    const float v0 = demoKeySpeed(i, lap, scale), v1 = demoKeySpeed(i + 1, lap, scale);
+    out.speedKmh = lerpFloat(v0, v1, (phase - kDemoTimes[i]) / span);
+    const float v = out.speedKmh / 3.6F;
+    const float accel = (v1 - v0) / 3.6F / span;
+    const float wheel = v * (kDemoMassKg * (accel + kDemoRollN) + kDemoDrag * v * v);
+    out.watts = wheel > 0 ? wheel / kDemoDriveEff : wheel * kDemoRegenEff;
+    break;
+  }
+  return out;
+}
+
+// Distance covered in the first `seconds` of a lap.
+static float demoLapKm(float seconds, int lap) {
+  const float scale = demoLapScale(lap);
   float area = 0;
   for (int i = 0; i < kDemoPointCount - 1 && seconds > kDemoTimes[i]; ++i) {
     const float dt = min(seconds, kDemoTimes[i + 1]) - kDemoTimes[i];
-    const float a = values[i];
-    const float b = lerpFloat(a, values[i + 1], dt / (kDemoTimes[i + 1] - kDemoTimes[i]));
-    if (!regen) area += (a + b) * 0.5F * dt;
-    else if (a <= 0 && b <= 0) area -= (a + b) * 0.5F * dt;
-    else if (a < 0) area += a * a / (b - a) * 0.5F * dt;
-    else if (b < 0) area += b * b / (a - b) * 0.5F * dt;
+    const float a = demoKeySpeed(i, lap, scale);
+    const float b = lerpFloat(a, demoKeySpeed(i + 1, lap, scale), dt / (kDemoTimes[i + 1] - kDemoTimes[i]));
+    area += (a + b) * 0.5F * dt;
   }
   return area / 3600.0F;
 }
-static float demoTotal(const float *values, float seconds, bool regen = false) {
-  return floorf(seconds / 120.0F) * demoIntegral(values, 120, regen) +
-         demoIntegral(values, fmodf(seconds, 120.0F), regen);
+// Energy over the first `seconds` of a lap, midpoint rule at one-second steps
+// (keyframes sit on whole seconds, so no step straddles a corner).
+static void demoLapEnergy(int lap, float seconds, float &wh, float &regenWh) {
+  const float scale = demoLapScale(lap);
+  wh = regenWh = 0;
+  for (float t = 0; t < seconds; t += 1.0F) {
+    const float step = min(1.0F, seconds - t);
+    const float watts = demoSampleAt(t + step * 0.5F, lap, scale).watts;
+    wh += watts * step / 3600.0F;
+    if (watts < 0) regenWh -= watts * step / 3600.0F;
+  }
+}
+
+// Cumulative energy at the start of each lap, filled once on first use.
+static float demoLapStartWh[kDemoMaxLaps + 1], demoLapStartRegenWh[kDemoMaxLaps + 1];
+static int demoLapCount = 0;
+static void demoBuildLaps() {
+  if (demoLapCount) return;
+  int lap = 0;
+  while (lap < kDemoMaxLaps) {
+    float wh, regen;
+    demoLapEnergy(lap, kDemoLapSeconds, wh, regen);
+    demoLapStartWh[lap + 1] = demoLapStartWh[lap] + wh;
+    demoLapStartRegenWh[lap + 1] = demoLapStartRegenWh[lap] + regen;
+    ++lap;
+    if (demoLapStartWh[lap] >= kDemoPackWh) break;
+  }
+  demoLapCount = lap;
 }
 static float demoEndSeconds() {
   static const float end = []() {
-    float lo = 0, hi = kDemoPackWh / demoIntegral(kDemoPowers, 120) * 120 + 120;
-    for (int i = 0; i < 32; ++i) {
+    demoBuildLaps();
+    const int last = demoLapCount - 1;
+    if (demoLapStartWh[demoLapCount] < kDemoPackWh) return demoLapCount * kDemoLapSeconds;
+    float lo = 0, hi = kDemoLapSeconds;
+    for (int i = 0; i < 24; ++i) {
       const float mid = (lo + hi) * 0.5F;
-      if (demoTotal(kDemoPowers, mid) < kDemoPackWh) lo = mid; else hi = mid;
+      float wh, regen;
+      demoLapEnergy(last, mid, wh, regen);
+      if (demoLapStartWh[last] + wh < kDemoPackWh) lo = mid; else hi = mid;
     }
-    return hi;
+    return last * kDemoLapSeconds + hi;
   }();
   return end;
 }
-DemoRide demoRideAt(float seconds) {
+DemoRide demoRideAt(float seconds, bool totals) {
   DemoRide ride = {};
-  seconds = constrain(seconds, 0.0F, demoEndSeconds());
+  const float end = demoEndSeconds();
+  seconds = constrain(seconds, 0.0F, end);
   ride.seconds = seconds;
-  ride.km = demoTotal(kDemoSpeeds, seconds);
-  ride.wh = constrain(demoTotal(kDemoPowers, seconds), 0.0F, kDemoPackWh);
-  if (seconds >= demoEndSeconds()) return ride;
-  const float phase = fmodf(seconds, 120.0F);
-  for (int i = 0; i < kDemoPointCount - 1; ++i) {
-    if (phase > kDemoTimes[i + 1]) continue;
-    const float t = (phase - kDemoTimes[i]) / (kDemoTimes[i + 1] - kDemoTimes[i]);
-    ride.speedKmh = lerpFloat(kDemoSpeeds[i], kDemoSpeeds[i + 1], t);
-    ride.watts = lerpFloat(kDemoPowers[i], kDemoPowers[i + 1], t);
-    break;
+  const int lap = (int)(seconds / kDemoLapSeconds);
+  const float phase = seconds - lap * kDemoLapSeconds;
+  const float scale = demoLapScale(lap);
+  if (totals) {
+    float wh, regen;
+    demoLapEnergy(lap, phase, wh, regen);
+    for (int i = 0; i < lap; ++i) ride.km += demoLapKm(kDemoLapSeconds, i);
+    ride.km += demoLapKm(phase, lap);
+    ride.wh = constrain(demoLapStartWh[lap] + wh, 0.0F, kDemoPackWh);
+    ride.regenWh = demoLapStartRegenWh[lap] + regen;
   }
+  if (seconds >= end) return ride;
+  const DemoSample sample = demoSampleAt(phase, lap, scale);
+  ride.speedKmh = sample.speedKmh;
+  ride.watts = sample.watts;
   return ride;
 }
-DemoRide demoRidePeak() { DemoRide r = {}; r.speedKmh = 34; r.watts = 1500; return r; }
+// Highest power and speed any lap, launch included, can reach, for fixed meter ceilings.
+DemoRide demoRidePeak() {
+  static DemoRide peak = []() {
+    DemoRide r = {};
+    for (float t = 0; t <= kDemoLapSeconds; t += 0.25F) {
+      const DemoSample later = demoSampleAt(t, 1, 1.0F + kDemoLapSpread);
+      const DemoSample launch = demoSampleAt(t, 0, 1.0F);  // the one standing start
+      r.speedKmh = max(r.speedKmh, max(later.speedKmh, launch.speedKmh));
+      r.watts = max(r.watts, max(later.watts, launch.watts));
+    }
+    return r;
+  }();
+  return peak;
+}
 
 void serviceDemoMode() {
   const uint32_t now = millis();
@@ -1970,8 +2068,10 @@ void serviceDemoMode() {
   const bool active[] = {dashboardDemoModeEnabled, demoPreviewActive};
   for (int i = 0; i < 2; ++i) {
     DemoSession &s = *sessions[i];
-    if (active[i] && s.running)
-      s.seconds = min((double)demoEndSeconds(), s.seconds + (uint32_t)(now - s.lastMs) * 0.001 * demoTimeScale);
+    if (active[i] && s.running) {
+      s.seconds += (uint32_t)(now - s.lastMs) * 0.001 * demoTimeScale;
+      if (s.seconds >= demoEndSeconds()) s.seconds = 0;  // pack empty: start a new ride
+    }
     s.lastMs = now;
     s.running = active[i];
   }
@@ -2010,10 +2110,17 @@ static const DemoOutput &demoOutput(bool dashboardOnly) {
   const float cellV = soc < 0.1F ? 3.0F + soc * 5.0F :
                       soc < 0.9F ? 3.5F + (soc - 0.1F) * 0.5F : 3.9F + (soc - 0.9F) * 3.0F;
   DashboardValues v = {};
-  v.speedKmh = (int)lroundf(r.speedKmh); v.watts = (int)lroundf(r.watts);
-  v.voltage = constrain(13 * cellV - r.watts / 1500 * 1.8F, 39.0F, 54.6F);
-  v.current = r.watts / v.voltage;
-  v.motorCurrent = v.current * (3.0F - 2.0F * min(1.0F, r.speedKmh / 34));
+  // Sensor jitter on the instantaneous readings only; the trip integrals stay
+  // exact, and a stopped bike reads a steady zero.
+  const uint32_t tick = (uint32_t)(seconds * 10.0F);
+  const bool moving = r.speedKmh > 0.5F;
+  const float watts = moving ? r.watts * (1.0F + 0.02F * demoNoise(tick, 1)) : r.watts;
+  const float speed = moving ? max(0.0F, r.speedKmh + 0.3F * demoNoise(tick, 2)) : r.speedKmh;
+  const float openCircuit = 13 * cellV;
+  v.speedKmh = (int)lroundf(speed); v.watts = (int)lroundf(watts);
+  v.voltage = constrain(openCircuit - watts / openCircuit * kDemoPackOhm, 39.0F, 54.6F);
+  v.current = watts / v.voltage;
+  v.motorCurrent = v.current * (3.0F - 2.0F * min(1.0F, speed / 34));
   const float heat = 1 - expf(-r.seconds / 900);
   v.motorTemp = (int)lroundf(25 + heat * 35); v.escTemp = (int)lroundf(25 + heat * 20);
   v.tripKm = r.km; v.odoKm = (int)lroundf(1284 + r.km);
@@ -2021,12 +2128,12 @@ static const DemoOutput &demoOutput(bool dashboardOnly) {
   v.uptimeSeconds = (unsigned long)r.seconds; v.batteryPercent = (int)lroundf(soc * 100);
   output.values = v;
   BatteryStats s = {};
-  s.tripWh = r.wh; s.tripRegenWh = demoTotal(kDemoPowers, r.seconds, true); s.tripKm = r.km;
+  s.tripWh = r.wh; s.tripRegenWh = r.regenWh; s.tripKm = r.km;
   s.tripWhPerKm = r.km > 0.05F ? r.wh / r.km : 0;
   s.lifetimeKm = 1284; s.lifetimeWhPerKm = 20; s.lifetimeWh = 1284 * 20;
   s.socPercent = (int)lroundf(100 * (1 - r.wh / kDemoPackWh));
   s.rangeKm = (int)lroundf((kDemoPackWh - r.wh) / (s.tripWhPerKm > 0 ? s.tripWhPerKm : 20));
-  s.equivalentCycles = 41; s.packMilliOhm = 62; s.learnedCapacityAh = 10.5F; s.learnedSamples = 4;
+  s.equivalentCycles = 41; s.packMilliOhm = kDemoPackOhm * 1000; s.learnedCapacityAh = 10.5F; s.learnedSamples = 4;
   output.battery = s;
   output.seconds = seconds;
   return output;

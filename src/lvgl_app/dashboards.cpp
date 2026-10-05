@@ -3466,7 +3466,7 @@ static bool recordTraceSample(const DashboardValues &v) {
 }
 
 static void appendDemoTraceSample(float absoluteSeconds) {
-  const DemoRide sample = demoRideAt(absoluteSeconds);
+  const DemoRide sample = demoRideAt(absoluteSeconds, false);
   demoTraceSpeedPct[demoTraceHead] = sample.speedKmh;
   demoTracePowerPct[demoTraceHead] = max(0.0F, sample.watts);
   demoTraceHead = (demoTraceHead + 1) % kTraceSamples;
@@ -4369,7 +4369,7 @@ static void seedEfficiencyHistoryUntil(const BatteryStats &stats, unsigned secon
   const float fallback = stats.tripWhPerKm > 0.0F ? stats.tripWhPerKm : stats.lifetimeWhPerKm;
   efficiencyHistoryCount = min((unsigned)EFFICIENCY_HISTORY_SAMPLES, seconds);
   for (int i = 0; i < efficiencyHistoryCount; ++i) {
-    const DemoRide ride = demoRideAt(seconds - efficiencyHistoryCount + i + 1);
+    const DemoRide ride = demoRideAt(seconds - efficiencyHistoryCount + i + 1, false);
     const float rate = ride.speedKmh >= 3 && ride.watts > 0 ? ride.watts / ride.speedKmh : fallback;
     efficiencyLiveHistory[i] = (uint16_t)constrain((int)lroundf(rate * 10), 0, EFFICIENCY_SCALE_MAX_X10);
   }
