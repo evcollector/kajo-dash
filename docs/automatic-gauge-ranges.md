@@ -31,7 +31,10 @@ speed ceiling persists independently for VESC UART, VESC BLE and FarDriver BLE
 it is restored at boot as the last ride's peak and ages out like any other.
 Other ranges start fresh at boot. State is per backend, not per controller
 address: reset learning when changing vehicles on the same backend. Dashboard
-demo and theme previews have separate transient state.
+demo and theme previews have separate transient state. At 5x or faster the dashboard demo skips
+seconds of the ride between two 100 ms ticks, so the ranges are also fed the ride between the
+ticks (0.1 s steps, spread over the real time that passed); otherwise a 2-3 s launch is never
+confirmed and the ceilings stop following the peaks. The theme preview always runs at 1x.
 
 All themes use the shared maxima where they draw these metrics. The dashboard
 follows a rising ceiling immediately and eases a falling one over 2 seconds. Ticks,

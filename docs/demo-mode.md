@@ -24,7 +24,8 @@ not a battery or motor engineering model. No real vehicle settings are changed.
 Only `serviceDemoMode()` advances time. Telemetry readers share cached values and
 battery statistics. Trace and Efficiency history sample simulated seconds so their
 time axes match the trip at every compression setting. Theme previews use the same
-model with their own paused/resumed clock and cannot enable dashboard demo mode. A frozen
+model with their own paused/resumed clock, always at 1× whatever the demo speed, and cannot
+enable dashboard demo mode. A frozen
 theme preview resumes at 21 s, just ahead of the lap's first hard stop, so the dials are
 already moving when the demo is released.
 Dashboard demo rides are recorded whenever logging is enabled and

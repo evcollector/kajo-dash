@@ -149,5 +149,22 @@ int main() {
   topSpeedKmh=123; check(speedScaleMaxKmh()==123,"manual limit ignored");
   tap(160,75); check(automaticGaugeRanges,"auto menu toggle");
   learnedGaugeSpeed[2]=100; tap(160,135); check(speedScaleMaxKmh()==30,"reset menu failed");
+  // Demo mode at 30x skips 3 s of a hard ride per 100 ms tick. The ranges must still start at the
+  // defaults and follow the real peaks (launches of 2-3 s), not only the ones a tick happens to see.
+  uiShow(SCREEN_DASHBOARD); automaticGaugeRanges = true; resetAutomaticGaugeRanges();
+  demoTimeScale = 30; setDemoMode(true);
+  check(automaticGaugeMaximum(RANGE_POWER)==500 && automaticGaugeMaximum(RANGE_CURRENT)==25 &&
+        automaticGaugeMaximum(RANGE_MOTOR_CURRENT)==50, "demo ranges did not start at the defaults");
+  float peakW = 0, peakA = 0;
+  for (int i = 0; i < 600; ++i) {
+    advanceTime(100); uiDashboardTick();
+    const DashboardValues v = controllerSnapshot().values;
+    peakW = std::max(peakW, (float)v.watts); peakA = std::max(peakA, v.current);
+  }
+  check(automaticGaugeMaximum(RANGE_POWER) > 2000 && automaticGaugeMaximum(RANGE_POWER) >= peakW * 0.8F,
+        "demo power range lagged the ride at 30x");
+  check(automaticGaugeMaximum(RANGE_CURRENT) > 40 && automaticGaugeMaximum(RANGE_CURRENT) >= peakA * 0.8F,
+        "demo battery current range lagged the ride at 30x");
+  setDemoMode(false); demoTimeScale = 1;
   std::cout << "Gauge learning, visual transitions, all-theme redraws and menu passed\n";
 }

@@ -33,7 +33,8 @@ int main() {
   cycleDemoTimeScale(); advance(1000);
   check(demoTimeScale == 5 && close(demoRideSeconds(),20), "rate switch applied retroactively");
   setDemoPreview(true); advance(1000);
-  check(close(demoRideSeconds(),5) && controllerSnapshot().values.uptimeSeconds == 25, "preview mixed with dashboard");
+  // The dashboard demo runs at 5x here; the theme preview still runs in real time.
+  check(close(demoRideSeconds(),1) && controllerSnapshot().values.uptimeSeconds == 25, "preview mixed with dashboard or followed the demo speed");
   setDemoPreview(false);
   check(close(demoRideSeconds(),25), "preview replaced dashboard session");
   setDemoMode(false); advance(5000);

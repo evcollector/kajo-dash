@@ -2057,7 +2057,10 @@ void serviceDemoMode() {
   for (int i = 0; i < 2; ++i) {
     DemoSession &s = *sessions[i];
     if (active[i] && s.running) {
-      s.seconds += (uint32_t)(now - s.lastMs) * 0.001 * demoTimeScale;
+      // The theme preview always runs in real time. The demo speed is a Demo Mode setting for
+      // watching a whole ride go by; a preview that followed it redrew 2-3 times as much at 30x.
+      const uint32_t scale = &s == &previewSession ? 1 : demoTimeScale;
+      s.seconds += (uint32_t)(now - s.lastMs) * 0.001 * scale;
       if (s.seconds >= demoEndSeconds()) s.seconds = 0;  // pack empty: start a new ride
     }
     s.lastMs = now;
@@ -2107,20 +2110,10 @@ void cycleDemoTimeScale() {
 }
 bool demoModeIsActive() { return dashboardDemoModeEnabled || demoPreviewActive; }
 float demoRideSeconds() { if (demoPreviewIsFrozen()) return 600.0F; return demoPreviewActive ? previewSession.seconds : demoSession.seconds; }
-struct DemoOutput { DashboardValues values; BatteryStats battery; float seconds = -1; };
-static const DemoOutput &demoOutput(bool dashboardOnly) {
-  static DemoOutput cache[2];
-  DemoOutput &output = cache[!dashboardOnly && demoPreviewActive ? 1 : 0];
-  const float seconds = dashboardOnly ? demoSession.seconds : demoRideSeconds();
-  if (output.seconds == seconds) return output;
-  const DemoRide r = demoRideAt(seconds);
-  const float soc = constrain(1.0F - r.wh / kDemoPackWh, 0.0F, 1.0F);
-  // Approximate NMC resting curve with load sag; demo-only, not a pack estimator.
-  const float cellV = soc < 0.1F ? 3.0F + soc * 5.0F :
-                      soc < 0.9F ? 3.5F + (soc - 0.1F) * 0.5F : 3.9F + (soc - 0.9F) * 3.0F;
+// The readings a moment of the ride produces: speed, power, pack voltage, currents and duty,
+// with the sensor jitter on the instantaneous values only. `r` is the ride at `seconds`.
+static DashboardValues demoInstantReadings(const DemoRide &r, float seconds, float cellV) {
   DashboardValues v = {};
-  // Sensor jitter on the instantaneous readings only; the trip integrals stay
-  // exact, and a stopped bike reads a steady zero.
   const uint32_t tick = (uint32_t)(seconds * 10.0F);
   const bool moving = r.speedKmh > 0.5F;
   const float watts = moving ? r.watts * (1.0F + 0.02F * demoNoise(tick, 1)) : r.watts;
@@ -2133,6 +2126,21 @@ static const DemoOutput &demoOutput(bool dashboardOnly) {
   // Synthetic demo modulation, never substituted for live telemetry.
   v.dutyCycle = moving ? min(0.95F, 0.08F + speed / 50.0F) : 0.0F;
   v.phaseVoltage = v.voltage * fabsf(v.dutyCycle) / sqrtf(3.0F);
+  return v;
+}
+static float demoCellVolts(float soc) {
+  // Approximate NMC resting curve with load sag; demo-only, not a pack estimator.
+  return soc < 0.1F ? 3.0F + soc * 5.0F : soc < 0.9F ? 3.5F + (soc - 0.1F) * 0.5F : 3.9F + (soc - 0.9F) * 3.0F;
+}
+struct DemoOutput { DashboardValues values; BatteryStats battery; float seconds = -1; };
+static const DemoOutput &demoOutput(bool dashboardOnly) {
+  static DemoOutput cache[2];
+  DemoOutput &output = cache[!dashboardOnly && demoPreviewActive ? 1 : 0];
+  const float seconds = dashboardOnly ? demoSession.seconds : demoRideSeconds();
+  if (output.seconds == seconds) return output;
+  const DemoRide r = demoRideAt(seconds);
+  const float soc = constrain(1.0F - r.wh / kDemoPackWh, 0.0F, 1.0F);
+  DashboardValues v = demoInstantReadings(r, seconds, demoCellVolts(soc));
   const float heat = 1 - expf(-r.seconds / 900);
   v.motorTemp = (int)lroundf(25 + heat * 35); v.escTemp = (int)lroundf(25 + heat * 20);
   v.tripKm = r.km; v.odoKm = (int)lroundf(1284 + r.km);
@@ -2217,9 +2225,29 @@ static void observeGaugeRanges(int source, const DashboardValues &v, uint32_t fi
     ranges[i].observe((fields & masks[i]) == masks[i] ? readings[i] : -1, now, riding, limits[i]);
   if (source < 3) learnedGaugeSpeed[source] = ranges[RANGE_SPEED].ceiling;
 }
+// Dashboard demo at 5x or more skips seconds of the ride between two 100 ms ticks, and a 2-3 s
+// launch is then too short to be seen in two consecutive samples, so the ceilings never followed
+// the peaks. Feed the ranges the ride between the ticks too, at the same 0.1 s a 1x ride is
+// sampled at, spread over the real time that passed so the tracker's gap rule still holds.
+static void observeDemoBetweenTicks(uint32_t fields, uint32_t nowMs) {
+  static float lastSeconds = -1;
+  static uint32_t lastMs = 0;
+  const float seconds = demoSession.seconds;
+  if (lastSeconds >= 0 && seconds > lastSeconds && seconds - lastSeconds <= 12.0F && nowMs > lastMs) {
+    const float soc = constrain(1.0F - demoRideAt(seconds, true).wh / kDemoPackWh, 0.0F, 1.0F);
+    const float cellV = demoCellVolts(soc);
+    for (float t = lastSeconds + 0.1F; t < seconds - 0.05F; t += 0.1F) {
+      const uint32_t at = lastMs + (uint32_t)((t - lastSeconds) / (seconds - lastSeconds) * (nowMs - lastMs));
+      observeGaugeRanges(3, demoInstantReadings(demoRideAt(t, false), t, cellV), fields, at);
+    }
+  }
+  lastSeconds = seconds;
+  lastMs = nowMs;
+}
 void serviceGaugeRanges() {
   const ControllerSnapshot snapshot = controllerSnapshot();
   const int source = dashboardDemoModeEnabled ? 3 : gaugeBackendIndex();
+  if (source == 3 && snapshot.link == LINK_LIVE) observeDemoBetweenTicks(snapshot.available, snapshot.sampledAtMs);
   observeGaugeRanges(source, snapshot.values, snapshot.link == LINK_LIVE ? snapshot.available : 0, snapshot.sampledAtMs);
   // Persist learned speed after a sustained stop, not on every telemetry frame.
   static uint32_t stoppedAt = 0, savedAt = 0;
