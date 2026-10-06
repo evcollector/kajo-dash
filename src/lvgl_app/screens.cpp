@@ -5422,12 +5422,11 @@ static void showDashUiGrid(lv_obj_t *scr, const char *title) {
     // this passive background and the transparent button hit target.
     const lv_color_t cardBorder = selected ? cyd_ui::chromeAccent() : cyd_ui::idleControlBorder();
     // Extend the captured dashboard's own background through the otherwise
-    // empty card margins. The generated RGB565 thumbnails always include the
-    // dashboard canvas at their top-left pixel; decoding that pixel here keeps
-    // Tiles' light canvas, Pixel's near-black canvas, and the dark themes in
-    // sync with the preview assets without another per-theme colour table.
-    const lv_img_dsc_t *thumb = cydDashThumbs[themeIndex];
-    const uint16_t thumbBg565 = (static_cast<uint16_t>(thumb->data[0]) << 8) | thumb->data[1];
+    // empty card margins. The generator records each thumbnail's canvas colour
+    // (its top-left pixel), which keeps Tiles' light canvas, Pixel's near-black
+    // canvas, and the dark themes in sync with the preview assets without
+    // another per-theme colour table.
+    const uint16_t thumbBg565 = cydDashThumbBackground565[themeIndex];
     // The single-dial Gauge tile intentionally uses a true-black browser
     // surface. Its dashboard remains independently customizable; this applies
     // only to the preview grid card.
