@@ -305,18 +305,21 @@ void testBatteryChemistry() {
   expectValue(VEHICLE_FIELD_BATTERY_CHEMISTRY, "Li-ion", "chemistry tile shows Li-ion");
   expectValue(VEHICLE_FIELD_CELL_MIN_V, "3.20 V", "Li-ion default minimum");
   expectValue(VEHICLE_FIELD_CELL_NOMINAL_V, "3.60 V", "Li-ion default nominal");
-  expectValue(VEHICLE_FIELD_CELL_MAX_V, "4.18 V", "Li-ion default maximum");
+  expectValue(VEHICLE_FIELD_CELL_MAX_V, "4.20 V", "Li-ion default maximum is its charge voltage");
   expect(batterySocFromVoltage(10 * 3.80F) == 60, "Li-ion 3.80 V per cell is 60%");
   expect(batterySocFromVoltage(10 * 4.30F) == 100, "Li-ion above the curve clamps to 100%");
   expect(batterySocFromVoltage(10 * 3.00F) == 0, "Li-ion below the curve clamps to 0%");
-  expect(fabsf(batteryCellFullVolts() - 4.18F) < 0.001F, "Li-ion full cell voltage keeps the old 4.18 V scale");
+  expect(fabsf(batteryCellFullVolts() - 4.20F) < 0.001F, "Li-ion full cell voltage is the 4.20 V charge voltage");
+  expect(batterySocFromVoltage(10 * 4.18F) == 100, "a rested full Li-ion pack at 4.18 V still reads 100%");
 
   setBatteryChemistry(BATTERY_LIFEPO4);
   expectValue(VEHICLE_FIELD_BATTERY_CHEMISTRY, "LiFePO4", "chemistry tile shows LiFePO4");
   expectValue(VEHICLE_FIELD_CELL_NOMINAL_V, "3.20 V", "LiFePO4 default nominal");
   expectValue(VEHICLE_FIELD_CELL_MAX_V, "3.65 V", "LiFePO4 default maximum");
-  expect(batterySocFromVoltage(10 * 3.65F) == 100, "LiFePO4 default maximum reads 100%");
-  expect(batterySocFromVoltage(10 * 3.60F) < 100, "LiFePO4 3.60 V per cell is below full charge");
+  expect(batterySocFromVoltage(10 * 3.65F) == 100, "LiFePO4 charge voltage reads 100%");
+  expect(batterySocFromVoltage(10 * 3.40F) == 100, "a rested full LiFePO4 pack at 3.40 V reads 100%");
+  expect(batterySocFromVoltage(10 * 3.35F) < 100, "3.35 V per cell is not yet a full LiFePO4 cell");
+  expect(batterySocFromVoltage(10 * 3.60F) == 100, "LiFePO4 surface voltage while charging reads 100%");
   expect(batterySocFromVoltage(10 * 3.80F) == 100, "3.80 V per cell is a full LiFePO4 cell");
   expect(batterySocFromVoltage(10 * 3.26F) == 50, "LiFePO4 3.26 V per cell is half full");
   expect(batterySocFromVoltage(10 * 2.80F) == 0, "LiFePO4 below the curve is empty");

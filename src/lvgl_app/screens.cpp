@@ -6297,17 +6297,17 @@ static void showSubmenu() {
     }
     lv_obj_t *note = makeLabelAt(
         scr, kMenuEdgeX + 4, 170,
-        txt("Min and max are the resting volts that read 0% and 100%, not charger limits. Tap a chemistry to load "
-            "its defaults; tap it again to restore them after editing.",
-            "Min ja max ovat lepojännitteet, joilla näytetään 0 % ja 100 %, eivät laturin rajoja. Valitse kemia "
-            "ladataksesi oletukset; valitse uudelleen palauttaaksesi ne muokkauksen jälkeen.",
-            "Min und max sind die Ruhespannungen für 0 % und 100 %, keine Ladegrenzen. Chemie antippen lädt die "
+        txt("Min is empty, max is the full-charge voltage; charge % follows them. Tap a chemistry to load its "
+            "defaults; tap it again to restore them after editing.",
+            "Min on tyhjä, max täyden latauksen jännite; varaus-% seuraa niitä. Valitse kemia ladataksesi "
+            "oletukset; valitse uudelleen palauttaaksesi ne muokkauksen jälkeen.",
+            "Min ist leer, max die Ladeschlussspannung; die Ladung in % folgt beiden. Chemie antippen lädt die "
             "Standardwerte; erneut antippen stellt sie nach dem Ändern wieder her.",
-            "Min et max sont les tensions au repos pour 0 % et 100 %, pas les limites du chargeur. Touchez une "
-            "chimie pour charger ses valeurs par défaut ; touchez-la à nouveau pour les restaurer.",
-            "Mín y máx son los voltios en reposo para 0 % y 100 %, no límites del cargador. Toque una química para "
+            "Min = vide, max = tension de charge complète ; le % de charge les suit. Touchez une chimie pour "
+            "charger ses valeurs par défaut ; touchez-la à nouveau pour les restaurer.",
+            "Mín es vacío, máx es el voltaje de carga completa; el % de carga los sigue. Toque una química para "
             "cargar sus valores; vuelva a tocarla para restaurarlos tras editar.",
-            "Min e max sono i volt a riposo per 0% e 100%, non i limiti del caricabatterie. Tocca una chimica per "
+            "Min è vuoto, max è la tensione di carica completa; la % di carica li segue. Tocca una chimica per "
             "caricare i valori predefiniti; toccala di nuovo per ripristinarli."),
         cyd_ui::secondaryText(), &lv_font_rajdhani_12, 0);
     lv_obj_set_width(note, kMenuContentW - 8);

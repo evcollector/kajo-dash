@@ -213,9 +213,12 @@ tiles. The chemistry tile opens Cell Voltages, where Li-ion, LiPo and LiFePO4 ar
 selectable tiles (the chosen one filled, `makeMenuButton(..., active)`) over three
 numeric tiles for cell minimum, nominal and maximum volts. Choosing a chemistry
 loads its default voltages; choosing the current one again restores them. Minimum
-and maximum are the resting volts that read 0% and 100%, not charger limits, and
-they stretch the chemistry's curve between them; nominal volts only turn Ah into
-Wh. The window keeps at least 0.3 V and the nominal voltage stays inside it. Any
+is the empty cell and maximum the full-charge voltage, as the industry quotes it
+(3.65 V for LiFePO4). The charge percentage is read from resting voltage, so a
+full pack counts as 100% at the lower voltage it settles at (3.40 V for LiFePO4,
+4.18 V for Li-ion); that point is a fixed share of the way from minimum to
+maximum, so editing either moves it in proportion. Nominal volts only turn Ah
+into Wh. The window keeps at least 0.3 V and the nominal voltage stays inside it. Any
 change to chemistry or voltages restarts the charge estimate and the measured
 capacity, because both were derived from the old curve. Back returns to Battery
 Configuration. The series and capacity tiles open the keypad directly.

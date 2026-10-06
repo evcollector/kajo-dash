@@ -158,17 +158,17 @@ const char *vehicleFieldInputHint(int field) {
       return txt("Series cell count, 4-32 S", "Sarjaan kytketyt kennot, 4-32 S", "Zellen in Reihe, 4-32 S",
                  "Cellules en série, 4-32 S", "Celdas en serie, 4-32 S", "Celle in serie, 4-32 S");
     case VEHICLE_FIELD_CELL_MIN_V:
-      return txt("Resting volts per cell that read 0%, 2.0-4.0", "Lepojännite per kenno, jolla 0 %, 2.0-4.0",
-                 "Ruhespannung je Zelle für 0 %, 2.0-4.0", "Tension au repos par cellule pour 0 %, 2.0-4.0",
-                 "Voltios en reposo por celda para 0 %, 2.0-4.0", "Volt a riposo per cella per 0%, 2.0-4.0");
+      return txt("Empty cell voltage (0%), 2.0-4.0", "Tyhjän kennon jännite (0 %), 2.0-4.0",
+                 "Spannung leere Zelle (0 %), 2.0-4.0", "Tension cellule vide (0 %), 2.0-4.0",
+                 "Voltaje celda vacía (0 %), 2.0-4.0", "Tensione cella vuota (0%), 2.0-4.0");
     case VEHICLE_FIELD_CELL_NOMINAL_V:
       return txt("Nominal volts per cell, used for Wh, 2.5-4.3", "Nimellisjännite per kenno (Wh), 2.5-4.3",
                  "Nennspannung je Zelle für Wh, 2.5-4.3", "Tension nominale par cellule (Wh), 2.5-4.3",
                  "Voltios nominales por celda (Wh), 2.5-4.3", "Volt nominali per cella (Wh), 2.5-4.3");
     case VEHICLE_FIELD_CELL_MAX_V:
-      return txt("Resting volts per cell that read 100%, 3.0-4.5", "Lepojännite per kenno, jolla 100 %, 3.0-4.5",
-                 "Ruhespannung je Zelle für 100 %, 3.0-4.5", "Tension au repos par cellule pour 100 %, 3.0-4.5",
-                 "Voltios en reposo por celda para 100 %, 3.0-4.5", "Volt a riposo per cella per 100%, 3.0-4.5");
+      return txt("Full-charge cell voltage, 3.0-4.5", "Täyden latauksen jännite, 3.0-4.5",
+                 "Ladeschlussspannung je Zelle, 3.0-4.5", "Tension de charge complète, 3.0-4.5",
+                 "Voltaje de carga completa, 3.0-4.5", "Tensione di carica completa, 3.0-4.5");
     case VEHICLE_FIELD_BATTERY_AH:
       return txt("Usable battery capacity in Ah", "Käytettävä akun kapasiteetti (Ah)", "Nutzbare Akkukapazität in Ah",
                  "Capacité utile de la batterie en Ah", "Capacidad útil de la batería en Ah",

@@ -464,9 +464,9 @@ static int powerBarMax() {
   return max(100, (int)peakPowerDeciKw * 100);
 }
 
-// Full pack voltage from the configured series count. The state-of-charge
-// curve tops out at the chemistry's full-cell voltage (4.18 V for Li-ion), so a
-// bar scaled to this reads full at the same moment the charge readout says 100%.
+// Full pack voltage from the configured series count: the full-charge cell
+// voltage (4.20 V for Li-ion), so the bar fills while charging and a rested full
+// pack sits just below the end of it.
 static int packVoltageMax() {
   if (demoPreviewIsFrozen()) return 84;  // thumbnail pack: 20 cells at 4.18 V
   return max(1, (int)lroundf((float)batterySeriesCount * batteryCellFullVolts()));

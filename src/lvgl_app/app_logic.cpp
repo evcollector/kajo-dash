@@ -31,7 +31,7 @@ uint8_t batterySeriesCount = 20;
 uint8_t batteryChemistry = BATTERY_LIION;
 uint16_t batteryCellMinMv = 3200;
 uint16_t batteryCellNominalMv = 3600;
-uint16_t batteryCellMaxMv = 4180;
+uint16_t batteryCellMaxMv = 4200;
 uint16_t batteryCapacityDeciAh = 200;
 uint16_t batteryMaxAmps = 100;
 uint16_t motorMaxAmps = 150;
@@ -908,16 +908,21 @@ static bool batteryHistoryChanged(bool meaningfulOnly) {
 // and the curve only anchors it near empty and full.
 struct ChemistryProfile {
   const char *name;
-  uint16_t minMv;      // default resting cell voltage that reads 0 %
+  uint16_t minMv;      // default cell voltage that reads empty
   uint16_t nominalMv;  // default nominal cell voltage, behind the Wh figures
-  uint16_t maxMv;      // default resting cell voltage that reads 100 %
-  float ocv[11];       // curve shape between minMv and maxMv
+  uint16_t maxMv;      // default full-charge cell voltage, the figure the industry quotes
+  uint16_t restFullMv; // resting voltage a full pack settles at, which reads 100 %
+  float ocv[11];       // curve shape from minMv (0 %) to restFullMv (100 %)
 };
 
+// A cell charged to its full-charge voltage relaxes below it once the charger
+// lets go, and for LiFePO4 the drop is large (3.65 V charged, about 3.40 V
+// resting). The settings show the charge voltage; the charge percentage is
+// worked out from resting voltage, so it uses restFullMv as its 100 % point.
 static const ChemistryProfile kChemistries[BATTERY_CHEMISTRY_COUNT] = {
-    {"Li-ion", 3200, 3600, 4180, {3.20F, 3.45F, 3.55F, 3.62F, 3.68F, 3.74F, 3.80F, 3.88F, 3.96F, 4.06F, 4.18F}},
-    {"LiPo", 3270, 3700, 4200, {3.27F, 3.69F, 3.73F, 3.77F, 3.80F, 3.84F, 3.87F, 3.95F, 4.02F, 4.11F, 4.20F}},
-    {"LiFePO4", 2900, 3200, 3650, {2.90F, 3.10F, 3.20F, 3.22F, 3.25F, 3.26F, 3.27F, 3.30F, 3.32F, 3.35F, 3.65F}},
+    {"Li-ion", 3200, 3600, 4200, 4180, {3.20F, 3.45F, 3.55F, 3.62F, 3.68F, 3.74F, 3.80F, 3.88F, 3.96F, 4.06F, 4.18F}},
+    {"LiPo", 3270, 3700, 4200, 4200, {3.27F, 3.69F, 3.73F, 3.77F, 3.80F, 3.84F, 3.87F, 3.95F, 4.02F, 4.11F, 4.20F}},
+    {"LiFePO4", 2900, 3200, 3650, 3400, {2.90F, 3.10F, 3.20F, 3.22F, 3.25F, 3.26F, 3.27F, 3.30F, 3.32F, 3.35F, 3.40F}},
 };
 
 static const ChemistryProfile &chemistryProfile(uint8_t chemistry) {
@@ -934,13 +939,16 @@ uint16_t batteryChemistryDefaultMv(uint8_t chemistry, BatteryCellVoltage which) 
 }
 
 // The rider's min and max stretch the chemistry's curve: the curve keeps its
-// shape and its ends move to the chosen window, so 0 % and 100 % mean the
-// voltages the rider set.
+// shape, starts at the rider's minimum and ends at the same share of the way to
+// the rider's maximum that the default resting-full point sits at, so lowering
+// the charge voltage lowers where a full pack reads 100 % in proportion.
 static float cellCurveVolts(int point) {
   const ChemistryProfile &profile = chemistryProfile(batteryChemistry);
   const float defaultSpan = profile.ocv[10] - profile.ocv[0];
   const float shape = defaultSpan > 0.0F ? (profile.ocv[point] - profile.ocv[0]) / defaultSpan : point / 10.0F;
-  return batteryCellMinMv / 1000.0F + shape * (batteryCellMaxMv - batteryCellMinMv) / 1000.0F;
+  const float defaultWindow = (float)(profile.maxMv - profile.minMv);
+  const float restShare = defaultWindow > 0.0F ? (float)(profile.restFullMv - profile.minMv) / defaultWindow : 1.0F;
+  return batteryCellMinMv / 1000.0F + shape * restShare * (batteryCellMaxMv - batteryCellMinMv) / 1000.0F;
 }
 
 float batteryCellFullVolts() {

@@ -336,8 +336,10 @@ enum BatteryChemistry : uint8_t {
   BATTERY_CHEMISTRY_COUNT
 };
 // Each chemistry has default cell voltages the rider can then adjust. The
-// minimum and maximum are the resting voltages that read 0 % and 100 %, not
-// charger limits; the nominal voltage turns amp-hours into watt-hours.
+// minimum is the empty cell and the maximum the full-charge voltage, as the
+// industry quotes them (3.65 V for LiFePO4). The charge percentage reads a full
+// pack as 100 % at the lower voltage it rests at, scaled with the maximum; the
+// nominal voltage turns amp-hours into watt-hours.
 enum BatteryCellVoltage : uint8_t { BATTERY_CELL_MIN, BATTERY_CELL_NOMINAL, BATTERY_CELL_MAX };
 const char *batteryChemistryName(uint8_t chemistry);
 uint16_t batteryChemistryDefaultMv(uint8_t chemistry, BatteryCellVoltage which);
