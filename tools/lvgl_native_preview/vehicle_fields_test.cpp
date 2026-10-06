@@ -76,8 +76,10 @@ void testNumericClamps() {
 
   expectSaved(VEHICLE_FIELD_BATTERY_AH, "0.5", batteryCapacityDeciAh, 10, "battery Ah below minimum");
   expectSaved(VEHICLE_FIELD_BATTERY_AH, "1.0", batteryCapacityDeciAh, 10, "battery Ah at minimum");
-  expectSaved(VEHICLE_FIELD_BATTERY_AH, "99.9", batteryCapacityDeciAh, 999, "battery Ah at maximum");
-  expectSaved(VEHICLE_FIELD_BATTERY_AH, "150", batteryCapacityDeciAh, 999, "battery Ah above maximum");
+  expectSaved(VEHICLE_FIELD_BATTERY_AH, "99.9", batteryCapacityDeciAh, 999, "battery Ah keeps 99.9");
+  expectSaved(VEHICLE_FIELD_BATTERY_AH, "150", batteryCapacityDeciAh, 1500, "battery Ah above 99.9 is allowed");
+  expectSaved(VEHICLE_FIELD_BATTERY_AH, "1000", batteryCapacityDeciAh, 10000, "battery Ah at maximum");
+  expectSaved(VEHICLE_FIELD_BATTERY_AH, "5000", batteryCapacityDeciAh, 10000, "battery Ah above maximum");
 
   expectSaved(VEHICLE_FIELD_BATTERY_MAX_A, "0", batteryMaxAmps, 1, "battery amps below minimum");
   expectSaved(VEHICLE_FIELD_BATTERY_MAX_A, "500", batteryMaxAmps, 500, "battery amps at maximum");
@@ -231,6 +233,11 @@ void testFormatting() {
   batteryCapacityDeciAh = 205;
   expectValue(VEHICLE_FIELD_BATTERY_AH, "20.5 Ah", "battery capacity tile");
   expectEditText(VEHICLE_FIELD_BATTERY_AH, "20.5", "battery capacity edit text drops the unit");
+
+  batteryCapacityDeciAh = 10000;
+  expectValue(VEHICLE_FIELD_BATTERY_AH, "1000.0 Ah", "battery capacity tile at the maximum");
+  expectEditText(VEHICLE_FIELD_BATTERY_AH, "1000.0", "battery capacity edit text at the maximum");
+  batteryCapacityDeciAh = 205;
 
   batterySeriesCount = 20;
   expectValue(VEHICLE_FIELD_BATTERY_S, "20S", "battery series tile");

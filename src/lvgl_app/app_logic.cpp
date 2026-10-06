@@ -1701,7 +1701,7 @@ void loadAppSettings() {
     batteryCellMaxMv = batteryChemistryDefaultMv(batteryChemistry, BATTERY_CELL_MAX);
   }
   batteryCellNominalMv = constrain((int)batteryCellNominalMv, batteryCellMinMv + 50, batteryCellMaxMv - 50);
-  batteryCapacityDeciAh = constrain(preferences.getUShort("battAh10", batteryCapacityDeciAh), 10, 999);
+  batteryCapacityDeciAh = constrain(preferences.getUShort("battAh10", batteryCapacityDeciAh), 10, 10000);
   batteryMaxAmps = constrain(preferences.getUShort("battMaxA", batteryMaxAmps), 1, 500);
   motorMaxAmps = constrain(preferences.getUShort("motorMaxA", motorMaxAmps), 1, 500);
   continuousPowerDeciKw = constrain(preferences.getUShort("contKw10", continuousPowerDeciKw), 1, 500);

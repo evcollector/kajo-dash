@@ -492,7 +492,7 @@ void saveVehicleInputValue(int field, const char *text) {
         batterySeriesCount = constrain(atoi(text), 4, 32);
         break;
       case VEHICLE_FIELD_BATTERY_AH:
-        batteryCapacityDeciAh = parseDeciValue(text, 10, 999);
+        batteryCapacityDeciAh = parseDeciValue(text, 10, 10000);
         break;
       case VEHICLE_FIELD_CELL_MIN_V:
         batteryCellMinMv = constrain((int)lroundf(atof(text) * 100.0F) * 10, 2000, 4000);
