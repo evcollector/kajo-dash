@@ -78,8 +78,9 @@ void testNumericClamps() {
   expectSaved(VEHICLE_FIELD_BATTERY_AH, "1.0", batteryCapacityDeciAh, 10, "battery Ah at minimum");
   expectSaved(VEHICLE_FIELD_BATTERY_AH, "99.9", batteryCapacityDeciAh, 999, "battery Ah keeps 99.9");
   expectSaved(VEHICLE_FIELD_BATTERY_AH, "150", batteryCapacityDeciAh, 1500, "battery Ah above 99.9 is allowed");
-  expectSaved(VEHICLE_FIELD_BATTERY_AH, "1000", batteryCapacityDeciAh, 10000, "battery Ah at maximum");
-  expectSaved(VEHICLE_FIELD_BATTERY_AH, "5000", batteryCapacityDeciAh, 10000, "battery Ah above maximum");
+  expectSaved(VEHICLE_FIELD_BATTERY_AH, "9999.9", batteryCapacityDeciAh, 99999, "battery Ah at the top of the Ah range");
+  expectSaved(VEHICLE_FIELD_BATTERY_AH, "9999900", batteryCapacityDeciAh, 99999000, "battery Ah at maximum, 9999.9 kAh");
+  expectSaved(VEHICLE_FIELD_BATTERY_AH, "99999999", batteryCapacityDeciAh, 99999000, "battery Ah above maximum");
 
   expectSaved(VEHICLE_FIELD_BATTERY_MAX_A, "0", batteryMaxAmps, 1, "battery amps below minimum");
   expectSaved(VEHICLE_FIELD_BATTERY_MAX_A, "500", batteryMaxAmps, 500, "battery amps at maximum");
@@ -235,8 +236,21 @@ void testFormatting() {
   expectEditText(VEHICLE_FIELD_BATTERY_AH, "20.5", "battery capacity edit text drops the unit");
 
   batteryCapacityDeciAh = 10000;
-  expectValue(VEHICLE_FIELD_BATTERY_AH, "1000.0 Ah", "battery capacity tile at the maximum");
-  expectEditText(VEHICLE_FIELD_BATTERY_AH, "1000.0", "battery capacity edit text at the maximum");
+  expectValue(VEHICLE_FIELD_BATTERY_AH, "1000.0 Ah", "battery capacity tile in Ah");
+  batteryCapacityDeciAh = 99999;
+  expectValue(VEHICLE_FIELD_BATTERY_AH, "9999.9 Ah", "battery capacity tile at the top of the Ah range");
+  expectEditText(VEHICLE_FIELD_BATTERY_AH, "9999.9", "battery capacity edit text at the top of the Ah range");
+  batteryCapacityDeciAh = 100000;
+  expectValue(VEHICLE_FIELD_BATTERY_AH, "10.0 kAh", "battery capacity swaps to kAh above 9999.9 Ah");
+  expectEditText(VEHICLE_FIELD_BATTERY_AH, "10000", "kAh capacity is edited in whole Ah");
+  batteryCapacityDeciAh = 99999000;
+  expectValue(VEHICLE_FIELD_BATTERY_AH, "9999.9 kAh", "battery capacity tile at the maximum");
+  expectEditText(VEHICLE_FIELD_BATTERY_AH, "9999900", "maximum capacity fits the keypad's eight characters");
+  saveVehicleProfile();
+  batteryCapacityDeciAh = 205;
+  loadAppSettings();
+  expect(batteryCapacityDeciAh == 99999000, "a capacity above 65535 tenths survives a settings reload");
+  batteryCapacityDeciAh = 205;
   batteryCapacityDeciAh = 205;
 
   batterySeriesCount = 20;

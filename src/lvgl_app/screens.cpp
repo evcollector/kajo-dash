@@ -6238,7 +6238,9 @@ static void showSubmenu() {
       snprintf(resistance, sizeof(resistance), "-");
     }
     if (stats.learnedSamples > 0) {
-      snprintf(capacity, sizeof(capacity), "%.1f Ah (%u)", stats.learnedCapacityAh, stats.learnedSamples);
+      char learned[16];
+      formatBatteryCapacity(learned, sizeof(learned), stats.learnedCapacityAh);
+      snprintf(capacity, sizeof(capacity), "%s (%u)", learned, stats.learnedSamples);
     } else {
       snprintf(capacity, sizeof(capacity), "-");
     }

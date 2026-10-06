@@ -777,7 +777,7 @@ static void formatDashboardData(char *buffer, size_t size, DashboardDataItem ite
       break;
     case DATA_LEARNED_CAPACITY:
       if (stats.learnedCapacityAh > 0.0F)
-        snprintf(buffer, size, "%.1f Ah", stats.learnedCapacityAh);
+        formatBatteryCapacity(buffer, size, stats.learnedCapacityAh);
       else
         snprintf(buffer, size, "-");
       break;

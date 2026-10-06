@@ -170,9 +170,9 @@ const char *vehicleFieldInputHint(int field) {
                  "Ladeschlussspannung je Zelle, 3.0-4.5", "Tension de charge complète, 3.0-4.5",
                  "Voltaje de carga completa, 3.0-4.5", "Tensione di carica completa, 3.0-4.5");
     case VEHICLE_FIELD_BATTERY_AH:
-      return txt("Usable battery capacity in Ah", "Käytettävä akun kapasiteetti (Ah)", "Nutzbare Akkukapazität in Ah",
-                 "Capacité utile de la batterie en Ah", "Capacidad útil de la batería en Ah",
-                 "Capacità utile della batteria in Ah");
+      return txt("Capacity in Ah; kAh above 9999.9", "Kapasiteetti Ah; yli 9999.9 kAh",
+                 "Kapazität in Ah; ab 9999.9 kAh", "Capacité en Ah ; kAh > 9999.9",
+                 "Capacidad en Ah; kAh sobre 9999.9", "Capacità in Ah; kAh oltre 9999.9");
     case VEHICLE_FIELD_BATTERY_MAX_A:
       return txt("Gauge range only; saved on display", "Vain mittari; tallennus näyttöön", "Nur Anzeigeskala; lokal gespeichert", "Échelle seulement ; stockage écran", "Solo escala; guardado en pantalla", "Solo scala; salvata sul display");
     case VEHICLE_FIELD_MOTOR_MAX_A:
@@ -336,7 +336,7 @@ void vehicleFieldValue(int field, char *buffer, size_t size) {
       snprintf(buffer, size, "%u.%02u V", batteryCellMaxMv / 1000, batteryCellMaxMv % 1000 / 10);
       return;
     case VEHICLE_FIELD_BATTERY_AH:
-      snprintf(buffer, size, "%u.%u Ah", batteryCapacityDeciAh / 10, batteryCapacityDeciAh % 10);
+      formatBatteryCapacityDeciAh(buffer, size, batteryCapacityDeciAh);
       return;
     case VEHICLE_FIELD_BATTERY_MAX_A:
       snprintf(buffer, size, "%u A", batteryMaxAmps);
@@ -403,7 +403,13 @@ void vehicleFieldEditText(int field, char *buffer, size_t size) {
       snprintf(buffer, size, "%u", batterySeriesCount);
       return;
     case VEHICLE_FIELD_BATTERY_AH:
-      snprintf(buffer, size, "%u.%u", batteryCapacityDeciAh / 10, batteryCapacityDeciAh % 10);
+      // Always in Ah, and whole Ah once it is large, so the keypad's eight
+      // characters hold the biggest pack ("9999900").
+      if (batteryCapacityDeciAh > 99999UL) {
+        snprintf(buffer, size, "%lu", (unsigned long)((batteryCapacityDeciAh + 5UL) / 10UL));
+      } else {
+        formatBatteryCapacityDeciAh(buffer, size, batteryCapacityDeciAh, false);
+      }
       return;
     case VEHICLE_FIELD_CELL_MIN_V:
       snprintf(buffer, size, "%u.%02u", batteryCellMinMv / 1000, batteryCellMinMv % 1000 / 10);
@@ -492,7 +498,13 @@ void saveVehicleInputValue(int field, const char *text) {
         batterySeriesCount = constrain(atoi(text), 4, 32);
         break;
       case VEHICLE_FIELD_BATTERY_AH:
-        batteryCapacityDeciAh = parseDeciValue(text, 10, 10000);
+        {
+          const double deciAh = floor(atof(text) * 10.0 + 0.5);
+          batteryCapacityDeciAh = deciAh < (double)kBatteryCapacityMinDeciAh
+                                      ? kBatteryCapacityMinDeciAh
+                                      : (deciAh > (double)kBatteryCapacityMaxDeciAh ? kBatteryCapacityMaxDeciAh
+                                                                                     : (uint32_t)deciAh);
+        }
         break;
       case VEHICLE_FIELD_CELL_MIN_V:
         batteryCellMinMv = constrain((int)lroundf(atof(text) * 100.0F) * 10, 2000, 4000);

@@ -383,7 +383,7 @@ extern uint8_t batteryChemistry;  // BatteryChemistry
 extern uint16_t batteryCellMinMv;
 extern uint16_t batteryCellNominalMv;
 extern uint16_t batteryCellMaxMv;
-extern uint16_t batteryCapacityDeciAh;
+extern uint32_t batteryCapacityDeciAh;  // tenths of an amp-hour, up to 9999.9 kAh
 extern uint16_t batteryMaxAmps;
 extern uint16_t motorMaxAmps;
 extern uint16_t continuousPowerDeciKw;
@@ -569,6 +569,11 @@ const char *metricRangeLabel();
 const char *energyRateLabel();  // "WH/KM" or "WH/MI", following the unit setting
 void formatRangeText(char *buffer, size_t size, int rangeKm, bool withUnit = true);
 void formatEnergyRate(char *buffer, size_t size, float whPerKm, bool withUnit = true);
+// Amp-hours with one decimal, switching to kAh above 9999.9 Ah ("12.0 kAh").
+constexpr uint32_t kBatteryCapacityMinDeciAh = 10;
+constexpr uint32_t kBatteryCapacityMaxDeciAh = 99999000UL;  // 9999.9 kAh
+void formatBatteryCapacityDeciAh(char *buffer, size_t size, uint32_t deciAh, bool withUnit = true);
+void formatBatteryCapacity(char *buffer, size_t size, float amphours);
 void formatUptime(char *buffer, size_t size, unsigned long seconds);
 void formatUptimeShort(char *buffer, size_t size, unsigned long seconds);
 

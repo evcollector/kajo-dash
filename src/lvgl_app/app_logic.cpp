@@ -32,7 +32,7 @@ uint8_t batteryChemistry = BATTERY_LIION;
 uint16_t batteryCellMinMv = 3200;
 uint16_t batteryCellNominalMv = 3600;
 uint16_t batteryCellMaxMv = 4200;
-uint16_t batteryCapacityDeciAh = 200;
+uint32_t batteryCapacityDeciAh = 200;
 uint16_t batteryMaxAmps = 100;
 uint16_t motorMaxAmps = 150;
 uint16_t continuousPowerDeciKw = 30;
@@ -955,6 +955,21 @@ float batteryCellFullVolts() {
   return batteryCellMaxMv / 1000.0F;
 }
 
+// Pack sizes run from a scooter to a ship: whole tenths of an amp-hour up to
+// 9999.9 Ah, then tenths of a kilo-amp-hour so the text stays short.
+void formatBatteryCapacityDeciAh(char *buffer, size_t size, uint32_t deciAh, bool withUnit) {
+  if (deciAh <= 99999UL) {
+    snprintf(buffer, size, withUnit ? "%lu.%lu Ah" : "%lu.%lu", (unsigned long)(deciAh / 10), (unsigned long)(deciAh % 10));
+  } else {
+    const uint32_t deciKah = (deciAh + 500UL) / 1000UL;
+    snprintf(buffer, size, withUnit ? "%lu.%lu kAh" : "%lu.%lu", (unsigned long)(deciKah / 10), (unsigned long)(deciKah % 10));
+  }
+}
+
+void formatBatteryCapacity(char *buffer, size_t size, float amphours) {
+  formatBatteryCapacityDeciAh(buffer, size, amphours <= 0.0F ? 0UL : (uint32_t)lroundf(amphours * 10.0F));
+}
+
 static float packCapacityAh() {
   return batteryCapacityDeciAh / 10.0F;
 }
@@ -1299,7 +1314,7 @@ struct AppSettingsSnapshot {
   uint16_t batteryCellMinMv;
   uint16_t batteryCellNominalMv;
   uint16_t batteryCellMaxMv;
-  uint16_t batteryCapacityDeciAh;
+  uint32_t batteryCapacityDeciAh;
   uint16_t batteryMaxAmps;
   uint16_t motorMaxAmps;
   uint16_t continuousPowerDeciKw;
@@ -1445,7 +1460,7 @@ void saveAppSettings() {
   PUT_CHANGED(batteryCellMinMv, putUShort("cellMinMv", current.batteryCellMinMv));
   PUT_CHANGED(batteryCellNominalMv, putUShort("cellNomMv", current.batteryCellNominalMv));
   PUT_CHANGED(batteryCellMaxMv, putUShort("cellMaxMv", current.batteryCellMaxMv));
-  PUT_CHANGED(batteryCapacityDeciAh, putUShort("battAh10", current.batteryCapacityDeciAh));
+  PUT_CHANGED(batteryCapacityDeciAh, putUInt("battAh10", current.batteryCapacityDeciAh));
   PUT_CHANGED(batteryMaxAmps, putUShort("battMaxA", current.batteryMaxAmps));
   PUT_CHANGED(motorMaxAmps, putUShort("motorMaxA", current.motorMaxAmps));
   PUT_CHANGED(continuousPowerDeciKw, putUShort("contKw10", current.continuousPowerDeciKw));
@@ -1701,7 +1716,9 @@ void loadAppSettings() {
     batteryCellMaxMv = batteryChemistryDefaultMv(batteryChemistry, BATTERY_CELL_MAX);
   }
   batteryCellNominalMv = constrain((int)batteryCellNominalMv, batteryCellMinMv + 50, batteryCellMaxMv - 50);
-  batteryCapacityDeciAh = constrain(preferences.getUShort("battAh10", batteryCapacityDeciAh), 10, 10000);
+  batteryCapacityDeciAh = preferences.getUInt("battAh10", batteryCapacityDeciAh);
+  if (batteryCapacityDeciAh < kBatteryCapacityMinDeciAh) batteryCapacityDeciAh = kBatteryCapacityMinDeciAh;
+  if (batteryCapacityDeciAh > kBatteryCapacityMaxDeciAh) batteryCapacityDeciAh = kBatteryCapacityMaxDeciAh;
   batteryMaxAmps = constrain(preferences.getUShort("battMaxA", batteryMaxAmps), 1, 500);
   motorMaxAmps = constrain(preferences.getUShort("motorMaxA", motorMaxAmps), 1, 500);
   continuousPowerDeciKw = constrain(preferences.getUShort("contKw10", continuousPowerDeciKw), 1, 500);
