@@ -78,6 +78,19 @@ bool expect(bool condition, const char *message) {
   return false;
 }
 
+bool checkFieldEditor(SubmenuType section, int field) {
+  uiPreviewSetSubmenu(section, 0, false);
+  uiShow(SCREEN_SUBMENU);
+  cyd::preview::advanceTime(200);
+  if (!expect(tapLabel(vehicleFieldTitle(field)), "editable field tile missing") ||
+      !expectScreen(SCREEN_TEXT_INPUT, vehicleFieldTitle(field))) return false;
+  cyd::preview::advanceTime(200);
+  tap(40, 22);
+  cyd::preview::advanceTime(200);
+  return expectScreen(SCREEN_SUBMENU, "cancel field editor") &&
+         expect(submenuType == section, "field editor lost its originating section");
+}
+
 }  // namespace
 
 int main() {
@@ -294,6 +307,17 @@ int main() {
   controllerConnection = CONTROLLER_CONNECTION_BLE;
   uiShow(SCREEN_SUBMENU);
   if (!expect(!hasLabel(lv_scr_act(), vehicleFieldTitle(VEHICLE_FIELD_VESC_BAUD)), "BLE displayed a UART baud editor")) return 1;
+
+  // Battery-specific options must not intercept the shared settings editors.
+  uiPreviewSetControllerBackend(CONTROLLER_VESC, CONTROLLER_CONNECTION_UART);
+  automaticGaugeRanges = false;
+  if (!checkFieldEditor(SUBMENU_CONNECTION, VEHICLE_FIELD_VESC_BAUD) ||
+      !checkFieldEditor(SUBMENU_VESC, VEHICLE_FIELD_NAME) ||
+      !checkFieldEditor(SUBMENU_SPEED_CALIBRATION, VEHICLE_FIELD_WHEEL_MM) ||
+      !checkFieldEditor(SUBMENU_GAUGE_RANGES, VEHICLE_FIELD_BATTERY_MAX_A) ||
+      !checkFieldEditor(SUBMENU_BATTERY_CELLS, VEHICLE_FIELD_CELL_MIN_V) ||
+      !checkFieldEditor(SUBMENU_BATTERY, VEHICLE_FIELD_BATTERY_S) ||
+      !checkFieldEditor(SUBMENU_BATTERY, VEHICLE_FIELD_BATTERY_AH)) return 1;
 
   uiPreviewSetSubmenu(SUBMENU_BATTERY, 0, false);
   uiShow(SCREEN_SUBMENU);

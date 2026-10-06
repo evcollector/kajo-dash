@@ -1139,6 +1139,9 @@ void resetBatteryStats() {
 // so the next resting reading seeds them again.
 void batteryRestartChargeEstimate() {
   BatteryLock lock;
+  // Load before checkpointing so a settings edit before the first telemetry
+  // sample cannot overwrite lifetime totals or resistance with empty RAM.
+  if (!batteryStatsLoaded) loadBatteryStats();
   socSeedPercent = -1.0F;
   socAhSinceSeed = 0.0F;
   capacityStartSoc = -1.0F;
@@ -1147,6 +1150,9 @@ void batteryRestartChargeEstimate() {
   batteryStats.rangeKm = -1;
   batteryStats.learnedCapacityAh = 0.0F;
   batteryStats.learnedSamples = 0;
+  // The old learned result must not return on a reboot before the next
+  // periodic save. The checkpoint skips writes when history is unchanged.
+  batteryStatsCheckpoint();
 }
 
 void setBatteryChemistry(uint8_t chemistry) {

@@ -4309,6 +4309,15 @@ static void submenuAction(int id) {
       submenuType = sections[option]; speedPage = 0;
       queueRebuild(SCREEN_SUBMENU); return;
     }
+    case SUBMENU_BATTERY_CELLS:
+      if (option >= kCellChemistryOptionBase && option < kCellChemistryOptionBase + BATTERY_CHEMISTRY_COUNT) {
+        setBatteryChemistry(option - kCellChemistryOptionBase);
+        queueRebuild(SCREEN_SUBMENU);
+        return;
+      }
+      if (option < VEHICLE_FIELD_CELL_MIN_V || option > VEHICLE_FIELD_CELL_MAX_V) return;
+      vehicleTextField = option; textInputContext = INPUT_VEHICLE_FIELD;
+      queueRebuild(SCREEN_TEXT_INPUT); return;
     case SUBMENU_CONNECTION:
       if (option == kConnectionBluetoothOption) {
         bluetoothEnabled = !bluetoothEnabled;
@@ -4329,15 +4338,6 @@ static void submenuAction(int id) {
     case SUBMENU_VESC:
     case SUBMENU_SPEED_CALIBRATION:
     case SUBMENU_GAUGE_RANGES:
-    case SUBMENU_BATTERY_CELLS:
-      if (option >= kCellChemistryOptionBase && option < kCellChemistryOptionBase + BATTERY_CHEMISTRY_COUNT) {
-        setBatteryChemistry(option - kCellChemistryOptionBase);
-        queueRebuild(SCREEN_SUBMENU);
-        return;
-      }
-      if (option < VEHICLE_FIELD_CELL_MIN_V || option > VEHICLE_FIELD_CELL_MAX_V) return;
-      vehicleTextField = option; textInputContext = INPUT_VEHICLE_FIELD;
-      queueRebuild(SCREEN_TEXT_INPUT); return;
     case SUBMENU_BATTERY:
     case SUBMENU_SPEED:
       if (submenuType == SUBMENU_BATTERY) {

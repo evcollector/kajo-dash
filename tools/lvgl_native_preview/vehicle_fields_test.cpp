@@ -369,6 +369,35 @@ void testBatteryChemistry() {
   batterySeriesCount = 20;
 }
 
+void testBatteryLearningInvalidation() {
+  loadBatteryStats();
+  // Seed measured history without simulating a physical deep discharge.
+  auto &stats = const_cast<BatteryStats &>(batteryStatsLive());
+  stats.lifetimeWh = 2500.0F;
+  stats.lifetimeKm = 125.0F;
+  stats.packMilliOhm = 84.0F;
+  const int fields[] = {-1, VEHICLE_FIELD_CELL_MIN_V, VEHICLE_FIELD_CELL_NOMINAL_V, VEHICLE_FIELD_CELL_MAX_V};
+  const char *values[] = {"", "2.95", "3.25", "3.60"};
+  for (int i = 0; i < 4; ++i) {
+    stats.learnedCapacityAh = 12.5F;
+    stats.learnedSamples = 2;
+    batteryStatsCheckpoint();
+    loadBatteryStats();
+    expect(stats.learnedCapacityAh == 12.5F && stats.learnedSamples == 2,
+           "fixture learned capacity should survive history reload");
+    if (i == 0) setBatteryChemistry(BATTERY_LIFEPO4);
+    else saveVehicleInputValue(fields[i], values[i]);
+    expect(stats.learnedCapacityAh == 0.0F && stats.learnedSamples == 0,
+           "battery configuration change clears learned capacity immediately");
+    loadBatteryStats();
+    expect(stats.learnedCapacityAh == 0.0F && stats.learnedSamples == 0,
+           "cleared learned capacity must stay cleared after history reload");
+    expect(stats.lifetimeWh == 2500.0F && stats.lifetimeKm == 125.0F && stats.packMilliOhm == 84.0F,
+           "clearing learned capacity must preserve lifetime totals and pack resistance");
+  }
+  setBatteryChemistry(BATTERY_LIION);
+}
+
 }  // namespace
 
 int main() {
@@ -383,6 +412,7 @@ int main() {
   testFormatting();
   testFieldMetadata();
   testBatteryChemistry();
+  testBatteryLearningInvalidation();
 
   if (failures == 0) printf("vehicle field model: all checks passed\n");
   return failures == 0 ? 0 : 1;
