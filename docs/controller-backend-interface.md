@@ -88,6 +88,8 @@ enum TelemetryField : uint32_t {
   TELEMETRY_FIELD_FAULT              = 1UL << 22,
   TELEMETRY_FIELD_RIDE_MODE          = 1UL << 23,
   TELEMETRY_FIELD_MOTOR_CURRENT      = 1UL << 24,
+  TELEMETRY_FIELD_DUTY               = 1UL << 25,
+  TELEMETRY_FIELD_PHASE_VOLTAGE      = 1UL << 26,
 };
 
 using TelemetryFieldMask = uint32_t;
@@ -465,3 +467,13 @@ have to be read.
 Step 4 is the risky one. It moves FreeRTOS task creation and touches the shared
 snapshot under its lock. It deserves its own commit, with a clean render diff
 either side of it.
+
+### Motor Effort telemetry
+
+VESC supplies signed `dutyCycle` from GET_VALUES (int16 / 1000).
+`phaseVoltage` is derived as `Vbus * abs(dutyCycle) / sqrt(3)` under the
+sinusoidal FOC/default overmodulation assumption; it is a fundamental
+phase-neutral peak (amplitude) estimate, not a measured phase voltage. VESC advertises
+both availability bits and marks phase voltage derived. FarDriver leaves
+both unavailable. These values are live dashboard fields; the ride record
+does not store new duty or phase-voltage series.

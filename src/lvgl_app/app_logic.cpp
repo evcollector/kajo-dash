@@ -76,13 +76,18 @@ static bool autoAppearanceLight = false;
 static DashboardMode accentRenderMode = MODE_HUD;
 
 static bool dashboardCustomizationsInitialized = false;
+// Motor Effort profile revisions: 1 replaced Mono's seven-slot layout; 2 made
+// duty a dial, so the third footer slot now defaults to battery voltage; 3 added
+// a fourth footer slot, trip distance.
+static constexpr uint8_t kMotorEffortProfileRevision = 3;
+static constexpr const char *kMotorEffortProfileRevisionKey = "effortRev";
 // Increment when Bar Graph profile slot meanings or defaults change. NVS
 // survives normal USB/OTA firmware flashing, so an unversioned profile can
 // otherwise apply stale prototype-era choices to a newly flashed layout.
 static constexpr uint8_t kBarGraphProfileRevision = 1;
 static constexpr const char *kBarGraphProfileRevisionKey = "barsProfileRev";
 static const uint8_t kDashboardDataCounts[MODE_COUNT] = {
-    8, 8, 3, 11, 7, 3, 7, 4, 7, 5, 4, 4,
+    8, 8, 3, 11, 4, 3, 7, 4, 7, 5, 4, 4,
 };
 static const DashboardDataItem kDashboardDataDefaults[MODE_COUNT][DASH_DATA_SLOTS_MAX] = {
     {DATA_VOLTAGE, DATA_CURRENT, DATA_MOTOR_TEMP, DATA_ESC_TEMP, DATA_TRIP, DATA_ODOMETER, DATA_AVG_SPEED,
@@ -93,8 +98,8 @@ static const DashboardDataItem kDashboardDataDefaults[MODE_COUNT][DASH_DATA_SLOT
     // Bar Graph: the five meter rows, then the six side readouts.
     {DATA_BATTERY, DATA_SPEED, DATA_POWER, DATA_VOLTAGE, DATA_CURRENT, DATA_MOTOR_TEMP, DATA_ESC_TEMP,
      DATA_TRIP, DATA_ODOMETER, DATA_AVG_SPEED, DATA_UPTIME},
-    // Mono: the four metric rows, then the trip/odo/time footer.
-    {DATA_POWER, DATA_VOLTAGE, DATA_CURRENT, DATA_MOTOR_TEMP, DATA_TRIP, DATA_ODOMETER, DATA_UPTIME},
+    // Motor Effort: fixed instruments (duty is a dial), four configurable footer slots.
+    {DATA_MOTOR_TEMP, DATA_ESC_TEMP, DATA_VOLTAGE, DATA_TRIP},
     // Pixel: trip in the rail, then range and power along the lower row. Speed,
     // charge and ride mode are fixed instruments, so they are not slots.
     {DATA_TRIP, DATA_RANGE, DATA_POWER},
@@ -252,10 +257,9 @@ static uint16_t defaultAccentColor565() {
     switch (accentRenderMode) {
       case MODE_GAUGE:
       case MODE_BARS:
+      case MODE_MOTOR_EFFORT:
       case MODE_PIXEL_GAUGE:
         return 0x1484;  // deep leaf green
-      case MODE_PIXEL_MONO:
-        return 0xFFFF;  // neutral inversion resolves this to black
       case MODE_LARGE_TILES:
         return 0x04B4;  // stronger tile blue
       case MODE_BIG_READOUT:
@@ -279,13 +283,12 @@ static uint16_t defaultAccentColor565() {
   switch (accentRenderMode) {
     case MODE_GAUGE:
     case MODE_BARS:
+    case MODE_MOTOR_EFFORT:
       return COLOR565_GREEN;
     case MODE_PIXEL_GAUGE:
       // Phosphor lime rather than the pure RGB green the gauges use: against
       // Pixel's cream numerals it reads as a lit LCD instead of a signal light.
       return 0x7E84;
-    case MODE_PIXEL_MONO:
-      return 0xFFFF;
     case MODE_LARGE_TILES:
       return 0x1D9F;
     case MODE_BIG_READOUT:
@@ -315,10 +318,9 @@ static uint16_t defaultAccentDarkColor565() {
     switch (accentRenderMode) {
       case MODE_GAUGE:
       case MODE_BARS:
+      case MODE_MOTOR_EFFORT:
       case MODE_PIXEL_GAUGE:
         return 0x0AC2;
-      case MODE_PIXEL_MONO:
-        return 0xBDF7;  // neutral inversion resolves to a dark grey
       case MODE_LARGE_TILES:
         return 0x02AA;
       case MODE_BIG_READOUT:
@@ -342,10 +344,9 @@ static uint16_t defaultAccentDarkColor565() {
   switch (accentRenderMode) {
     case MODE_GAUGE:
     case MODE_BARS:
+    case MODE_MOTOR_EFFORT:
     case MODE_PIXEL_GAUGE:
       return 0x03A0;
-    case MODE_PIXEL_MONO:
-      return 0x7BEF;
     case MODE_LARGE_TILES:
       return 0x0C74;
     case MODE_BIG_READOUT:
@@ -573,8 +574,8 @@ const char *modeName(DashboardMode mode) {
       return txt("Tiles", "Ruudut", "Kacheln", "Tuiles", "Paneles", "Riquadri");
     case MODE_PIXEL_GAUGE:
       return "Pixel";
-    case MODE_PIXEL_MONO:
-      return "Mono";
+    case MODE_MOTOR_EFFORT:
+      return txt("Motor Effort", "Moottorikuorma", "Motorlast", "Effort moteur", "Carga motor", "Carico motore");
     case MODE_BARS:
       return txt("Bar Graph", "Palkit", "Balken", "Barres", "Barras", "Barre");
     case MODE_SIMPLE:
@@ -746,6 +747,8 @@ const char *dashboardDataLabel(DashboardDataItem item) {
       return metricBatteryAmpsLabel();
     case DATA_MOTOR_CURRENT:
       return metricPhaseAmpsLabel();
+    case DATA_DUTY:
+      return txt("DUTY", "PWM", "PWM", "PWM", "PWM", "PWM");
     case DATA_MOTOR_TEMP:
       return metricMotorLabel();
     case DATA_ESC_TEMP:
@@ -1382,6 +1385,7 @@ void saveAppSettings() {
   if (writeAll || memcmp(current.profiles, persistedAppSettings.profiles, sizeof(current.profiles)) != 0) {
     preferences.putBytes("uiProfiles", current.profiles, sizeof(current.profiles));
     preferences.putUChar(kBarGraphProfileRevisionKey, kBarGraphProfileRevision);
+    preferences.putUChar(kMotorEffortProfileRevisionKey, kMotorEffortProfileRevision);
   }
   preferences.end();
   persistedAppSettings = current;
@@ -1395,7 +1399,8 @@ void saveDashboardCustomizationProfiles() {
   if (!preferences.begin("app", false)) return;
   const bool saved = preferences.putBytes("uiProfiles", dashboardCustomizations, sizeof(dashboardCustomizations)) ==
                          sizeof(dashboardCustomizations) &&
-                     preferences.putUChar(kBarGraphProfileRevisionKey, kBarGraphProfileRevision) == sizeof(uint8_t);
+                     preferences.putUChar(kBarGraphProfileRevisionKey, kBarGraphProfileRevision) == sizeof(uint8_t) &&
+                     preferences.putUChar(kMotorEffortProfileRevisionKey, kMotorEffortProfileRevision) == sizeof(uint8_t);
   preferences.end();
   if (saved && persistedAppSettingsKnown)
     memcpy(persistedAppSettings.profiles, dashboardCustomizations, sizeof(dashboardCustomizations));
@@ -1626,6 +1631,7 @@ void loadAppSettings() {
   if (!controllerBackendById(backendId)) backendId = CONTROLLER_ID_VESC_UART;
   controllerSelectionForId(backendId, controllerType, controllerConnection);
   displayBrightnessPercent = constrain(displayBrightnessPercent, DISPLAY_BRIGHTNESS_MIN, DISPLAY_BRIGHTNESS_MAX);
+  const uint8_t storedMotorEffortProfileRevision = preferences.getUChar(kMotorEffortProfileRevisionKey, 0);
   const uint8_t storedBarGraphProfileRevision = preferences.getUChar(kBarGraphProfileRevisionKey, 0);
   const size_t storedLength = preferences.getBytesLength("uiProfiles");
   const bool dashboardProfileBlobCurrent = storedLength == sizeof(dashboardCustomizations);
@@ -1644,9 +1650,15 @@ void loadAppSettings() {
       custom.data[slot] = static_cast<uint8_t>(kDashboardDataDefaults[MODE_BARS][slot]);
     }
   }
-  if ((!dashboardProfileBlobCurrent || resetBarGraphProfile) && preferences.begin("app", false)) {
+  // A Motor Effort profile saved under an older revision (Mono's seven slots, or
+  // the footer that defaulted to duty) is reset rather than reinterpreted as the
+  // current footer slots.
+  const bool resetMotorEffortProfile = storedMotorEffortProfileRevision != kMotorEffortProfileRevision;
+  if (resetMotorEffortProfile) resetDashboardCustomization(MODE_MOTOR_EFFORT);
+  if ((!dashboardProfileBlobCurrent || resetBarGraphProfile || resetMotorEffortProfile) && preferences.begin("app", false)) {
     preferences.putBytes("uiProfiles", dashboardCustomizations, sizeof(dashboardCustomizations));
     preferences.putUChar(kBarGraphProfileRevisionKey, kBarGraphProfileRevision);
+    preferences.putUChar(kMotorEffortProfileRevisionKey, kMotorEffortProfileRevision);
     preferences.end();
   }
   for (uint8_t mode = 0; mode < MODE_COUNT; mode++) {
@@ -2121,6 +2133,9 @@ static const DemoOutput &demoOutput(bool dashboardOnly) {
   v.voltage = constrain(openCircuit - watts / openCircuit * kDemoPackOhm, 39.0F, 54.6F);
   v.current = watts / v.voltage;
   v.motorCurrent = v.current * (3.0F - 2.0F * min(1.0F, speed / 34));
+  // Synthetic demo modulation, never substituted for live telemetry.
+  v.dutyCycle = moving ? min(0.95F, 0.08F + speed / 50.0F) : 0.0F;
+  v.phaseVoltage = v.voltage * fabsf(v.dutyCycle) / sqrtf(3.0F);
   const float heat = 1 - expf(-r.seconds / 900);
   v.motorTemp = (int)lroundf(25 + heat * 35); v.escTemp = (int)lroundf(25 + heat * 20);
   v.tripKm = r.km; v.odoKm = (int)lroundf(1284 + r.km);

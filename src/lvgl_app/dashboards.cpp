@@ -3,6 +3,7 @@
 #include "controller_manager.h"
 #include "gauge_range_visual.h"
 #include "ui_common.h"
+#include "ui_style.h"
 
 #include <math.h>
 
@@ -21,6 +22,7 @@ struct TickDial {
   int lastLit;
   lv_color_t unlitMajor;
   lv_color_t unlitMinor;
+  lv_color_t litColor;
 };
 
 // Two-layer outer needle shared by tick-based dials. Like Efficiency's
@@ -76,7 +78,7 @@ struct DashWidgets {
   // Bar Graph: one segmented meter per row, in the Simple theme's block style.
   SegMeterWidget barMeters[5];
   lv_obj_t *barUnits[5];
-  lv_obj_t *dots[90];       // pixel dash ring blocks (3 per segment)
+  lv_obj_t *dots[90];       // tick storage shared by the tick-dial themes (Gauge's two dials use 82)
   lv_obj_t *scaleLabels[6];
   lv_obj_t *motorUnit;
   lv_obj_t *battUnit;
@@ -99,7 +101,7 @@ struct DashWidgets {
   lv_obj_t *chart;                          // Trace: rolling telemetry plot
   lv_chart_series_t *traceSpeedSeries;
   lv_chart_series_t *tracePowerSeries;
-  uint32_t dotColors[90];   // last applied color per block
+  uint32_t dotColors[90];   // last applied color per tick
   uint32_t speedColor;      // last applied speed text color
   lv_obj_t *hudMeters;      // Cyber HUD: paired inset segmented edge meters
   int hudSpeedLit;
@@ -275,7 +277,7 @@ static TickDial makeTickDial(lv_obj_t *scr, int base, int cx, int cy, int r, int
     dw.dots[base + i] = tick;
     dw.dotColors[base + i] = 0;
   }
-  TickDial dial = {base, count, majorEvery, maxValue, litWidth, unlitWidth, 0, whiteLv(), dark};
+  TickDial dial = {base, count, majorEvery, maxValue, litWidth, unlitWidth, 0, whiteLv(), dark, accentLv()};
   return dial;
 }
 
@@ -320,7 +322,7 @@ static void setTickDialValue(TickDial &dial, int value) {
     dw.dotColors[idx] = state;
     const bool major = (i % dial.majorEvery) == 0;
     if (state) {
-      lv_obj_set_style_line_color(dw.dots[idx], accentLv(), 0);
+      lv_obj_set_style_line_color(dw.dots[idx], dial.litColor, 0);
       lv_obj_set_style_line_width(dw.dots[idx], dial.litWidth, 0);
     } else {
       lv_obj_set_style_line_color(dw.dots[idx], major ? dial.unlitMajor : dial.unlitMinor, 0);
@@ -672,7 +674,8 @@ static CydIconId dashboardDataIcon(DashboardDataItem item) {
     case DATA_ESC_TEMP: return CYD_ICON_TEMP_ESC;
     case DATA_BATTERY: return CYD_ICON_BATTERY;
     case DATA_UPTIME: return CYD_ICON_UPTIME;
-    case DATA_POWER: return CYD_ICON_POWER;
+    case DATA_POWER:
+    case DATA_DUTY: return CYD_ICON_POWER;
     case DATA_LEARNED_CAPACITY: return CYD_ICON_BATTERY;
     case DATA_PACK_RESISTANCE: return CYD_ICON_CURRENT;
     default: return CYD_ICON_SETTINGS;
@@ -697,6 +700,7 @@ static TelemetryField dashboardDataField(DashboardDataItem item) {
     case DATA_BATTERY: return TELEMETRY_FIELD_BATTERY_SOC;
     case DATA_UPTIME: return TELEMETRY_FIELD_UPTIME;
     case DATA_POWER: return TELEMETRY_FIELD_POWER;
+    case DATA_DUTY: return TELEMETRY_FIELD_DUTY;
     case DATA_LEARNED_CAPACITY: return TELEMETRY_FIELD_LEARNED_CAPACITY;
     case DATA_PACK_RESISTANCE: return TELEMETRY_FIELD_PACK_RESISTANCE;
     default: return TELEMETRY_FIELD_SPEED;
@@ -712,6 +716,9 @@ static void formatDashboardData(char *buffer, size_t size, DashboardDataItem ite
   const BatteryStats stats = dashBatteryStats();
   if (item == DATA_RIDE_MODE) { snprintf(buffer, size, "%s", rideModeName(telemetryRideMode())); return; }
   switch (item) {
+    case DATA_DUTY:
+      snprintf(buffer, size, "%.0f%%", fabsf(v.dutyCycle) * 100.0F);
+      break;
     case DATA_TRIP:
       snprintf(buffer, size, "%s %s", t.trip, distanceUnitLabel());
       break;
@@ -808,7 +815,7 @@ static void applyDashboardDataOverrides(DashboardMode mode, const DashboardValue
     // Wh/km. Other themes retain their native slot typography.
     if (mode == MODE_LARGE_TILES || mode == MODE_REDLINE || mode == MODE_MINIMAL)
       lv_obj_set_style_text_font(value, F2, 0);
-    else if (mode == MODE_BIG_READOUT)
+    else if (mode == MODE_BIG_READOUT || mode == MODE_MOTOR_EFFORT)
       lv_obj_set_style_text_font(value, F1, 0);
     else if (mode == MODE_BARS) {
       // A reassigned row prints value and unit in one label, which at the
@@ -2055,6 +2062,7 @@ static constexpr int BARS_SLOT_COUNT = 5;
 
 static int barsSlotScaleMax(DashboardDataItem item) {
   switch (item) {
+    case DATA_DUTY: return 100;
     case DATA_BATTERY: return 100;
     case DATA_SPEED:
     case DATA_AVG_SPEED: return speedGaugeMax();
@@ -2073,6 +2081,7 @@ static int barsSlotScaleMax(DashboardDataItem item) {
 
 static int barsSlotValue(DashboardDataItem item, const DashboardValues &v, const BatteryStats &stats) {
   switch (item) {
+    case DATA_DUTY: return (int)lroundf(fabsf(v.dutyCycle) * 100.0F);
     case DATA_BATTERY: return v.batteryPercent;
     case DATA_SPEED: return v.speedKmh;
     case DATA_AVG_SPEED: return (int)lroundf(v.avgSpeedKmh);
@@ -2319,141 +2328,242 @@ static void updateBars(const DashboardValues &v) {
   }
 }
 
-// ── Mono / Pixel ──────────────────────────────────────────────────────────────
-
-struct PixelItems {
-  const Item *outerFrame;
-  const Item *rows[4];
-  const Item *rowIcons[4];
-  const Item *rowLabels[4];
-  const Item *rowValues[4];
-  const Item *footerTop;
-  const Item *footerSplit1;
-  const Item *footerSplit2;
+// ── Motor Effort ─────────────────────────────────────────────────────────────
+// Six fixed instruments: a segmented ring (the bar meters' blocks bent round the
+// dial) with the shared outer needle. Only footer slots may be reassigned, so a
+// gauge never changes its meaning.
+//
+// Rings and needles glide. The dashboard hears from the controller ten times a
+// second and the speed in whole km/h, so a ring and needle moved straight to each
+// reading would jump a step at a time. Instead each new reading carries them, in a
+// straight line, from wherever they are to the new position, taking a little longer
+// than the reading had been steady, so that the next one finds them still on their
+// way: a steady acceleration is one continuous motion. A reading that changes by
+// about one step may take up to a second, so a gentle ramp crawls where it would
+// otherwise move and stop between readings; the price is a needle that trails the
+// true speed by about 1 km/h (a quarter to half a second), where a big change takes
+// 0.3 s at most and keeps up. The numbers show the live reading at once. The first
+// reading, and every step of the startup sweep, is placed without gliding.
+constexpr int kEffortUnlitMix = 52;    // of 255 toward the full-brightness color, over the ground
+constexpr int kEffortDiscMix = 14;     // of 255 toward the dial's color, over the dashboard ground (well below the 38 of an unlit block)
+constexpr int kEffortMajorExtraPx = 3;  // the longer blocks, reaching inward, as the dual gauge's major ticks
+constexpr int kEffortMajorSteps = 5;    // at every fifth of the dial
+constexpr int kEffortPowerThickness = 7;  // the input power ring's blocks are shorter, leaving its number room
+constexpr int kEffortSweepDeg = 240;  // the most a ring may span, centred on 12 o'clock
+// A position is a fraction of the scale in 4096ths: finer than a pixel of needle
+// travel, so a glide has many steps where a 1 km/h change has one.
+constexpr int kEffortScale = 4096;
+constexpr uint32_t kEffortGlideMinMs = 100;
+constexpr uint32_t kEffortGlideSmallMaxMs = 1000;    // a step of up to kEffortSmallStep
+constexpr uint32_t kEffortGlideBigMaxMs = 300;       // anything bigger
+constexpr int kEffortSmallStep = kEffortScale / 20;  // 5% of the scale, about one reading of the speed
+struct EffortInstrument {
+  SegRingWidget ring;
+  TickNeedle needle;
+  lv_obj_t *value;
+  lv_obj_t *caption;
+  int position;        // where the ring and needle are
+  int target;          // where they are heading
+  uint32_t changedAt;  // millis() when the target last changed
+  bool placed;         // false until the first reading
 };
+static EffortInstrument effort[6];
 
-static void buildPixelMetricRows(lv_obj_t *scr, const PixelItems &pi, const DashboardValues &v,
-                                 const lv_color_t frameColor, const lv_color_t iconColors[4],
-                                 const lv_color_t labelColors[4], const char *const labels[4]) {
-  DashTexts t = fmtTexts(v);
-  char value[20];
-  const CydIconId icons[4] = {CYD_ICON_POWER, CYD_ICON_VOLTAGE, CYD_ICON_AMPERAGE, CYD_ICON_TEMP_MOTOR};
-  lv_obj_t **targets[4] = {&dw.power, &dw.volts, &dw.amps, &dw.motor};
-  for (int i = 0; i < 4; i++) {
-    makeRect(scr, *pi.rows[i], frameColor);
-    lv_obj_t *icon = makeLayoutIcon(scr, *pi.rowIcons[i], icons[i], iconColors[i]);
-    lv_obj_t *caption = makeLabel(scr, *pi.rowLabels[i], labels[i], labelColors[i]);
-    switch (i) {
-      case 0:
-        formatPowerWithUnit(value, sizeof(value), v.watts);
-        break;
-      case 1:
-        snprintf(value, sizeof(value), "%s", t.voltageWithUnit);
-        break;
-      case 2:
-        snprintf(value, sizeof(value), "%s", t.currentWithUnit);
-        break;
-      default:
-        snprintf(value, sizeof(value), "%d °C", v.motorTemp);
-        break;
-    }
-    *targets[i] = makeLabel(scr, *pi.rowValues[i], value, whiteLv());
-    registerDataSlot(i, caption, *targets[i], NULL, icon);
+static void effortPlace(EffortInstrument &instrument, int position) {
+  instrument.position = position;
+  setSegRingValue(instrument.ring, position, kEffortScale);
+  setTickNeedleValue(instrument.needle, position);
+}
+static void effortGlideCb(void *instrument, int32_t position) {
+  effortPlace(*static_cast<EffortInstrument *>(instrument), position);
+}
+// Show `target`: by a glide from wherever the instrument is, unless this is its first
+// reading or the caller is animating it already. Placing a reading drops any glide the
+// instrument had, which is what stops a replaced screen's glides reaching its successor.
+static void effortAim(EffortInstrument &instrument, int target, bool glide) {
+  const uint32_t now = millis();
+  if (!glide || !instrument.placed) {
+    lv_anim_del(&instrument, effortGlideCb);
+    instrument.placed = true;
+    instrument.target = target;
+    instrument.changedAt = now;
+    effortPlace(instrument, target);
+    return;
   }
+  if (target == instrument.target) return;  // the same reading again: the glide carries on
+  const uint32_t steady = now - instrument.changedAt;
+  const int step = abs(target - instrument.position);
+  instrument.target = target;
+  instrument.changedAt = now;
+  if (target == instrument.position) {
+    lv_anim_del(&instrument, effortGlideCb);
+    return;
+  }
+  lv_anim_t glideAnim;
+  lv_anim_init(&glideAnim);
+  lv_anim_set_var(&glideAnim, &instrument);
+  lv_anim_set_exec_cb(&glideAnim, effortGlideCb);
+  lv_anim_set_values(&glideAnim, instrument.position, target);
+  lv_anim_set_time(&glideAnim, constrain(steady + steady / 4, kEffortGlideMinMs,
+                                         step <= kEffortSmallStep ? kEffortGlideSmallMaxMs : kEffortGlideBigMaxMs));
+  lv_anim_set_path_cb(&glideAnim, lv_anim_path_linear);
+  lv_anim_start(&glideAnim);  // replaces a glide still under way
 }
 
-// Tier-aware: watts at full rate, volts/amps on the 200 ms tier, temp on
-// the 500 ms tier. Call every tick.
-static void updatePixelMetricRows(const DashboardValues &v) {
-  DashTexts t = fmtTexts(v);
-  char value[20];
-  formatPowerWithUnit(value, sizeof(value), v.watts);
-  setLabelText(dw.power, value);
-  if (elecDue) {
-    snprintf(value, sizeof(value), "%s", t.voltageWithUnit);
-    setLabelText(dw.volts, value);
-    snprintf(value, sizeof(value), "%s", t.currentWithUnit);
-    setLabelText(dw.amps, value);
-  }
-  if (midDue) {
-    snprintf(value, sizeof(value), "%d °C", v.motorTemp);
-    setLabelText(dw.motor, value);
+// The instruments belong to the active Motor Effort screen; null once it is gone.
+static lv_obj_t *effortScreen = nullptr;
+static void effortScreenDeleteCb(lv_event_t *event) {
+  // A replacement screen may already have been built before this outgoing one is
+  // deleted, so forget only the screen that is actually going.
+  if (effortScreen != lv_event_get_target(event)) return;
+  for (int i = 0; i < 6; ++i) lv_anim_del(&effort[i], effortGlideCb);
+  effortScreen = nullptr;
+}
+// Instrument order throughout: phase A, speed, phase V, battery A, input power, duty.
+static const Item *const effortGauges[] = {&EFFORT_PHASE_AMPS_GAUGE, &EFFORT_SPEED_GAUGE,
+  &EFFORT_PHASE_VOLTS_GAUGE, &EFFORT_BATT_AMPS_GAUGE, &EFFORT_POWER_GAUGE, &EFFORT_DUTY_GAUGE};
+static const Item *const effortValues[] = {&EFFORT_PHASE_AMPS, &EFFORT_SPEED,
+  &EFFORT_PHASE_VOLTS, &EFFORT_BATT_AMPS, &EFFORT_POWER, &EFFORT_DUTY};
+static const TelemetryField effortFields[] = {TELEMETRY_FIELD_MOTOR_CURRENT, TELEMETRY_FIELD_SPEED,
+  TELEMETRY_FIELD_PHASE_VOLTAGE, TELEMETRY_FIELD_CURRENT, TELEMETRY_FIELD_POWER, TELEMETRY_FIELD_DUTY};
+
+static int effortMaximum(int i) {
+  switch (i) {
+    case 0: return (automaticGaugeRanges ? displayGaugeMaximum(RANGE_MOTOR_CURRENT) : max(1, (int)motorMaxAmps)) * 10;
+    case 1: return speedGaugeMax();
+    // The phase voltage ceiling tracks the configured pack, not the current sample.
+    case 2: return max(1, (int)lroundf(packVoltageMax() * 10.0F / sqrtf(3.0F)));
+    case 3: return packCurrentMax() * 10;
+    case 4: return powerBarMax();
+    default: return 100;  // duty, in percent
   }
 }
-
-static void buildPixelMono(lv_obj_t *scr, const DashboardValues &v) {
-  DashTexts t = fmtTexts(v);
+static int effortReading(int i, const DashboardValues &v) {
+  switch (i) {
+    case 0: return (int)lroundf(v.motorCurrent * 10);
+    case 1: return v.speedKmh;
+    case 2: return (int)lroundf(v.phaseVoltage * 10);
+    case 3: return (int)lroundf(v.current * 10);
+    case 4: return v.watts;
+    default: return (int)lroundf(fabsf(v.dutyCycle) * 100.0F);  // percent; the direction is dropped
+  }
+}
+static void setEffortReading(int i, int value, bool available = true, bool glide = true) {
+  EffortInstrument &instrument = effort[i];
+  const float fraction = (float)abs(value) / max(1, effortMaximum(i));
+  effortAim(instrument, available ? (int)lroundf(constrain(fraction, 0.0F, 1.0F) * kEffortScale) : 0,
+            glide && available);
+  if (available) lv_obj_clear_flag(instrument.needle.body, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_add_flag(instrument.needle.body, LV_OBJ_FLAG_HIDDEN);
+  if (available) lv_obj_clear_flag(instrument.needle.highlight, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_add_flag(instrument.needle.highlight, LV_OBJ_FLAG_HIDDEN);
   char text[24];
-  // mono theme: everything is one color — white by default, accent if chosen
-  const lv_color_t white = themeColor(0xFFFF);
-
-  makeLayoutIcon(scr, PIXEL_MONO_CLOCK_ICON, CYD_ICON_UPTIME, white);
-  dw.uptime = makeTopTimeLabel(scr, PIXEL_MONO_TIME, t.uptime, white);
-  lv_obj_t *monoOem = makeLabelFont(scr, PIXEL_MONO_OEM, "", white, layoutFontToLv(PIXEL_MONO_OEM.font));
-  setFittedText(monoOem, PIXEL_MONO_OEM, dashOemName(), layoutFontToLv(PIXEL_MONO_OEM.font));
-  dw.battPct = makeTopBatteryLabel(scr, PIXEL_MONO_BATTERY, t.battPct, white);
-  dw.segBatt = makeSegBattery(scr, PIXEL_MONO_BATTERY_ICON, 5);
-
-  makeRect(scr, PIXEL_MONO_SPEED_BOX, white);
-  dw.speed = makeLabel(scr, PIXEL_MONO_SPEED, t.speed, white);
-  configureFittedLabel(dw.speed, PIXEL_MONO_SPEED, speedFitTemplate(), layoutFontToLv(PIXEL_MONO_SPEED.font));
-  dw.speedUnit = makeLabel(scr, PIXEL_MONO_SPEED_UNIT, speedUnitLabel(), white);
-
-  const PixelItems pi = {
-      &PIXEL_MONO_OUTER_FRAME,
-      {&PIXEL_MONO_METRIC_ROW1, &PIXEL_MONO_METRIC_ROW2, &PIXEL_MONO_METRIC_ROW3, &PIXEL_MONO_METRIC_ROW4},
-      {&PIXEL_MONO_POWER_ICON, &PIXEL_MONO_VOLTS_ICON, &PIXEL_MONO_AMPS_ICON, &PIXEL_MONO_TEMP_ICON},
-      {&PIXEL_MONO_POWER_LABEL, &PIXEL_MONO_VOLTS_LABEL, &PIXEL_MONO_AMPS_LABEL, &PIXEL_MONO_MOTOR_TEMP_LABEL},
-      {&PIXEL_MONO_POWER, &PIXEL_MONO_VOLTS, &PIXEL_MONO_AMPS, &PIXEL_MONO_MOTOR_TEMP},
-      &PIXEL_MONO_FOOTER_TOP,
-      &PIXEL_MONO_FOOTER_SPLIT1,
-      &PIXEL_MONO_FOOTER_SPLIT2,
-  };
-  const lv_color_t whites[4] = {white, white, white, white};
-  // the widest value on these rows is the wattage, so its caption gets the
-  // abbreviated form to stay clear of it
-  const char *monoLabels[4] = {metricPowerLabelShort(), metricVoltsLabel(), metricAmpsLabel(),
-                               metricMotorLabel()};
-  buildPixelMetricRows(scr, pi, v, white, whites, whites, monoLabels);
-
-  makeLineBox(scr, PIXEL_MONO_FOOTER_TOP, white);
-  makeLineBox(scr, PIXEL_MONO_FOOTER_SPLIT1, white);
-  makeLineBox(scr, PIXEL_MONO_FOOTER_SPLIT2, white);
-  lv_obj_t *tripCaption = makeLabel(scr, PIXEL_MONO_TRIP_LABEL, metricTripLabel(), white);
-  lv_obj_t *odoCaption = makeLabel(scr, PIXEL_MONO_ODO_LABEL, "ODO", white);
-  lv_obj_t *timeCaption = makeLabel(scr, PIXEL_MONO_TIME_FULL_LABEL, metricTimeLabel(), white);
-  snprintf(text, sizeof(text), "%s %s", t.trip, distanceUnitLabel());
-  dw.trip = makeLabel(scr, PIXEL_MONO_TRIP, text, white);
-  snprintf(text, sizeof(text), "%s %s", t.odo, distanceUnitLabel());
-  dw.odo = makeLabel(scr, PIXEL_MONO_ODO, text, white);
-  dw.uptime2 = makeLabel(scr, PIXEL_MONO_TIME_FULL, t.uptime, white);
-  registerDataSlot(4, tripCaption, dw.trip);
-  registerDataSlot(5, odoCaption, dw.odo);
-  registerDataSlot(6, timeCaption, dw.uptime2);
-
-  setLabelText(dw.speed, t.speed);
-  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
-  if (dashHas(TELEMETRY_FIELD_SPEED)) sweepNumber(dw.speed, v.speedKmh, speedGaugeMax());
-}
-
-static void updatePixelMono(const DashboardValues &v) {
-  DashTexts t = fmtTexts(v);
-  char text[24];
-  setLabelText(dw.speed, t.speed);
-  updatePixelMetricRows(v);  // tier-aware internally
-  if (midDue) {
-    setLabelText(dw.uptime, t.uptime);
-    setLabelText(dw.uptime2, t.uptime);
+  if (!available) snprintf(text, sizeof(text), "--");
+  else if (i == 1) formatSpeedValue(text, sizeof(text), value);
+  else if (i == 4) formatPowerValue(text, sizeof(text), value);
+  else if (i == 5) snprintf(text, sizeof(text), "%d", abs(value));
+  else snprintf(text, sizeof(text), "%.1f", value / 10.0F);
+  setScaledValueText(instrument.value, *effortValues[i], text, layoutFontToLv(effortValues[i]->font));
+  if (i == 4) {
+    snprintf(text, sizeof(text), "%s", powerUnitLabel(value));
+    setFittedText(instrument.caption, EFFORT_POWER_LABEL, text, F1);
   }
+}
+template<int I> static void effortSweep(int value) { setEffortReading(I, value, true, false); }
+static const SweepFn effortSweeps[] = {effortSweep<0>, effortSweep<1>, effortSweep<2>,
+  effortSweep<3>, effortSweep<4>, effortSweep<5>};
+
+static void updateMotorEffort(const DashboardValues &v) {
+  if (!effortScreen) return;
+  const DashTexts t = fmtTexts(v);
+  for (int i = 0; i < 6; ++i) setEffortReading(i, effortReading(i, v), dashHas(effortFields[i]));
+  if (midDue) setLabelText(dw.uptime, t.uptime);
   if (slowDue) {
     setLabelText(dw.battPct, t.battPct);
     setSegBatteryLevel(dw.segBatt, v.batteryPercent);
-    snprintf(text, sizeof(text), "%s %s", t.trip, distanceUnitLabel());
-    setLabelText(dw.trip, text);
-    snprintf(text, sizeof(text), "%s %s", t.odo, distanceUnitLabel());
-    setLabelText(dw.odo, text);
+  }
+  for (int i = 0; i < 4; ++i) {
+    char text[32];
+    formatDashboardData(text, sizeof(text), dashboardDataDefault(MODE_MOTOR_EFFORT, i), v);
+    if (strcmp(text, "-") == 0) snprintf(text, sizeof(text), "--");
+    setLabelText(dw.dataValues[i], text);
   }
 }
+
+static void buildMotorEffort(lv_obj_t *scr, const DashboardValues &v) {
+  effortScreen = scr;
+  lv_obj_add_event_cb(scr, effortScreenDeleteCb, LV_EVENT_DELETE, nullptr);
+  const DashTexts t = fmtTexts(v);
+  // The top bar is the Dual Gauge and Cyber HUD one, with a plain white clock icon.
+  makeLayoutIcon(scr, EFFORT_CLOCK_ICON, CYD_ICON_UPTIME, whiteLv());
+  dw.uptime = makeTopTimeLabel(scr, EFFORT_TIME, t.uptime, whiteLv());
+  // The vehicle name is plain white with the default accent, the chosen accent otherwise.
+  lv_obj_t *title = makeLabelFont(scr, EFFORT_OEM, "", accentTheme == ACCENT_DEFAULT ? whiteLv() : accentLv(),
+                                  layoutFontToLv(EFFORT_OEM.font));
+  setFittedText(title, EFFORT_OEM, dashOemName(), layoutFontToLv(EFFORT_OEM.font));
+  dw.battPct = makeTopBatteryLabel(scr, EFFORT_BATTERY, t.battPct, whiteLv());
+  dw.segBatt = makeSegBattery(scr, EFFORT_BATTERY_ICON, 5);
+  const Item *const captions[] = {&EFFORT_PHASE_AMPS_LABEL, &EFFORT_SPEED_LABEL,
+    &EFFORT_PHASE_VOLTS_LABEL, &EFFORT_BATT_AMPS_LABEL, &EFFORT_POWER_LABEL, &EFFORT_DUTY_LABEL};
+  const char *const names[] = {
+    txt("PHASE A", "VAIHE A", "PHASE A", "PHASE A", "FASE A", "FASE A"), speedUnitLabel(),
+    txt("PHASE V", "VAIHE V", "PHASE V", "PHASE V", "FASE V", "FASE V"),
+    txt("BATT A", "AKKU A", "AKKU A", "BATT A", "BAT A", "BATT A"), "",
+    txt("DUTY %", "PWM %", "PWM %", "PWM %", "PWM %", "PWM %")};
+  // Phase A, speed, phase V, battery A, input power, duty.
+  const uint16_t stock[] = {cyd_ui::kEffortPhase565, cyd_ui::kEffortSpeed565, cyd_ui::kEffortVoltage565,
+    cyd_ui::kEffortCurrent565, cyd_ui::kEffortPower565, cyd_ui::kEffortDuty565};
+  const uint16_t lightStock[] = {cyd_ui::kEffortPhaseLight565, cyd_ui::kEffortSpeedLight565,
+    cyd_ui::kEffortVoltageLight565, cyd_ui::kEffortCurrentLight565, cyd_ui::kEffortPowerLight565,
+    cyd_ui::kEffortDutyLight565};
+  for (int i = 0; i < 6; ++i) {
+    EffortInstrument &instrument = effort[i];
+    const Item &g = *effortGauges[i];
+    const lv_color_t color = themeColor(dashboardLightModeActive() ? lightStock[i] : stock[i]);
+    // The empty part of a ring is a dim ghost of the dial's full-brightness colour, in light
+    // appearance too, where the lit blocks use the darker variant.
+    makeSegRing(instrument.ring, scr, g.cx, g.cy, g.r, i == 4 ? kEffortPowerThickness : segRingThickness(g.r), kEffortSweepDeg, color,
+                lv_color_mix(themeColor(stock[i]), dashBlack(), kEffortUnlitMix));
+    setSegRingFill(instrument.ring, lv_color_mix(color, dashBlack(), kEffortDiscMix),
+                    EFFORT_FOOTER_TOP.y);  // the footer bar stays clear of the discs
+    setSegRingMajors(instrument.ring, kEffortMajorExtraPx, kEffortMajorSteps);
+    instrument.needle = makeTickNeedle(scr, g.cx, g.cy, g.r - (i == 1 ? 16 : 12), g.r,
+        instrument.ring.startDeg, instrument.ring.extentDeg, kEffortScale, 4, 2);
+    instrument.position = 0;
+    instrument.target = 0;
+    instrument.changedAt = millis();
+    instrument.placed = false;
+    lv_obj_set_style_line_color(instrument.needle.body, color, 0);
+    const lv_color_t numberColor = lv_color_mix(whiteLv(), color, 225);
+    // The number and its unit are the dial's color a long way toward white (toward black in light appearance, where
+    // white is black), and the disc inside the ring a dark shade of it, like an unlit block but deeper.
+    instrument.value = makeLabel(scr, *effortValues[i], "", whiteLv());
+    instrument.caption = makeLabel(scr, *captions[i], "", numberColor);
+    setFittedText(instrument.caption, *captions[i], names[i], F1);
+  }
+  makeLineBox(scr, EFFORT_FOOTER_TOP, dimLv());
+  const Item *const footerLabels[] = {&EFFORT_MOTOR_LABEL, &EFFORT_ESC_LABEL, &EFFORT_BATT_VOLTS_LABEL,
+    &EFFORT_TRIP_LABEL};
+  const Item *const footerValues[] = {&EFFORT_MOTOR, &EFFORT_ESC, &EFFORT_BATT_VOLTS, &EFFORT_TRIP};
+  for (int i = 0; i < 4; ++i) {
+    const DashboardDataItem item = dashboardDataDefault(MODE_MOTOR_EFFORT, i);
+    lv_obj_t *caption = makeLabel(scr, *footerLabels[i], "", labelLv());
+    setFittedText(caption, *footerLabels[i], dashboardDataLabel(item), F1);
+    lv_obj_t *value = makeLabel(scr, *footerValues[i], "", whiteLv());
+    configureFittedLabel(value, *footerValues[i], "-999.9 °C", F2);
+    registerDataSlot(i, caption, value);
+  }
+  updateMotorEffort(v);
+  setSegBatteryLevel(dw.segBatt, v.batteryPercent);
+  for (int i = 0; i < 6; ++i) if (dashHas(effortFields[i]))
+    sweepWith(effort[i].value, effortSweeps[i], abs(effortReading(i, v)), effortMaximum(i));
+}
+
+#ifdef CYD_LVGL_PREVIEW
+// Where an instrument's ring and needle are, and where they are heading, in 4096ths of the scale.
+int previewMotorEffortPosition(int instrument) { return effort[instrument].position; }
+int previewMotorEffortTarget(int instrument) { return effort[instrument].target; }
+#endif
 
 // ── Pixel ────────────────────────────────────────────────────────────────────
 // A deliberately spare instrument face: one oversized speed readout owns the
@@ -4471,13 +4581,13 @@ static void buildEfficiency(lv_obj_t *scr, const DashboardValues &v) {
   char text[32];
   efficiencyAccentColor = accent;
 
-  // Match the compact shared ride-status bar used by Gauge and Mono, leaving
+  // Match the compact shared ride-status bar used by Gauge and Motor Effort, leaving
   // every pixel below it available to the instruments.
-  Item clockItem = PIXEL_MONO_CLOCK_ICON;
-  Item timeItem = PIXEL_MONO_TIME;
-  Item oemItem = PIXEL_MONO_OEM;
-  Item batteryTextItem = PIXEL_MONO_BATTERY;
-  Item batteryIconItem = PIXEL_MONO_BATTERY_ICON;
+  Item clockItem = EFFORT_CLOCK_ICON;
+  Item timeItem = EFFORT_TIME;
+  Item oemItem = EFFORT_OEM;
+  Item batteryTextItem = EFFORT_BATTERY;
+  Item batteryIconItem = EFFORT_BATTERY_ICON;
   clockItem.y -= 2;
   timeItem.y -= 2;
   oemItem.y -= 2;
@@ -4751,8 +4861,8 @@ void buildDashboardMode(lv_obj_t *scr, DashboardMode mode, const DashboardValues
     case MODE_PIXEL_GAUGE:
       buildPixelGauge(scr, values);
       break;
-    case MODE_PIXEL_MONO:
-      buildPixelMono(scr, values);
+    case MODE_MOTOR_EFFORT:
+      buildMotorEffort(scr, values);
       break;
     case MODE_BARS:
       buildBars(scr, values);
@@ -4830,8 +4940,8 @@ void updateDashboardMode(DashboardMode mode, const DashboardValues &values, bool
     case MODE_PIXEL_GAUGE:
       updatePixelGauge(values);
       break;
-    case MODE_PIXEL_MONO:
-      updatePixelMono(values);
+    case MODE_MOTOR_EFFORT:
+      updateMotorEffort(values);
       break;
     case MODE_BARS:
       updateBars(values);

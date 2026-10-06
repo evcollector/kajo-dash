@@ -124,6 +124,66 @@ SegMeterWidget makeSegMeter(lv_obj_t *parent, const cyd_layout::Item &item, lv_c
 void setSegMeterValue(SegMeterWidget &meter, int value, int maxValue);
 void setSegMeterColors(SegMeterWidget &meter, lv_color_t lit, lv_color_t unlit);
 
+// Segmented ring: the segmented meter's blocks bent round a dial. The look is the
+// bar meters' own -- solid blocks about two pixels apart, lit in the ring's colour
+// and unlit as a dark ghost of it -- but every block is the same wedge, so the ring
+// reads as one instrument. One custom-drawn object carries the whole ring (no
+// object per block), and a new value invalidates only the blocks that flip.
+//
+// Block width and gap are the same in pixels on every ring (about 3.25 and 2.25 px)
+// along the ring's centre line, so rings of different radii look alike and only the
+// block count follows the radius. lv_draw_arc takes whole degrees, so
+// the pitch and gap are rounded to degrees once and every block of a ring is then
+// identical. Angles are degrees clockwise from 3 o'clock.
+struct SegRingGeometry {
+  int16_t startDeg;   // leading edge of the first block
+  int16_t extentDeg;  // from that edge to the last block's trailing edge
+  uint8_t count;
+  uint8_t pitchDeg;   // one block plus one gap
+  uint8_t blockDeg;
+};
+// `sweepDeg` is the most the ring may span; the blocks are centred on 12 o'clock.
+SegRingGeometry segRingGeometry(int radius, int thickness, int sweepDeg);
+// The thickness a ring of this radius is given when the caller has no reason to choose:
+// it grows with the dial, a sixth of the radius plus a pixel and a third, so a big dial
+// gets taller blocks than a small one (7 px at radius 34, 9 at 48, 11 at 59) while block
+// width and spacing stay the same. A fifth of the radius would be truer to the ratio but
+// leaves the power gauge's digits 2 px from the ring, and whole-degree rounding then makes
+// the blocks of the largest ring visibly wider than the others.
+int segRingThickness(int radius);
+
+struct SegRingWidget {
+  lv_obj_t *obj;
+  lv_color_t lit;
+  lv_color_t unlit;
+  int16_t cx, cy;     // dial centre, screen coordinates
+  int16_t radius;     // outer edge of the blocks
+  int16_t startDeg;
+  int16_t extentDeg;
+  uint8_t thickness;  // radial length of a block
+  uint8_t count;
+  uint8_t pitchDeg;
+  uint8_t blockDeg;
+  int8_t litBlocks;   // -1 until the first value
+  uint8_t majorExtra; // px the major blocks reach further in than the others
+  uint8_t majorSteps; // majors fall at k/majorSteps of the ring, k = 0..majorSteps; 0 for none
+  int16_t fillBottom; // the disc is not drawn from this screen row down
+  bool hasFill;
+  lv_color_t fill;    // the disc inside the blocks
+};
+// `ring` is the caller's storage and the draw callback keeps a pointer to it, so it
+// must outlive the object (a static, like the other dashboard widgets).
+void makeSegRing(SegRingWidget &ring, lv_obj_t *parent, int cx, int cy, int radius, int thickness, int sweepDeg,
+                 lv_color_t lit, lv_color_t unlit);
+void setSegRingValue(SegRingWidget &ring, int value, int maxValue);
+void setSegRingColors(SegRingWidget &ring, lv_color_t lit, lv_color_t unlit);
+// A disc behind the ring, out to the blocks' outer edge (drawn by the ring, so it costs no object),
+// not drawn from screen row `bottomY` down (a bar below it, drawn over the ring, stays clear).
+void setSegRingFill(SegRingWidget &ring, lv_color_t fill, int bottomY);
+// Every block at k/steps of the ring (k = 0..steps, the dual gauge's longer ticks) reaches `extraPx`
+// further in than the rest. Call once, right after makeSegRing.
+void setSegRingMajors(SegRingWidget &ring, int extraPx, int steps);
+
 // Segmented arc gauge (drawGaugeScale/updateGaugeArc): 260deg sweep from 140deg
 struct ArcGauge {
   lv_obj_t *arc;

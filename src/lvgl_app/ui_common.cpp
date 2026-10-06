@@ -548,6 +548,181 @@ void setSegMeterColors(SegMeterWidget &meter, lv_color_t lit, lv_color_t unlit) 
   }
 }
 
+// ── Segmented ring ────────────────────────────────────────────────────────────
+
+// A ring's blocks are about 3.25 px wide (the bar meters' are 5) with gaps of about
+// 2.25 px between them, measured along the centre line. Both are rounded to whole
+// degrees, so the pitch follows the radius and the block count with it.
+static const int kSegRingBlockQuarterPx = 13;
+static const int kSegRingGapQuarterPx = 9;
+
+// Pixels along the ring's centre line as whole degrees, rounded. `centre2` is twice
+// that line's radius, which keeps the arithmetic in integers: 180 / pi * px / (centre2 / 2).
+static int segRingDegrees(int px, int centre2) {
+  return (px * 11459 + centre2 * 50) / (centre2 * 100);
+}
+
+SegRingGeometry segRingGeometry(int radius, int thickness, int sweepDeg) {
+  const int centre2 = max(2, 2 * radius - thickness);
+  const int block = max(1, segRingDegrees(kSegRingBlockQuarterPx, 4 * centre2));
+  const int gap = max(1, segRingDegrees(kSegRingGapQuarterPx, 4 * centre2));
+  const int pitch = block + gap;
+  const int count = max(1, (sweepDeg + gap) / pitch);
+  SegRingGeometry g = {};
+  g.count = (uint8_t)count;
+  g.pitchDeg = (uint8_t)pitch;
+  g.blockDeg = (uint8_t)(pitch - gap);
+  g.extentDeg = (int16_t)(count * pitch - gap);
+  g.startDeg = (int16_t)(270 - g.extentDeg / 2);
+  return g;
+}
+
+int segRingThickness(int radius) {
+  return max(4, (radius + 8) / 6);
+}
+
+static lv_point_t segRingPoint(const SegRingWidget &ring, int degrees, int radius) {
+  lv_point_t point;
+  point.x = ring.cx + ((lv_trigo_sin(degrees + 90) * radius) >> LV_TRIGO_SHIFT);
+  point.y = ring.cy + ((lv_trigo_sin(degrees) * radius) >> LV_TRIGO_SHIFT);
+  return point;
+}
+
+// Where a block can put a pixel: its four corners, plus a margin for the arc that
+// bulges past them and for the antialiased edge.
+// Majors are the blocks at k/majorSteps of the ring; the others are `thickness` deep and these `majorExtra` deeper.
+static int segRingBlockExtra(const SegRingWidget &ring, int index) {
+  if (!ring.majorExtra || !ring.majorSteps || ring.count < 2) return 0;
+  for (int k = 0; k <= ring.majorSteps; k++)
+    if ((k * (ring.count - 1) + ring.majorSteps / 2) / ring.majorSteps == index) return ring.majorExtra;
+  return 0;
+}
+
+static lv_area_t segRingBlockArea(const SegRingWidget &ring, int index) {
+  const int start = ring.startDeg + index * ring.pitchDeg;
+  const int end = start + ring.blockDeg;
+  const int inner = ring.radius - ring.thickness - segRingBlockExtra(ring, index);
+  const int outer = ring.radius;
+  const lv_point_t corners[4] = {segRingPoint(ring, start, outer), segRingPoint(ring, start, inner),
+                                 segRingPoint(ring, end, outer), segRingPoint(ring, end, inner)};
+  lv_area_t area = {corners[0].x, corners[0].y, corners[0].x, corners[0].y};
+  for (int i = 1; i < 4; i++) {
+    area.x1 = min<int>(area.x1, corners[i].x);
+    area.y1 = min<int>(area.y1, corners[i].y);
+    area.x2 = max<int>(area.x2, corners[i].x);
+    area.y2 = max<int>(area.y2, corners[i].y);
+  }
+  area.x1 -= 2;
+  area.y1 -= 2;
+  area.x2 += 2;
+  area.y2 += 2;
+  return area;
+}
+
+static void segRingDrawCb(lv_event_t *event) {
+  const SegRingWidget *ring = static_cast<const SegRingWidget *>(lv_event_get_user_data(event));
+  lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(event);
+  lv_draw_arc_dsc_t arc;
+  lv_draw_arc_dsc_init(&arc);
+  arc.opa = LV_OPA_COVER;
+  arc.rounded = false;
+  const lv_point_t centre = {ring->cx, ring->cy};
+  if (ring->hasFill) {
+    lv_draw_rect_dsc_t disc;
+    lv_draw_rect_dsc_init(&disc);
+    disc.bg_color = ring->fill;
+    disc.bg_opa = LV_OPA_COVER;
+    disc.radius = LV_RADIUS_CIRCLE;
+    const int reach = ring->radius;  // from the blocks' outer edge, so it shows under them
+    const lv_area_t area = {(lv_coord_t)(ring->cx - reach), (lv_coord_t)(ring->cy - reach),
+                            (lv_coord_t)(ring->cx + reach), (lv_coord_t)(ring->cy + reach)};
+    lv_area_t clip = *ctx->clip_area;
+    clip.y2 = min<int>(clip.y2, ring->fillBottom - 1);
+    if (clip.y1 <= clip.y2) {
+      const lv_area_t *outer = ctx->clip_area;
+      ctx->clip_area = &clip;
+      lv_draw_rect(ctx, &disc, &area);
+      ctx->clip_area = outer;
+    }
+  }
+  for (int i = 0; i < ring->count; i++) {
+    // Most of a partial redraw misses most of the blocks: skip those before
+    // lv_draw_arc builds its masks.
+    const lv_area_t block = segRingBlockArea(*ring, i);
+    lv_area_t visible;
+    if (!_lv_area_intersect(&visible, &block, ctx->clip_area)) continue;
+    arc.color = i < ring->litBlocks ? ring->lit : ring->unlit;
+    // lv_draw_arc reduces angles past 360 itself, so a block over 3 o'clock needs no special case.
+    const int start = ring->startDeg + i * ring->pitchDeg;
+    const int extra = segRingBlockExtra(*ring, i);
+    arc.width = ring->thickness + extra;
+    lv_draw_arc(ctx, &arc, &centre, ring->radius, start, start + ring->blockDeg);
+  }
+}
+
+void makeSegRing(SegRingWidget &ring, lv_obj_t *parent, int cx, int cy, int radius, int thickness, int sweepDeg,
+                 lv_color_t lit, lv_color_t unlit) {
+  const SegRingGeometry geometry = segRingGeometry(radius, thickness, sweepDeg);
+  ring = {};
+  ring.lit = lit;
+  ring.unlit = unlit;
+  ring.cx = (int16_t)cx;
+  ring.cy = (int16_t)cy;
+  ring.radius = (int16_t)radius;
+  ring.startDeg = geometry.startDeg;
+  ring.extentDeg = geometry.extentDeg;
+  ring.thickness = (uint8_t)thickness;
+  ring.count = geometry.count;
+  ring.pitchDeg = geometry.pitchDeg;
+  ring.blockDeg = geometry.blockDeg;
+  ring.litBlocks = -1;
+  ring.obj = makeBase(parent);
+  // The object only has to cover what the blocks can touch.
+  lv_obj_set_pos(ring.obj, cx - radius - 2, cy - radius - 2);
+  lv_obj_set_size(ring.obj, 2 * radius + 4, 2 * radius + 4);
+  lv_obj_add_event_cb(ring.obj, segRingDrawCb, LV_EVENT_DRAW_MAIN, &ring);
+}
+
+void setSegRingValue(SegRingWidget &ring, int value, int maxValue) {
+  if (!ring.obj || maxValue <= 0 || ring.count == 0) return;
+  const int clamped = constrain(value, 0, maxValue);
+  const int lit = (clamped * ring.count + maxValue / 2) / maxValue;  // nearest block
+  if (lit == ring.litBlocks) return;
+  // The blocks from `from` up to, not including, `to` change colour.
+  const int from = min(lit, ring.litBlocks < 0 ? 0 : (int)ring.litBlocks);
+  const int to = max(lit, (int)ring.litBlocks);
+  ring.litBlocks = (int8_t)lit;
+  if (to <= from) return;
+  lv_area_t damage = segRingBlockArea(ring, from);
+  for (int i = from + 1; i < to; i++) {
+    const lv_area_t block = segRingBlockArea(ring, i);
+    damage.x1 = min<int>(damage.x1, block.x1);
+    damage.y1 = min<int>(damage.y1, block.y1);
+    damage.x2 = max<int>(damage.x2, block.x2);
+    damage.y2 = max<int>(damage.y2, block.y2);
+  }
+  lv_obj_invalidate_area(ring.obj, &damage);
+}
+
+void setSegRingFill(SegRingWidget &ring, lv_color_t fill, int bottomY) {
+  ring.fillBottom = (int16_t)bottomY;
+  ring.fill = fill;
+  ring.hasFill = true;
+  if (ring.obj) lv_obj_invalidate(ring.obj);
+}
+
+void setSegRingMajors(SegRingWidget &ring, int extraPx, int steps) {
+  ring.majorExtra = (uint8_t)extraPx;
+  ring.majorSteps = (uint8_t)steps;
+  if (ring.obj) lv_obj_invalidate(ring.obj);
+}
+
+void setSegRingColors(SegRingWidget &ring, lv_color_t lit, lv_color_t unlit) {
+  ring.lit = lit;
+  ring.unlit = unlit;
+  if (ring.obj) lv_obj_invalidate(ring.obj);
+}
+
 void setBatteryLevel(BatteryWidget &widget, int percent, lv_color_t goodColor) {
   const int clamped = constrain(percent, 0, 100);
   if (clamped == widget.lastPercent) return;

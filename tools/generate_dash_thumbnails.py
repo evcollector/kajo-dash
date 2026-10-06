@@ -23,7 +23,7 @@ SOURCES = [
     "02_dual_gauge",
     "03_simple",
     "04_bar_graph",
-    "05_pixel_mono",
+    "05_motor_effort",
     "06_pixel_gauge",
     "07_large_tiles",
     "08_big_readout",

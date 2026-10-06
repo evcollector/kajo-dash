@@ -61,6 +61,8 @@ ctest --test-dir tools/lvgl_native_preview/build_simulator -C Release --output-o
 | `cyd_replay_zoom` | replay zoom: buttons, animation, windows built by the reader, page turns |
 | `cyd_ride_log_policy` | ride start/pause/stop decisions |
 | `cyd_dashboard_redraw`, `cyd_efficiency_redraw`, `cyd_replay_redraw` | partial-redraw correctness |
+| `cyd_seg_ring` | segmented ring: block geometry rule, partial repaint against a full one, block colours |
+| `cyd_effort_glide` | Motor Effort needle and ring glide: placement, timing, retargeting, repaint per frame |
 | `cyd_gauge_ranges` | automatic gauge-range learning |
 | `cyd_demo_ride` | demo-mode ride generation |
 | `cyd_vehicle_fields` | vehicle configuration fields |

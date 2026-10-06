@@ -206,6 +206,8 @@ void fillVescSample(ControllerSample &out, uint32_t now) {
   // Phase current comes off the same packet; power stays pack-side, which is
   // what voltage x input current means.
   out.values.motorCurrent = vescData.avgMotorCurrent;
+  out.values.dutyCycle = vescData.dutyCycle;
+  out.values.phaseVoltage = vescEstimatePhasePeakVoltage(vescData.inpVoltage, vescData.dutyCycle);
   out.values.watts = (int)lroundf(out.values.voltage * out.values.current);
   out.values.motorTemp = (int)lroundf(vescData.tempMotor);
   out.values.escTemp = (int)lroundf(vescData.tempMosfet);
@@ -214,8 +216,9 @@ void fillVescSample(ControllerSample &out, uint32_t now) {
                                ? out.values.tripKm * 3600.0F / out.values.uptimeSeconds
                                : 0.0F;
   out.values.batteryPercent = batterySocFromVoltage(out.values.voltage);
-  out.available = TELEMETRY_FIELDS_DASHBOARD | TELEMETRY_FIELD_FAULT | TELEMETRY_FIELD_MOTOR_CURRENT;
-  out.derived = TELEMETRY_FIELD_POWER | TELEMETRY_FIELD_AVG_SPEED |
+  out.available = TELEMETRY_FIELDS_DASHBOARD | TELEMETRY_FIELD_FAULT | TELEMETRY_FIELD_MOTOR_CURRENT |
+                  TELEMETRY_FIELD_DUTY | TELEMETRY_FIELD_PHASE_VOLTAGE;
+  out.derived = TELEMETRY_FIELD_PHASE_VOLTAGE | TELEMETRY_FIELD_POWER | TELEMETRY_FIELD_AVG_SPEED |
                 TELEMETRY_FIELD_UPTIME | TELEMETRY_FIELD_BATTERY_SOC;
   if (!liveSetupValid)
     out.derived |= TELEMETRY_FIELD_SPEED | TELEMETRY_FIELD_TRIP_DISTANCE | TELEMETRY_FIELD_ODOMETER;

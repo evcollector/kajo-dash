@@ -1,4 +1,12 @@
 #include "vesc_protocol.h"
+#include <math.h>
+
+float vescEstimatePhasePeakVoltage(float batteryVoltage, float dutyCycle) {
+  // VESC FOC: |Vdq| = Vbus * |duty| / sqrt(3), the peak of a phase-to-neutral sine,
+  // the same kind of amplitude as the motor current the VESC reports.
+  return batteryVoltage > 0.0F && isfinite(dutyCycle)
+      ? batteryVoltage * fminf(1.0F, fabsf(dutyCycle)) / sqrtf(3.0F) : 0.0F;
+}
 
 namespace {
 
@@ -84,7 +92,7 @@ bool vescParseValues(const uint8_t *payload, size_t len, VescValues &out) {
   v.avgInputCurrent = readFloat32(payload, 1e2F, i);
   i += 4;  // avg_id
   i += 4;  // avg_iq
-  i += 2;  // duty cycle
+  v.dutyCycle = readFloat16(payload, 1e3F, i);
   v.rpm = readFloat32(payload, 1e0F, i);
   v.inpVoltage = readFloat16(payload, 1e1F, i);
   v.ampHours = readFloat32(payload, 1e4F, i);

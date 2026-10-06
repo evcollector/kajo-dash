@@ -836,7 +836,7 @@
           "anchor": "la",
           "font": "F10",
           "color": "LABEL",
-          "text": "°C"
+          "text": "\u00c2\u00b0C"
         },
         {
           "id": "motorTempLabel",
@@ -877,7 +877,7 @@
           "anchor": "la",
           "font": "F10",
           "color": "LABEL",
-          "text": "°C"
+          "text": "\u00c2\u00b0C"
         },
         {
           "id": "escTempLabel",
@@ -1663,181 +1663,29 @@
         }
       ]
     },
-    "pixelMono": {
-      "name": "05 Mono",
-      "image": "../preview_output/05_pixel_mono.png",
-      "prefix": "PIXEL_MONO",
+    "motorEffort": {
+      "name": "05 Motor Effort",
+      "image": "../preview_output/lvgl/05_motor_effort.png",
+      "prefix": "EFFORT",
       "items": [
-        {
-          "id": "outerFrame",
-          "kind": "shape",
-          "type": "rect",
-          "x": 2,
-          "y": 5,
-          "w": 316,
-          "h": 232,
-          "outline": "DIM"
-        },
-        {
-          "id": "speedBox",
-          "kind": "shape",
-          "type": "rect",
-          "x": 12,
-          "y": 42,
-          "w": 144,
-          "h": 137,
-          "outline": "WHITE"
-        },
-        {
-          "id": "metricRow1",
-          "kind": "shape",
-          "type": "rect",
-          "x": 164,
-          "y": 42,
-          "w": 142,
-          "h": 29,
-          "outline": "DIM"
-        },
-        {
-          "id": "metricRow2",
-          "kind": "shape",
-          "type": "rect",
-          "x": 164,
-          "y": 78,
-          "w": 142,
-          "h": 29,
-          "outline": "DIM"
-        },
-        {
-          "id": "metricRow3",
-          "kind": "shape",
-          "type": "rect",
-          "x": 164,
-          "y": 114,
-          "w": 142,
-          "h": 29,
-          "outline": "DIM"
-        },
-        {
-          "id": "metricRow4",
-          "kind": "shape",
-          "type": "rect",
-          "x": 164,
-          "y": 150,
-          "w": 142,
-          "h": 29,
-          "outline": "DIM"
-        },
-        {
-          "id": "footerTop",
-          "kind": "shape",
-          "type": "line",
-          "points": [
-            [
-              0,
-              194
-            ],
-            [
-              320,
-              194
-            ]
-          ],
-          "color": "WHITE"
-        },
-        {
-          "id": "footerSplit1",
-          "kind": "shape",
-          "type": "line",
-          "points": [
-            [
-              106,
-              194
-            ],
-            [
-              106,
-              238
-            ]
-          ],
-          "color": "DIM"
-        },
-        {
-          "id": "footerSplit2",
-          "kind": "shape",
-          "type": "line",
-          "points": [
-            [
-              213,
-              194
-            ],
-            [
-              213,
-              238
-            ]
-          ],
-          "color": "DIM"
-        },
         {
           "id": "batteryIcon",
           "kind": "shape",
           "type": "battery",
           "icon": "battery",
           "x": 282,
-          "y": 9,
+          "y": 6,
           "w": 31,
           "h": 14,
-          "color": "WHITE",
+          "color": "GREEN",
           "sample": 66,
           "segs": 5
-        },
-        {
-          "id": "powerIcon",
-          "kind": "shape",
-          "type": "icon",
-          "icon": "power",
-          "x": 169,
-          "y": 47,
-          "w": 16,
-          "h": 16,
-          "color": "WHITE"
-        },
-        {
-          "id": "voltsIcon",
-          "kind": "shape",
-          "type": "icon",
-          "icon": "voltage",
-          "x": 169,
-          "y": 83,
-          "w": 16,
-          "h": 16,
-          "color": "WHITE"
-        },
-        {
-          "id": "ampsIcon",
-          "kind": "shape",
-          "type": "icon",
-          "icon": "amperage",
-          "x": 169,
-          "y": 119,
-          "w": 16,
-          "h": 16,
-          "color": "WHITE"
-        },
-        {
-          "id": "tempIcon",
-          "kind": "shape",
-          "type": "icon",
-          "icon": "temp_motor",
-          "x": 169,
-          "y": 155,
-          "w": 16,
-          "h": 16,
-          "color": "WHITE"
         },
         {
           "id": "time",
           "kind": "text",
           "x": 24,
-          "y": 8,
+          "y": 5,
           "anchor": "la",
           "font": "F16",
           "color": "WHITE",
@@ -1847,10 +1695,10 @@
           "id": "oem",
           "kind": "text",
           "x": 160,
-          "y": 16,
+          "y": 13,
           "anchor": "mm",
           "font": "F20",
-          "color": "WHITE",
+          "color": "GREEN",
           "text": "KAJO DASH",
           "max_w": 110
         },
@@ -1858,176 +1706,11 @@
           "id": "battery",
           "kind": "text",
           "x": 278,
-          "y": 8,
+          "y": 5,
           "anchor": "ra",
           "font": "F16",
           "color": "WHITE",
           "text": "66%"
-        },
-        {
-          "id": "speed",
-          "kind": "text",
-          "x": 86,
-          "y": 108,
-          "fit": [
-            "F96",
-            "F48",
-            "F48",
-            "F28"
-          ],
-          "max_w": 139,
-          "color": "WHITE",
-          "text": "21"
-        },
-        {
-          "id": "speedUnit",
-          "kind": "text",
-          "x": 86,
-          "y": 160,
-          "anchor": "mm",
-          "font": "F14",
-          "color": "WHITE",
-          "text": "KM/H"
-        },
-        {
-          "id": "power",
-          "kind": "text",
-          "x": 298,
-          "y": 50,
-          "anchor": "ra",
-          "font": "F16",
-          "color": "WHITE",
-          "text": "1860 W"
-        },
-        {
-          "id": "powerLabel",
-          "kind": "text",
-          "x": 195,
-          "y": 50,
-          "anchor": "la",
-          "font": "F10",
-          "color": "WHITE",
-          "text": "POWER"
-        },
-        {
-          "id": "volts",
-          "kind": "text",
-          "x": 298,
-          "y": 88,
-          "anchor": "ra",
-          "font": "F16",
-          "color": "WHITE",
-          "text": "71.9V"
-        },
-        {
-          "id": "voltsLabel",
-          "kind": "text",
-          "x": 195,
-          "y": 88,
-          "anchor": "la",
-          "font": "F10",
-          "color": "WHITE",
-          "text": "VOLTS"
-        },
-        {
-          "id": "amps",
-          "kind": "text",
-          "x": 298,
-          "y": 124,
-          "anchor": "ra",
-          "font": "F16",
-          "color": "WHITE",
-          "text": "9.4A"
-        },
-        {
-          "id": "ampsLabel",
-          "kind": "text",
-          "x": 195,
-          "y": 124,
-          "anchor": "la",
-          "font": "F10",
-          "color": "WHITE",
-          "text": "AMPS"
-        },
-        {
-          "id": "motorTemp",
-          "kind": "text",
-          "x": 298,
-          "y": 160,
-          "anchor": "ra",
-          "font": "F16",
-          "color": "WHITE",
-          "text": "36 C"
-        },
-        {
-          "id": "motorTempLabel",
-          "kind": "text",
-          "x": 195,
-          "y": 160,
-          "anchor": "la",
-          "font": "F10",
-          "color": "WHITE",
-          "text": "MOTOR TEMP"
-        },
-        {
-          "id": "trip",
-          "kind": "text",
-          "x": 37,
-          "y": 226,
-          "anchor": "mm",
-          "font": "F14",
-          "color": "WHITE",
-          "text": "25.3 KM"
-        },
-        {
-          "id": "tripLabel",
-          "kind": "text",
-          "x": 21,
-          "y": 210,
-          "anchor": "mm",
-          "font": "F10",
-          "color": "WHITE",
-          "text": "TRIP"
-        },
-        {
-          "id": "odo",
-          "kind": "text",
-          "x": 145,
-          "y": 226,
-          "anchor": "mm",
-          "font": "F14",
-          "color": "WHITE",
-          "text": "1257 KM"
-        },
-        {
-          "id": "odoLabel",
-          "kind": "text",
-          "x": 127,
-          "y": 210,
-          "anchor": "mm",
-          "font": "F10",
-          "color": "WHITE",
-          "text": "ODO"
-        },
-        {
-          "id": "timeFull",
-          "kind": "text",
-          "x": 256,
-          "y": 226,
-          "anchor": "mm",
-          "font": "F14",
-          "color": "WHITE",
-          "text": "00:09:19"
-        },
-        {
-          "id": "timeFullLabel",
-          "kind": "text",
-          "x": 236,
-          "y": 210,
-          "anchor": "mm",
-          "font": "F10",
-          "color": "WHITE",
-          "text": "TIME"
         },
         {
           "id": "clockIcon",
@@ -2035,10 +1718,478 @@
           "type": "icon",
           "icon": "uptime",
           "x": 6,
-          "y": 8,
+          "y": 5,
           "w": 16,
           "h": 16,
           "color": "WHITE"
+        },
+        {
+          "id": "phaseAmpsGauge",
+          "kind": "shape",
+          "type": "segRing",
+          "cx": 46,
+          "cy": 83,
+          "r": 42,
+          "max": 150,
+          "sweepDeg": 240,
+          "fillBottom": 206,
+          "color": "#ff8000",
+          "sample": 86.4,
+          "needle": true
+        },
+        {
+          "id": "phaseAmps",
+          "kind": "text",
+          "x": 46,
+          "y": 84,
+          "font": "F24",
+          "text": "86.4",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 62,
+          "fit": [
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "phaseAmpsLabel",
+          "kind": "text",
+          "x": 46,
+          "y": 102,
+          "font": "F14",
+          "text": "PHASE A",
+          "color": "#ff8000",
+          "anchor": "mm",
+          "max_w": 76,
+          "fit": [
+            "F14",
+            "F12",
+            "F24",
+            "F20",
+            "F16"
+          ]
+        },
+        {
+          "id": "speedGauge",
+          "kind": "shape",
+          "type": "segRing",
+          "cx": 160,
+          "cy": 90,
+          "r": 62,
+          "max": 50,
+          "sweepDeg": 240,
+          "fillBottom": 206,
+          "color": "#00beff",
+          "sample": 25,
+          "needle": true
+        },
+        {
+          "id": "speed",
+          "kind": "text",
+          "x": 160,
+          "y": 85,
+          "font": "F72",
+          "text": "25",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 86,
+          "fit": [
+            "F72",
+            "F48",
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "speedLabel",
+          "kind": "text",
+          "x": 160,
+          "y": 119,
+          "font": "F12",
+          "text": "KM/H",
+          "color": "#00beff",
+          "anchor": "mm",
+          "max_w": 96,
+          "fit": [
+            "F12",
+            "F24",
+            "F20",
+            "F16",
+            "F14"
+          ]
+        },
+        {
+          "id": "phaseVoltsGauge",
+          "kind": "shape",
+          "type": "segRing",
+          "cx": 274,
+          "cy": 83,
+          "r": 42,
+          "max": 25,
+          "sweepDeg": 240,
+          "fillBottom": 206,
+          "color": "#f7cf21",
+          "sample": 12.7,
+          "needle": true
+        },
+        {
+          "id": "phaseVolts",
+          "kind": "text",
+          "x": 274,
+          "y": 84,
+          "font": "F24",
+          "text": "12.7",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 62,
+          "fit": [
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "phaseVoltsLabel",
+          "kind": "text",
+          "x": 274,
+          "y": 102,
+          "font": "F14",
+          "text": "PHASE V",
+          "color": "#f7cf21",
+          "anchor": "mm",
+          "max_w": 76,
+          "fit": [
+            "F14",
+            "F12",
+            "F24",
+            "F20",
+            "F16"
+          ]
+        },
+        {
+          "id": "battAmpsGauge",
+          "kind": "shape",
+          "type": "segRing",
+          "cx": 46,
+          "cy": 172,
+          "r": 42,
+          "max": 100,
+          "sweepDeg": 240,
+          "fillBottom": 206,
+          "color": "#ff6900",
+          "sample": 47.7,
+          "needle": true
+        },
+        {
+          "id": "battAmps",
+          "kind": "text",
+          "x": 46,
+          "y": 173,
+          "font": "F24",
+          "text": "47.7",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 62,
+          "fit": [
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "battAmpsLabel",
+          "kind": "text",
+          "x": 46,
+          "y": 191,
+          "font": "F14",
+          "text": "BATT A",
+          "color": "#ff6900",
+          "anchor": "mm",
+          "max_w": 76,
+          "fit": [
+            "F14",
+            "F12",
+            "F24",
+            "F20",
+            "F16"
+          ]
+        },
+        {
+          "id": "powerGauge",
+          "kind": "shape",
+          "type": "segRing",
+          "cx": 160,
+          "cy": 175,
+          "r": 48,
+          "max": 5000,
+          "sweepDeg": 240,
+          "fillBottom": 206,
+          "thickness": 7,
+          "color": "#ff1410",
+          "sample": 2480,
+          "needle": true
+        },
+        {
+          "id": "power",
+          "kind": "text",
+          "x": 160,
+          "y": 176,
+          "font": "F36",
+          "text": "2480",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 78,
+          "fit": [
+            "F36",
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "powerLabel",
+          "kind": "text",
+          "x": 160,
+          "y": 194,
+          "font": "F12",
+          "text": "W",
+          "color": "#ff1410",
+          "anchor": "mm",
+          "max_w": 96,
+          "fit": [
+            "F12",
+            "F24",
+            "F20",
+            "F16",
+            "F14"
+          ]
+        },
+        {
+          "id": "dutyGauge",
+          "kind": "shape",
+          "type": "segRing",
+          "cx": 274,
+          "cy": 172,
+          "r": 42,
+          "max": 100,
+          "sweepDeg": 240,
+          "fillBottom": 206,
+          "color": "#ff3e08",
+          "sample": 60,
+          "needle": true
+        },
+        {
+          "id": "duty",
+          "kind": "text",
+          "x": 274,
+          "y": 173,
+          "font": "F24",
+          "text": "60",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 62,
+          "fit": [
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "dutyLabel",
+          "kind": "text",
+          "x": 274,
+          "y": 191,
+          "font": "F14",
+          "text": "DUTY %",
+          "color": "#ff3e08",
+          "anchor": "mm",
+          "max_w": 76,
+          "fit": [
+            "F14",
+            "F12",
+            "F24",
+            "F20",
+            "F16"
+          ]
+        },
+        {
+          "id": "footerTop",
+          "kind": "shape",
+          "type": "line",
+          "points": [
+            [
+              2,
+              206
+            ],
+            [
+              318,
+              206
+            ]
+          ],
+          "color": "DIM"
+        },
+        {
+          "id": "motorLabel",
+          "kind": "text",
+          "x": 40,
+          "y": 217,
+          "font": "F10",
+          "text": "MOTOR",
+          "color": "DIM",
+          "anchor": "mm",
+          "max_w": 74,
+          "fit": [
+            "F10",
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "motor",
+          "kind": "text",
+          "x": 40,
+          "y": 231,
+          "font": "F14",
+          "text": "58 \u00b0C",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 74,
+          "fit": [
+            "F14",
+            "F24",
+            "F20",
+            "F16",
+            "F12"
+          ]
+        },
+        {
+          "id": "escLabel",
+          "kind": "text",
+          "x": 120,
+          "y": 217,
+          "font": "F10",
+          "text": "ESC",
+          "color": "DIM",
+          "anchor": "mm",
+          "max_w": 74,
+          "fit": [
+            "F10",
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "esc",
+          "kind": "text",
+          "x": 120,
+          "y": 231,
+          "font": "F14",
+          "text": "44 \u00b0C",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 74,
+          "fit": [
+            "F14",
+            "F24",
+            "F20",
+            "F16",
+            "F12"
+          ]
+        },
+        {
+          "id": "battVoltsLabel",
+          "kind": "text",
+          "x": 200,
+          "y": 217,
+          "font": "F10",
+          "text": "VOLTS",
+          "color": "DIM",
+          "anchor": "mm",
+          "max_w": 74,
+          "fit": [
+            "F10",
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "battVolts",
+          "kind": "text",
+          "x": 200,
+          "y": 231,
+          "font": "F14",
+          "text": "52.0V",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 74,
+          "fit": [
+            "F14",
+            "F24",
+            "F20",
+            "F16",
+            "F12"
+          ]
+        },
+        {
+          "id": "tripLabel",
+          "kind": "text",
+          "x": 280,
+          "y": 217,
+          "font": "F10",
+          "text": "TRIP",
+          "color": "DIM",
+          "anchor": "mm",
+          "max_w": 74,
+          "fit": [
+            "F10",
+            "F24",
+            "F20",
+            "F16",
+            "F14",
+            "F12"
+          ]
+        },
+        {
+          "id": "trip",
+          "kind": "text",
+          "x": 280,
+          "y": 231,
+          "font": "F14",
+          "text": "12.5 km",
+          "color": "WHITE",
+          "anchor": "mm",
+          "max_w": 74,
+          "fit": [
+            "F14",
+            "F24",
+            "F20",
+            "F16",
+            "F12"
+          ]
         }
       ]
     },
@@ -3526,7 +3677,7 @@
           "anchor": "la",
           "font": "F12",
           "color": "WHITE",
-          "text": "°C"
+          "text": "\u00c2\u00b0C"
         },
         {
           "id": "volts",
@@ -4129,7 +4280,7 @@
           "anchor": "mm",
           "font": "F16",
           "color": "WHITE",
-          "text": "36 °C"
+          "text": "36 \u00c2\u00b0C"
         },
         {
           "id": "tripLabel",

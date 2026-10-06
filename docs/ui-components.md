@@ -251,3 +251,93 @@ values. Power adds `(regen)` to the signed callout.
 Replay overview curves smooth per-bucket means and round only after column
 interpolation. Do not overlay raw min/max strokes; cursor bubbles retain the
 original recorded values independently of this visual smoothing.
+
+## Motor Effort dashboard
+
+Motor Effort replaces Mono in dashboard slot 4. Six fixed instruments, each a
+segmented ring (`makeSegRing(...)` / `setSegRingValue(...)` in `ui_common.cpp`)
+with the shared outer needle (`makeTickNeedle(...)` / `setTickNeedleValue(...)`
+in `dashboards.cpp`). The stock colors follow the Bar Graph dashboard's one hue
+per quantity: speed cyan, phase voltage yellow and input power red, with an orange
+run for the currents (phase amps lightest, then battery amps) and duty between battery amps and input power. They come from `cyd_ui::kEffort*565` in
+`ui_style.h`, with darker variants for light appearance (Bar Graph itself goes
+black there); explicit dashboard accents override them. Each dial's number is pure white (black in light
+appearance) and its unit caption is the dial's color most of the way to white. Each
+ring has a full dark disc of the dial's color (14/255 over the ground, well below an
+unlit block) out to the blocks' outer edge, so it shows under them
+(`setSegRingFill(...)`), stopping at the footer bar's row (`fillBottom` in `layout.json`, equal to the footer line's y) so the bar is clear of it; where the speed disc reaches the power dial it is drawn
+beneath it, because the rings are built in order. The power caption is just the
+unit (W or kW). The blocks at each fifth of
+the ring are 3 px longer inward, as the Dual Gauge's major ticks are
+(`setSegRingMajors(...)`). The input power ring's blocks are 7 px deep (`kEffortPowerThickness`, `thickness` in `layout.json`) instead of the rule's 9, which leaves its number room. The four small dials are 42 px in radius. The top bar is the Dual
+Gauge and Cyber HUD one (white clock icon, time and battery, and a vehicle
+name that is white with the default accent and the chosen accent otherwise) and the stock accent is the Dual Gauge green. The speed number uses the
+72 px face below 100 and steps to 48 px from 100 up; the footer is 34 px tall. Geometry and fitted text
+positions live in `tools/layout.json` under `motorEffort`. Speed is largest,
+input power next, and the four side gauges are equally smaller. Phase A, speed
+and phase V sit over battery A, input power and duty.
+
+The segmented ring is the bar meters' blocks bent round a dial: solid blocks
+lit in the ring's color, unlit as a dim ghost of the dial's full-brightness color
+(52/255 toward the dashboard's ground, a little brighter than the bar meters'
+38/255; in light appearance the ghost keeps the dark-mode hue, a pale tint on the
+pale ground, while the lit blocks use the darker variant).
+Every block is the same wedge, about 3.25 px wide (a third thinner than the bar
+meters' 5 px), and the gap between blocks is about 2.25 px along the ring's centre line on
+every ring, so the spacing is the same on the big speed face and
+the small gauges and only the block count follows the radius (27 blocks at r38,
+34 at r48, 48 at r62). `lv_draw_arc` takes whole degrees, so `segRingGeometry(...)`
+rounds the pitch and gap to degrees once, and every block of a ring is then
+identical. The blocks are centred on 12 o'clock within the 240 degree sweep, which
+leaves the bottom of each dial open for its caption, and the needle's range is the
+ring's own extent, so the two end together. A ring's thickness follows its dial:
+`segRingThickness(radius)` gives a sixth of the radius plus a pixel and a third,
+7 px at r34, 9 at r48 and 11 at r59, so the speed face has the tallest blocks
+while block width and spacing stay the same. (A fifth of the radius would be truer
+to the ratio but leaves the power digits 2 px from their ring and, through the
+whole-degree rounding, makes the speed blocks visibly wider.) A ring is one custom-drawn object
+rather than one object per block, and a new value invalidates only the blocks
+that flip; `cyd_seg_ring` checks that against a full repaint. The layout editor's
+`segRing` shape is a port of the thickness and geometry rules, so change both
+together, and keep `sweepDeg` in `layout.json` equal to `kEffortSweepDeg`.
+
+Rings and needles glide between readings. The dashboard hears from the controller
+ten times a second and the speed in whole km/h, so a ring and needle moved straight
+to each reading would jump a step at a time. Each instrument keeps its position in
+4096ths of the scale, and `effortAim(...)` carries it to a new reading along a
+straight `lv_anim` that lasts a quarter longer than the reading had been steady,
+so the next reading finds it still on its way: a steady acceleration is one
+continuous motion. A change of about one reading (5% of the scale or less) may take
+up to a second, so a gentle ramp crawls instead of moving and stopping between
+readings; a bigger one takes 0.3 s at most, and either takes 0.1 s at least. A
+reading that arrives mid-glide takes over from where the needle is. The price of
+the continuous motion is a needle that trails the true speed by about 1 km/h (a
+quarter to half a second); the numbers show the live reading at once. The first
+reading, an unavailable one and every step of the startup sweep are placed
+without gliding. `cyd_effort_glide` checks the timing, retargeting, reversal and
+the picture of every frame.
+
+Only the four footer slots are customizable (motor temperature, ESC temperature,
+battery voltage and trip distance by default). A Motor Effort profile saved under an older
+revision (Mono's layout, the footer that defaulted to duty, or the three-slot footer) is reset when
+first loading this version. Missing readings show `--` and hide their pointers;
+negative power/current retain their sign in the readout and use magnitude in the
+gauge. Duty is the bottom-right dial, a magnitude percentage on screen, with its
+signed fraction retained in telemetry.
+
+The displayed PHASE V is an estimate of fundamental phase-neutral peak voltage, the
+same kind of amplitude as the PHASE A motor current (so P = 1.5 x V x A):
+`Vbus * abs(duty) / sqrt(3)`. This assumes sinusoidal VESC FOC and the default
+`foc_overmod_factor = 1`; it is not measured, is not valid for arbitrary motor
+control modes/modulation configurations, and cannot identify field weakening.
+It is marked derived in telemetry. FarDriver has no duty/phase-voltage reading,
+so the PHASE V and DUTY dials stay unavailable. A user-facing explanation is
+deferred.
+
+The instruments' widgets belong to the active Motor Effort screen. A
+screen-owned delete callback clears the cached screen pointer so updates stop
+once it is gone, and a replacement screen built before the old one is deleted is
+not forgotten by it.
+
+Native states: `05_motor_effort`, `_rebuild`, `_missing`, `_high`, `_regen`, plus
+`13_sweep_motor_effort`; check Finnish, German and light appearance as well.

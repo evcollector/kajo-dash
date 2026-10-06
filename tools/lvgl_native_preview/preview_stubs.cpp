@@ -366,7 +366,7 @@ static TelemetryLink previewLink = LINK_LIVE;
 static uint8_t previewFault = 0;
 static bool previewInteractive = false;
 static DashboardValues previewDashboardValues = {
-    25, 1000, 52.0F, 19.2F, 44.0F, 42, 38, 12.5F, 1250, 22.5F, 600, 75};
+    25, 1000, 52.0F, 19.2F, 44.0F, 42, 38, 12.5F, 1250, 22.5F, 600, 75, 0.6F, 12.737F};
 
 void previewSetInteractiveMode(bool enabled) {
   previewInteractive = enabled;
@@ -391,6 +391,8 @@ void previewSetDashboardValues(int speedKmh, int watts, float voltage, float cur
   previewDashboardValues.voltage = constrain(voltage, 0.0F, 200.0F);
   previewDashboardValues.current = constrain(current, -500.0F, 500.0F);
   previewDashboardValues.motorCurrent = previewDashboardValues.current * 2.3F;
+  previewDashboardValues.dutyCycle = min(0.95F, speedKmh / 50.0F);
+  previewDashboardValues.phaseVoltage = previewDashboardValues.voltage * fabsf(previewDashboardValues.dutyCycle) / sqrtf(3.0F);
   previewDashboardValues.motorTemp = constrain(motorTemp, -40, 250);
   previewDashboardValues.escTemp = constrain(escTemp, -40, 250);
   previewDashboardValues.batteryPercent = constrain(batteryPercent, 0, 100);

@@ -26,13 +26,14 @@ enum : uint8_t {
 enum : size_t { VESC_MAX_COMMAND_FRAME = 8 };
 
 // The COMM_GET_VALUES fields this firmware consumes. The packet carries more
-// (avg_id, avg_iq, duty cycle, pid position, controller id); they are skipped
+// (avg_id, avg_iq, pid position, controller id); they are skipped
 // in place rather than stored.
 struct VescValues {
   float tempMosfet;
   float tempMotor;
   float avgMotorCurrent;
   float avgInputCurrent;
+  float dutyCycle;  // signed modulation fraction, UART int16 / 1000
   float rpm;
   float inpVoltage;
   float ampHours;
@@ -53,6 +54,10 @@ struct VescSetupValues {
 };
 
 uint16_t vescCrc16(const uint8_t *buf, size_t len);
+
+// Fundamental phase-to-neutral peak (amplitude) estimate for sinusoidal VESC FOC
+// with foc_overmod_factor = 1. Not a measured phase voltage or switching waveform.
+float vescEstimatePhasePeakVoltage(float batteryVoltage, float dutyCycle);
 
 // Builds the payload for a command, optionally wrapped in a CAN forward.
 // Returns the payload length, or 0 if `cap` is too small.

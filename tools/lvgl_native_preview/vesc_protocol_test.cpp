@@ -70,7 +70,7 @@ void testGetValues() {
   writeFloat32(payload, i, 7.32F, 1e2F);     // average input current
   writeInt32(payload, i, 0);                 // avg_id, skipped
   writeInt32(payload, i, 0);                 // avg_iq, skipped
-  writeFloat16(payload, i, 0.62F, 1e3F);     // duty cycle, skipped
+  writeFloat16(payload, i, 0.62F, 1e3F);     // signed duty cycle
   writeFloat32(payload, i, 3600.0F, 1e0F);   // eRPM
   writeFloat16(payload, i, 48.6F, 1e1F);     // input voltage
   writeFloat32(payload, i, 2.5431F, 1e4F);   // amp hours
@@ -87,6 +87,15 @@ void testGetValues() {
   expectNear(v.tempMotor, 41.2F, "tempMotor");
   expectNear(v.avgMotorCurrent, 18.75F, "avgMotorCurrent");
   expectNear(v.avgInputCurrent, 7.32F, "avgInputCurrent");
+  expectNear(v.dutyCycle, 0.62F, "duty scaled by 1000");
+  // Negative duty denotes direction; voltage magnitude remains positive.
+  payload[21] = 0xFD; payload[22] = 0x94;  // -620, big endian
+  VescValues reverse = {};
+  expect(vescParseValues(payload, 56, reverse), "reverse GET_VALUES accepted");
+  expectNear(reverse.dutyCycle, -0.62F, "signed negative duty");
+  expectNear(vescEstimatePhasePeakVoltage(52.0F, 0.6F), 18.013331F, "FOC phase peak estimate");
+  expectNear(vescEstimatePhasePeakVoltage(52.0F, -0.6F), 18.013331F, "reverse voltage magnitude");
+  expectNear(vescEstimatePhasePeakVoltage(52.0F, 0.0F), 0.0F, "zero modulation");
   expectNear(v.rpm, 3600.0F, "rpm");
   expectNear(v.inpVoltage, 48.6F, "inpVoltage");
   expectNear(v.ampHours, 2.5431F, "ampHours");
@@ -111,7 +120,7 @@ void testSetupValues() {
   writeFloat16(payload, i, 39.1F, 1e1F);     // motor temperature, skipped
   writeFloat32(payload, i, 12.0F, 1e2F);     // average motor current, skipped
   writeFloat32(payload, i, 5.5F, 1e2F);      // average input current, skipped
-  writeFloat16(payload, i, 0.5F, 1e3F);      // duty cycle, skipped
+  writeFloat16(payload, i, 0.5F, 1e3F);      // signed duty cycle
   writeFloat32(payload, i, 2800.0F, 1e0F);   // eRPM, skipped
   writeFloat32(payload, i, 8.125F, 1e3F);    // speed, metres per second
   writeFloat16(payload, i, 47.9F, 1e1F);     // input voltage

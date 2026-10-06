@@ -41,6 +41,7 @@ def type_number(value: str | None) -> int:
         "arcBar": 9,
         "tickGauge": 10,
         "segBar": 11,
+        "segRing": 12,
     }.get(value or "", 0)
 
 

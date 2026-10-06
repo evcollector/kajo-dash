@@ -20,6 +20,7 @@ extern void previewSetFirmwareUpdateState(FirmwareUpdateBleState state, bool con
                                           uint32_t total, const char *message);
 extern void previewSetCompanionState(CompanionBleState state, bool paused, uint32_t seconds, const char *message);
 extern void previewSetMillis(uint32_t);
+extern void previewSetDashboardValues(int, int, float, float, int, int, int);
 
 namespace fs = std::filesystem;
 
@@ -195,7 +196,34 @@ int main(int argc, char **argv) {
     }
     if (selected("03_simple")) { showDashboard(output, MODE_SIMPLE, "03_simple"); if (stopAfterSelected()) return 0; }
     if (selected("04_bar_graph")) { showDashboard(output, MODE_BARS, "04_bar_graph"); if (stopAfterSelected()) return 0; }
-    if (selected("05_pixel_mono")) { showDashboard(output, MODE_PIXEL_MONO, "05_pixel_mono"); if (stopAfterSelected()) return 0; }
+    if (selected("05_motor_effort_rebuild")) {
+      // Rebuild before deleting the old screen: its buffer must not free the
+      // new screen's tick coordinates (appearance/selector rebuild path).
+      uiPreviewSetDashboardMode(MODE_MOTOR_EFFORT);
+      showRestingDashboard();
+      showRestingDashboard();
+      showDashboard(output, MODE_MOTOR_EFFORT, "05_motor_effort_rebuild");
+      if (stopAfterSelected()) return 0;
+    }
+    if (selected("05_motor_effort_missing")) {
+      previewSetControllerTelemetryFields(TELEMETRY_FIELDS_DASHBOARD, TELEMETRY_FIELD_POWER);
+      showDashboard(output, MODE_MOTOR_EFFORT, "05_motor_effort_missing");
+      previewSetControllerTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
+      if (stopAfterSelected()) return 0;
+    }
+    if (selected("05_motor_effort_high")) {
+      previewSetDashboardValues(123, 12500, 108.8F, 114.9F, 105, 84, 90);
+      showDashboard(output, MODE_MOTOR_EFFORT, "05_motor_effort_high");
+      previewSetDashboardValues(25, 1000, 52.0F, 19.2F, 42, 38, 75);
+      if (stopAfterSelected()) return 0;
+    }
+    if (selected("05_motor_effort_regen")) {
+      previewSetDashboardValues(25, -1500, 52.0F, -28.8F, 42, 38, 75);
+      showDashboard(output, MODE_MOTOR_EFFORT, "05_motor_effort_regen");
+      previewSetDashboardValues(25, 1000, 52.0F, 19.2F, 42, 38, 75);
+      if (stopAfterSelected()) return 0;
+    }
+    if (selected("05_motor_effort")) { showDashboard(output, MODE_MOTOR_EFFORT, "05_motor_effort"); if (stopAfterSelected()) return 0; }
     if (selected("06_pixel_gauge")) { showDashboard(output, MODE_PIXEL_GAUGE, "06_pixel_gauge"); if (stopAfterSelected()) return 0; }
     if (selected("07_large_tiles")) { showDashboard(output, MODE_LARGE_TILES, "07_large_tiles"); if (stopAfterSelected()) return 0; }
     if (selected("08_big_readout")) { showDashboard(output, MODE_BIG_READOUT, "08_big_readout"); if (stopAfterSelected()) return 0; }
@@ -214,7 +242,7 @@ int main(int argc, char **argv) {
     const std::pair<DashboardMode, const char *> sweepStates[] = {
         {MODE_HUD, "13_sweep_cyber_hud"},       {MODE_GAUGE, "13_sweep_dual_gauge"},
         {MODE_SIMPLE, "13_sweep_simple"},       {MODE_BARS, "13_sweep_bar_graph"},
-        {MODE_PIXEL_MONO, "13_sweep_pixel_mono"}, {MODE_PIXEL_GAUGE, "13_sweep_pixel_gauge"},
+        {MODE_MOTOR_EFFORT, "13_sweep_motor_effort"}, {MODE_PIXEL_GAUGE, "13_sweep_pixel_gauge"},
         {MODE_LARGE_TILES, "13_sweep_large_tiles"}, {MODE_BIG_READOUT, "13_sweep_big_readout"},
         {MODE_REDLINE, "13_sweep_redline"},     {MODE_TRACE, "13_sweep_trace"},
         {MODE_MINIMAL, "13_sweep_minimal_ride"}, {MODE_EFFICIENCY, "13_sweep_efficiency"},

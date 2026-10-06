@@ -181,6 +181,12 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
   add_executable(cyd_replay_zoom_test replay_zoom_test.cpp ${HOST_SUPPORT_SOURCES} ${FIRMWARE_SOURCES})
   configure_cyd_host_target(cyd_replay_zoom_test)
   add_test(NAME cyd_replay_zoom COMMAND cyd_replay_zoom_test)
+  add_executable(cyd_seg_ring_test seg_ring_test.cpp ${HOST_SUPPORT_SOURCES} ${FIRMWARE_SOURCES})
+  configure_cyd_host_target(cyd_seg_ring_test)
+  add_test(NAME cyd_seg_ring COMMAND cyd_seg_ring_test)
+  add_executable(cyd_effort_glide_test effort_glide_test.cpp ${HOST_SUPPORT_SOURCES} ${FIRMWARE_SOURCES})
+  configure_cyd_host_target(cyd_effort_glide_test)
+  add_test(NAME cyd_effort_glide COMMAND cyd_effort_glide_test)
 
   # The vehicle field model builds no widgets of its own, so it is tested
   # against the settings logic and the host stubs rather than through the

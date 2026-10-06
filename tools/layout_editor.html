@@ -352,6 +352,14 @@
     </div>
 
     <section class="ui-kit-section">
+      <div class="ui-kit-title">Motor Effort · segmented rings</div>
+      <p>makeSegRing / makeTickNeedle: the bar meters' blocks bent round a dial, lit solid and unlit as a
+      dark ghost, with a short white-core pointer. Block spacing is the same on every ring (about 5.5 px pitch), so only
+      the block count follows the radius, and the blocks grow taller with the dial. Speed &gt; input power &gt; four side gauges. Default current is green, voltage cyan, power orange;
+      explicit accents override this palette. Open “05 Motor Effort” for the 320×240 visual reference.</p>
+    </section>
+
+    <section class="ui-kit-section">
       <div class="ui-kit-title">System palette · RGB565</div>
       <div class="ui-palette">
         <div class="ui-swatch"><div class="ui-swatch-color" style="background:#ff6900"></div><strong>Accent</strong><span>FB40</span></div>
@@ -628,7 +636,7 @@
     const PREVIEW_IMAGES = {};
     const BACKGROUND_BASE = {
       hud: "BLACK", dualGauge: "BLACK", simple: "BLACK", barGraph: "BLACK",
-      pixelMono: "BLACK", pixelGauge: "BLACK", largeTiles: "#e5e2d8",
+      motorEffort: "BLACK", pixelGauge: "BLACK", largeTiles: "#e5e2d8",
       bigReadout: "BLACK", redline: "BLACK"
     };
     const SHAPE_PRESETS = {
@@ -663,22 +671,7 @@
         { id: "currentBarFrame", kind: "shape", type: "rect", x: 12, y: 192, w: 112, h: 20, outline: "YELLOW" },
         { id: "separator", kind: "shape", type: "line", points: [[205,18],[205,224]], color: "CYAN" }
       ],
-      pixelMono: [
-        { id: "outerFrame", kind: "shape", type: "rect", x: 2, y: 5, w: 316, h: 232, outline: "DIM" },
-        { id: "speedBox", kind: "shape", type: "rect", x: 12, y: 50, w: 135, h: 110, outline: "WHITE" },
-        { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 276, y: 10, w: 24, h: 16, color: "WHITE", sample: 66 },
-        { id: "metricRow1", kind: "shape", type: "rect", x: 164, y: 42, w: 142, h: 29, outline: "DIM" },
-        { id: "powerIcon", kind: "shape", type: "icon", icon: "power", x: 169, y: 47, w: 16, h: 16, color: "WHITE" },
-        { id: "metricRow2", kind: "shape", type: "rect", x: 164, y: 78, w: 142, h: 29, outline: "DIM" },
-        { id: "voltsIcon", kind: "shape", type: "icon", icon: "voltage", x: 169, y: 83, w: 16, h: 16, color: "WHITE" },
-        { id: "metricRow3", kind: "shape", type: "rect", x: 164, y: 114, w: 142, h: 29, outline: "DIM" },
-        { id: "ampsIcon", kind: "shape", type: "icon", icon: "amperage", x: 169, y: 119, w: 16, h: 16, color: "WHITE" },
-        { id: "metricRow4", kind: "shape", type: "rect", x: 164, y: 150, w: 142, h: 29, outline: "DIM" },
-        { id: "tempIcon", kind: "shape", type: "icon", icon: "temp_motor", x: 169, y: 155, w: 16, h: 16, color: "WHITE" },
-        { id: "footerTop", kind: "shape", type: "line", points: [[0,194],[320,194]], color: "WHITE" },
-        { id: "footerSplit1", kind: "shape", type: "line", points: [[106,194],[106,238]], color: "DIM" },
-        { id: "footerSplit2", kind: "shape", type: "line", points: [[213,194],[213,238]], color: "DIM" }
-      ],
+      motorEffort: [{"id": "batteryIcon", "kind": "shape", "type": "battery", "icon": "battery", "x": 282, "y": 6, "w": 31, "h": 14, "color": "GREEN", "sample": 66, "segs": 5}, {"id": "clockIcon", "kind": "shape", "type": "icon", "icon": "uptime", "x": 6, "y": 5, "w": 16, "h": 16, "color": "WHITE"}, {"id": "phaseAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 83, "r": 42, "max": 150, "sweepDeg": 240, "fillBottom": 206, "color": "#ff8000", "sample": 86.4, "needle": true}, {"id": "speedGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 90, "r": 62, "max": 50, "sweepDeg": 240, "fillBottom": 206, "color": "#00beff", "sample": 25, "needle": true}, {"id": "phaseVoltsGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 83, "r": 42, "max": 25, "sweepDeg": 240, "fillBottom": 206, "color": "#f7cf21", "sample": 12.7, "needle": true}, {"id": "battAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff6900", "sample": 47.7, "needle": true}, {"id": "powerGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 175, "r": 48, "max": 5000, "sweepDeg": 240, "fillBottom": 206, "thickness": 7, "color": "#ff1410", "sample": 2480, "needle": true}, {"id": "dutyGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff3e08", "sample": 60, "needle": true}, {"id": "footerTop", "kind": "shape", "type": "line", "points": [[2, 206], [318, 206]], "color": "DIM"}],
       pixelGauge: [
         { id: "outerFrame", kind: "shape", type: "rect", x: 2, y: 5, w: 316, h: 232, outline: "DIM" },
         { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 276, y: 10, w: 24, h: 16, color: "GREEN", sample: 66 },
@@ -787,7 +780,7 @@
       dualGauge: "02 Dual Gauge",
       simple: "03 Simple",
       barGraph: "04 Bar Graph",
-      pixelMono: "05 Mono",
+      motorEffort: "05 Motor Effort",
       pixelGauge: "06 Pixel",
       largeTiles: "07 Tiles",
       bigReadout: "08 Ride Console",
@@ -932,7 +925,7 @@
           const xs = it.points.map(p => p[0]), ys = it.points.map(p => p[1]);
           return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
         }
-        case "arcGauge": case "continuousArc": case "tickGauge": case "arcBar": return { x: it.cx - it.r, y: it.cy - it.r, w: it.r * 2, h: it.r * 2 };
+        case "arcGauge": case "continuousArc": case "tickGauge": case "arcBar": case "segRing": return { x: it.cx - it.r, y: it.cy - it.r, w: it.r * 2, h: it.r * 2 };
         case "icon": return { x: it.x, y: it.y, w: it.w || 24, h: it.h || 24 };
         default: return { x: it.x, y: it.y, w: it.w, h: it.h };
       }
@@ -947,7 +940,7 @@
     function translateItem(it, dx, dy) {
       if (isText(it)) { it.x = clampX(it.x + dx); it.y = clampY(it.y + dy); return; }
       if (it.type === "line") { it.points = it.points.map(([x, y]) => [clampX(x + dx), clampY(y + dy)]); return; }
-      if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar") { it.cx = clampX(it.cx + dx); it.cy = clampY(it.cy + dy); return; }
+      if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar" || it.type === "segRing") { it.cx = clampX(it.cx + dx); it.cy = clampY(it.cy + dy); return; }
       it.x = clampX(it.x + dx); it.y = clampY(it.y + dy);
     }
     const nearestFontKey = (px) => fontKeys().reduce((b, k) => Math.abs(fontPx(k) - px) < Math.abs(fontPx(b) - px) ? k : b, fontKeys()[0]);
@@ -965,7 +958,7 @@
         it.points = it.points.map(([x, y]) => [Math.round(nb.x + (x - ob.x) * sx), Math.round(nb.y + (y - ob.y) * sy)]);
         return;
       }
-      if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar") {
+      if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar" || it.type === "segRing") {
         const r = Math.max(2, Math.round(Math.min(nb.w, nb.h) / 2));
         it.r = r; it.cx = Math.round(nb.x + nb.w / 2); it.cy = Math.round(nb.y + nb.h / 2); return;
       }
@@ -1378,9 +1371,37 @@
           const lit = Math.round(Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx * segs);
           const tMaj = it.tickMajor != null ? it.tickMajor : 17, tMin = it.tickMinor != null ? it.tickMinor : 10;
           for (let i = 0; i <= segs; i++) {
-            const a = (start + i * sweep / segs) * Math.PI / 180, tick = i % 5 === 0 ? tMaj : tMin;
+            const a = (start + i * sweep / segs) * Math.PI / 180, tick = i % (it.majorEvery || 5) === 0 ? tMaj : tMin;
             g.appendChild(svg("line", { x1: it.cx + Math.cos(a) * (it.r - tick), y1: it.cy + Math.sin(a) * (it.r - tick),
-              x2: it.cx + Math.cos(a) * it.r, y2: it.cy + Math.sin(a) * it.r, stroke: i <= lit ? litC : (majorC && i % 5 === 0 ? majorC : dimC), "stroke-width": i <= lit ? 2 : 1, "vector-effect": "non-scaling-stroke" }));
+              x2: it.cx + Math.cos(a) * it.r, y2: it.cy + Math.sin(a) * it.r, stroke: i <= lit ? litC : (majorC && i % 5 === 0 ? majorC : dimC), "stroke-width": i <= lit ? (it.litWidth || 2) : (it.unlitWidth || 1), "vector-effect": "non-scaling-stroke" }));
+          }
+          if (it.needle) {
+            const a = (start + sweep * Math.max(0, Math.min(it.sample || 0, mx)) / mx) * Math.PI / 180;
+            const inner = it.r - (it.r > 50 ? 16 : 12);
+            const points = { x1: it.cx + Math.cos(a) * inner, y1: it.cy + Math.sin(a) * inner,
+              x2: it.cx + Math.cos(a) * it.r, y2: it.cy + Math.sin(a) * it.r };
+            g.appendChild(svg("line", { ...points, stroke: litC, "stroke-width": 4 }));
+            g.appendChild(svg("line", { ...points, stroke: "white", "stroke-width": 2 }));
+          }
+          g.appendChild(svg("circle", { cx: it.cx, cy: it.cy, r: it.r, fill: "transparent", stroke: "none" }));  // hit area
+        } else if (it.type === "segRing") {
+          const litC = colorOf(it.color || "#f51616"), mx = it.max || 100, thick = it.thickness || segRingThickness(it.r);
+          const geo = segRingGeometry(it.r, thick, it.sweepDeg != null ? it.sweepDeg : 260);
+          const lit = Math.round(Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx * geo.count);
+          g.appendChild(svg("path", { d: ringDiscPath(it.cx, it.cy, it.r, (it.fillBottom != null ? it.fillBottom : 1e4) - it.cy),
+            fill: litC, "fill-opacity": 14 / 255, stroke: "none" }));
+          for (let i = 0; i < geo.count; i++) {
+            const a0 = geo.start + i * geo.pitch;
+            g.appendChild(svg("path", { d: ringBlockPath(it.cx, it.cy, it.r, it.r - thick - (ringIsMajor(i, geo.count) ? 3 : 0), a0, a0 + geo.block),
+              fill: litC, "fill-opacity": i < lit ? 1 : 52 / 255, stroke: "none" }));
+          }
+          if (it.needle) {
+            const a = (geo.start + geo.extent * Math.max(0, Math.min(it.sample || 0, mx)) / mx) * Math.PI / 180;
+            const inner = it.r - (it.r > 50 ? 16 : 12);
+            const points = { x1: it.cx + Math.cos(a) * inner, y1: it.cy + Math.sin(a) * inner,
+              x2: it.cx + Math.cos(a) * it.r, y2: it.cy + Math.sin(a) * it.r };
+            g.appendChild(svg("line", { ...points, stroke: litC, "stroke-width": 4 }));
+            g.appendChild(svg("line", { ...points, stroke: "white", "stroke-width": 2 }));
           }
           g.appendChild(svg("circle", { cx: it.cx, cy: it.cy, r: it.r, fill: "transparent", stroke: "none" }));  // hit area
         } else if (it.type === "segBar") {
@@ -1398,6 +1419,33 @@
       const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
       const large = sweepDeg > 180 ? 1 : 0;
       return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+    }
+
+    // Ports of segRingThickness() and segRingGeometry() in src/lvgl_app/ui_common.cpp: a ring is a sixth
+    // of its radius plus a pixel and a third thick, and every ring has blocks about 3.25 px wide and gaps about 2.25 px
+    // with blocks about 3.25 px wide, rounded to whole degrees, so the count follows the radius.
+    function segRingThickness(radius) { return Math.max(4, Math.floor((radius + 8) / 6)); }
+    function segRingGeometry(radius, thickness, sweep) {
+      const degrees = (px, centre2) => Math.floor((px * 11459 + centre2 * 50) / (centre2 * 100));
+      const centre2 = Math.max(2, 2 * radius - thickness);
+      const block = Math.max(1, degrees(13, 4 * centre2)), gap = Math.max(1, degrees(9, 4 * centre2)), pitch = block + gap;
+      const count = Math.max(1, Math.floor((sweep + gap) / pitch)), extent = count * pitch - gap;
+      return { count, pitch, block: pitch - gap, extent, start: 270 - Math.trunc(extent / 2) };
+    }
+    // Blocks at k/5 of the ring reach 3 px further in (kEffortMajorSteps / kEffortMajorExtraPx), and a dark disc
+    // (kEffortDiscMix, 14/255) sits inside.
+    function ringIsMajor(i, count) { for (let k = 0; k <= 5; k++) if (Math.floor((k * (count - 1) + 2) / 5) === i) return true; return false; }
+    // The disc, cut flat `cut` px under its centre (`fillBottom` in layout.json: the footer bar's row).
+    function ringDiscPath(cx, cy, reach, cut) {
+      if (cut >= reach) return `M ${cx - reach} ${cy} A ${reach} ${reach} 0 1 1 ${cx + reach} ${cy} A ${reach} ${reach} 0 1 1 ${cx - reach} ${cy} Z`;
+      const dx = Math.sqrt(reach * reach - cut * cut), y = cy + cut;
+      return `M ${(cx - dx).toFixed(2)} ${y.toFixed(2)} A ${reach} ${reach} 0 1 1 ${(cx + dx).toFixed(2)} ${y.toFixed(2)} Z`;
+    }
+    function ringBlockPath(cx, cy, outer, inner, a0Deg, a1Deg) {
+      const pt = (r, a) => [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)];
+      const [x0, y0] = pt(outer, a0Deg), [x1, y1] = pt(outer, a1Deg), [x2, y2] = pt(inner, a1Deg), [x3, y3] = pt(inner, a0Deg);
+      return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${outer} ${outer} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)} ` +
+             `L ${x2.toFixed(2)} ${y2.toFixed(2)} A ${inner} ${inner} 0 0 0 ${x3.toFixed(2)} ${y3.toFixed(2)} Z`;
     }
 
     function renderText(layer = el.textLayer, interactive = true) {
@@ -1550,12 +1598,47 @@
         const lit = Math.round(Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx * segs);
         const tMaj = it.tickMajor != null ? it.tickMajor : 17, tMin = it.tickMinor != null ? it.tickMinor : 10;
         for (let i = 0; i <= segs; i++) {
-          const a = (start + i * sweep / segs) * Math.PI / 180, tick = i % 5 === 0 ? tMaj : tMin;
+          const a = (start + i * sweep / segs) * Math.PI / 180, tick = i % (it.majorEvery || 5) === 0 ? tMaj : tMin;
           ctx.strokeStyle = i <= lit ? litC : (majorC && i % 5 === 0 ? majorC : dimC); ctx.lineWidth = i <= lit ? 2 : 1;
           ctx.beginPath();
           ctx.moveTo(it.cx + Math.cos(a) * (it.r - tick), it.cy + Math.sin(a) * (it.r - tick));
           ctx.lineTo(it.cx + Math.cos(a) * it.r, it.cy + Math.sin(a) * it.r);
           ctx.stroke();
+        }
+      } else if (it.type === "segRing") {
+        const litC = colorOf(it.color || "#f51616"), mx = it.max || 100, thick = it.thickness || segRingThickness(it.r);
+        const geo = segRingGeometry(it.r, thick, it.sweepDeg != null ? it.sweepDeg : 260);
+        const lit = Math.round(Math.max(0, Math.min(it.sample != null ? it.sample : 0, mx)) / mx * geo.count);
+        ctx.fillStyle = litC;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(it.cx - it.r - 4, it.cy - it.r - 4, 2 * it.r + 8, (it.fillBottom != null ? it.fillBottom : 1e4) - (it.cy - it.r - 4));
+        ctx.clip();
+        ctx.globalAlpha = 14 / 255;
+        ctx.beginPath();
+        ctx.arc(it.cx, it.cy, it.r, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.restore();
+        for (let i = 0; i < geo.count; i++) {
+          const a0 = (geo.start + i * geo.pitch) * Math.PI / 180, a1 = a0 + geo.block * Math.PI / 180;
+          ctx.globalAlpha = i < lit ? 1 : 52 / 255;
+          ctx.beginPath();
+          ctx.arc(it.cx, it.cy, it.r, a0, a1);
+          ctx.arc(it.cx, it.cy, it.r - thick - (ringIsMajor(i, geo.count) ? 3 : 0), a1, a0, true);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        if (it.needle) {
+          const a = (geo.start + geo.extent * Math.max(0, Math.min(it.sample || 0, mx)) / mx) * Math.PI / 180;
+          const inner = it.r - (it.r > 50 ? 16 : 12);
+          for (const [colour, width] of [[litC, 4], ["white", 2]]) {
+            ctx.strokeStyle = colour; ctx.lineWidth = width;
+            ctx.beginPath();
+            ctx.moveTo(it.cx + Math.cos(a) * inner, it.cy + Math.sin(a) * inner);
+            ctx.lineTo(it.cx + Math.cos(a) * it.r, it.cy + Math.sin(a) * it.r);
+            ctx.stroke();
+          }
         }
       } else if (it.type === "segBar") {
         const c = colorOf(it.color || "#f51616"), segs = it.segs || 5, gap = it.gap != null ? it.gap : 3, mx = it.max || 100;
@@ -1942,7 +2025,7 @@
             applied++;
           } else if (it.type === "line") {
             skippedLines++;
-          } else if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar") {
+          } else if (it.type === "arcGauge" || it.type === "continuousArc" || it.type === "tickGauge" || it.type === "arcBar" || it.type === "segRing") {
             it.cx = c.cx; it.cy = c.cy; it.r = c.r;
             if (c.maxValue > 0) it.max = c.maxValue;
             applied++;

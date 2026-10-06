@@ -34,6 +34,8 @@ enum TelemetryField : uint32_t {
   // Phase current is a separate reading from pack current, and not every
   // controller reports it — Fardriver's electrical frame carries one figure.
   TELEMETRY_FIELD_MOTOR_CURRENT = 1UL << 24,
+  TELEMETRY_FIELD_DUTY = 1UL << 25,
+  TELEMETRY_FIELD_PHASE_VOLTAGE = 1UL << 26,
 };
 
 using TelemetryFieldMask = uint32_t;
@@ -52,10 +54,11 @@ constexpr TelemetryFieldMask TELEMETRY_FIELDS_BATTERY =
     TELEMETRY_FIELD_LEARNED_SAMPLES;
 constexpr TelemetryFieldMask TELEMETRY_FIELDS_ALL =
     TELEMETRY_FIELDS_DASHBOARD | TELEMETRY_FIELDS_BATTERY |
-    TELEMETRY_FIELD_FAULT | TELEMETRY_FIELD_RIDE_MODE | TELEMETRY_FIELD_MOTOR_CURRENT;
+    TELEMETRY_FIELD_FAULT | TELEMETRY_FIELD_RIDE_MODE | TELEMETRY_FIELD_MOTOR_CURRENT |
+    TELEMETRY_FIELD_DUTY | TELEMETRY_FIELD_PHASE_VOLTAGE;
 // The highest field must survive the mask type: narrowing TelemetryFieldMask
 // would otherwise drop it silently rather than fail to compile.
-static_assert(TELEMETRY_FIELDS_ALL & TELEMETRY_FIELD_MOTOR_CURRENT, "TelemetryFieldMask is too narrow");
+static_assert(TELEMETRY_FIELDS_ALL & TELEMETRY_FIELD_PHASE_VOLTAGE, "TelemetryFieldMask is too narrow");
 
 inline bool telemetryHas(TelemetryFieldMask mask, TelemetryField field) {
   return (mask & static_cast<TelemetryFieldMask>(field)) != 0;

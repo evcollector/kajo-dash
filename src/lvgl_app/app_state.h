@@ -28,7 +28,7 @@ enum DashboardMode {
   MODE_GAUGE,
   MODE_SIMPLE,
   MODE_BARS,
-  MODE_PIXEL_MONO,
+  MODE_MOTOR_EFFORT,
   MODE_PIXEL_GAUGE,
   MODE_LARGE_TILES,
   MODE_BIG_READOUT,
@@ -89,6 +89,7 @@ enum DashboardDataItem : uint8_t {
   DATA_SPEED,
   DATA_MOTOR_CURRENT,
   DATA_RIDE_MODE,
+  DATA_DUTY,
   DATA_COUNT
 };
 
@@ -188,6 +189,8 @@ struct DashboardValues {
   float avgSpeedKmh;
   unsigned long uptimeSeconds;
   int batteryPercent;
+  float dutyCycle;       // signed VESC duty fraction; availability is separate
+  float phaseVoltage;    // estimated fundamental phase-neutral peak volts
 };
 
 // Energy, range and wear, derived from the controller's own Ah/Wh/tachometer
