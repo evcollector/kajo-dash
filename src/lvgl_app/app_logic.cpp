@@ -1877,16 +1877,20 @@ static float lerpFloat(float from, float to, float amount) {
 static uint32_t uiUpdatesHeldUntilMs = 0;
 
 void holdUiUpdates(uint32_t ms) {
-  uiUpdatesHeldUntilMs = millis() + ms;
+  // Never shorten a hold already running: a press holds for longer than the slide that follows it.
+  const uint32_t until = millis() + ms;
+  if (!uiUpdatesHeld() || (int32_t)(until - uiUpdatesHeldUntilMs) > 0) uiUpdatesHeldUntilMs = until;
 }
 
 bool uiUpdatesHeld() {
   return (int32_t)(uiUpdatesHeldUntilMs - millis()) > 0;  // signed: survives wrap
 }
 
-// One 120 s lap of keyframed speed. The ride launches from a standstill once and
-// then keeps rolling: every lap dips to a slow kDemoMinKmh instead of stopping.
-// Power is not a second table: it is derived from that speed by a small
+// One 120 s lap of keyframed speed, driven hard on purpose so the dials and gauges are
+// exercised: fourteen launches and stops of 1.2-2.2 m/s^2 (a 3 s run from 7 to 30 km/h, a
+// 2-3 s drop back to 10-14), with short cruises between them. The ride launches from a
+// standstill once and then keeps rolling: every lap dips to a slow kDemoMinKmh instead of
+// stopping. Power is not a second table: it is derived from that speed by a small
 // road-load model (rolling resistance, air drag, acceleration, drivetrain and
 // regen losses), so speed and power always agree. Each lap's speed above the
 // minimum is scaled by a deterministic per-lap factor so the ride does not repeat
@@ -1897,9 +1901,9 @@ static bool demoPreviewActive = false;
 static const float kDemoPackWh = 13.0F * 3.0F * 3.5F * 3.7F;
 static const float kDemoPackOhm = 0.062F;     // the figure the battery stats report
 static const float kDemoLapSeconds = 120.0F;
-static const float kDemoTimes[]  = {0, 5, 15, 45, 60, 80, 95, 105, 115, 120};
+static const float kDemoTimes[]  = {0, 4, 8, 10, 13, 15, 19, 21, 24, 26, 30, 32, 36, 39, 42, 45, 49, 52, 56, 59, 63, 66, 71, 74, 79, 81, 86, 89, 93, 96, 101, 104, 109, 111, 116, 118, 120};
 static const float kDemoMinKmh = 7.0F;
-static const float kDemoSpeeds[] = {7, 7, 33, 33, 28, 34, 32, 26, 7, 7};
+static const float kDemoSpeeds[] = {7, 7, 30, 31, 12, 28, 33, 33, 10, 7, 30, 32, 14, 32, 34, 16, 30, 31, 9, 25, 28, 12, 31, 33, 14, 7, 29, 30, 20, 32, 34, 13, 28, 29, 7, 7, 7};
 static const int kDemoPointCount = sizeof(kDemoTimes) / sizeof(kDemoTimes[0]);
 static const float kDemoMassKg = 100.0F;      // bike and rider
 static const float kDemoRollN = 0.009F * 9.81F;  // rolling resistance per kg
@@ -1961,11 +1965,13 @@ static float demoLapKm(float seconds, int lap) {
 }
 // Energy over the first `seconds` of a lap, midpoint rule at one-second steps
 // (keyframes sit on whole seconds, so no step straddles a corner).
+// Finer than a keyframe span: the hard launches and stops change power within a second.
+static const float kDemoEnergyStep = 0.25F;
 static void demoLapEnergy(int lap, float seconds, float &wh, float &regenWh) {
   const float scale = demoLapScale(lap);
   wh = regenWh = 0;
-  for (float t = 0; t < seconds; t += 1.0F) {
-    const float step = min(1.0F, seconds - t);
+  for (float t = 0; t < seconds; t += kDemoEnergyStep) {
+    const float step = min(kDemoEnergyStep, seconds - t);
     const float watts = demoSampleAt(t + step * 0.5F, lap, scale).watts;
     wh += watts * step / 3600.0F;
     if (watts < 0) regenWh -= watts * step / 3600.0F;
@@ -2041,10 +2047,13 @@ DemoRide demoRidePeak() {
   return peak;
 }
 
+static bool demoPreviewFrozen = false;
+bool demoPreviewIsFrozen() { return demoPreviewActive && demoPreviewFrozen; }
+
 void serviceDemoMode() {
   const uint32_t now = millis();
   DemoSession *sessions[] = {&demoSession, &previewSession};
-  const bool active[] = {dashboardDemoModeEnabled, demoPreviewActive};
+  const bool active[] = {dashboardDemoModeEnabled, demoPreviewActive && !demoPreviewFrozen};
   for (int i = 0; i < 2; ++i) {
     DemoSession &s = *sessions[i];
     if (active[i] && s.running) {
@@ -2065,8 +2074,29 @@ void setDemoMode(bool active) {
 void setDemoPreview(bool active) {
   serviceDemoMode();
   demoPreviewActive = active;
-  previewSession.running = active;
+  if (!active) demoPreviewFrozen = false;
+  previewSession.running = active && !demoPreviewFrozen;
 }
+// A frozen preview resumes into the middle of the first lap, just ahead of its first hard stop,
+// not into the standing start: the theme comes alive with the dials already moving.
+static const float kDemoPreviewResumeSeconds = 21.0F;
+void setDemoPreviewFrozen(bool frozen) {
+  serviceDemoMode();
+  if (frozen) previewSession.seconds = kDemoPreviewResumeSeconds;
+  demoPreviewFrozen = frozen;
+  previewSession.running = demoPreviewActive && !frozen;
+}
+
+DashboardValues makeThumbnailDashboardValues() {
+  return {25, 1000, 52.0F, 19.2F, 44.0F, 42, 38, 12.5F, 1250, 22.5F,
+          600, 75, 0.6F, 52.0F * 0.6F / sqrtf(3.0F)};
+}
+
+BatteryStats makeThumbnailBatteryStats() {
+  return {250.0F, 15.0F, 12.5F, 20.0F, 25000.0F, 1250.0F, 20.0F,
+          75, 37, 12.4F, 84.0F, 18.4F, 3};
+}
+
 void cycleDemoTimeScale() {
   serviceDemoMode();
   const uint8_t rates[] = {1, 5, 15, 30, 60};
@@ -2076,7 +2106,7 @@ void cycleDemoTimeScale() {
   demoTimeScale = 1;
 }
 bool demoModeIsActive() { return dashboardDemoModeEnabled || demoPreviewActive; }
-float demoRideSeconds() { return demoPreviewActive ? previewSession.seconds : demoSession.seconds; }
+float demoRideSeconds() { if (demoPreviewIsFrozen()) return 600.0F; return demoPreviewActive ? previewSession.seconds : demoSession.seconds; }
 struct DemoOutput { DashboardValues values; BatteryStats battery; float seconds = -1; };
 static const DemoOutput &demoOutput(bool dashboardOnly) {
   static DemoOutput cache[2];
@@ -2120,9 +2150,13 @@ static const DemoOutput &demoOutput(bool dashboardOnly) {
   output.seconds = seconds;
   return output;
 }
-DashboardValues makeDummyValues(bool dashboardOnly) { return demoOutput(dashboardOnly).values; }
-BatteryStats makeDemoBatteryStats(bool dashboardOnly) { return demoOutput(dashboardOnly).battery; }
-const char *dashOemName() { return demoModeIsActive() ? "DEMO MODE" : oemName; }
+DashboardValues makeDummyValues(bool dashboardOnly) {
+  return !dashboardOnly && demoPreviewIsFrozen() ? makeThumbnailDashboardValues() : demoOutput(dashboardOnly).values;
+}
+BatteryStats makeDemoBatteryStats(bool dashboardOnly) {
+  return !dashboardOnly && demoPreviewIsFrozen() ? makeThumbnailBatteryStats() : demoOutput(dashboardOnly).battery;
+}
+const char *dashOemName() { return demoModeIsActive() && !demoPreviewIsFrozen() ? "DEMO MODE" : oemName; }
 
 
 // Separate state for each transport, dashboard demo and theme preview.
@@ -2141,6 +2175,7 @@ static int gaugeBackendIndex() { return controllerType == CONTROLLER_FARDRIVER ?
 static int gaugeSource() { return demoPreviewActive ? 4 : dashboardDemoModeEnabled ? 3 : gaugeBackendIndex(); }
 int automaticGaugeSource() { return gaugeSource(); }
 static const int kGaugeRangeDefaults[RANGE_COUNT] = {30, 500, 25, 50, 500, 25};
+int thumbnailGaugeMaximum(GaugeRangeKind kind) { return kGaugeRangeDefaults[kind]; }
 static GaugeRangeTracker *initGaugeRanges(int source) {
   const int *defaults = kGaugeRangeDefaults;
   GaugeRangeTracker *ranges = gaugeRangesFor(source);

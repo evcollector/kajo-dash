@@ -37,6 +37,7 @@ than creating another local magic number.
 | Dashboard graphics | helpers in `ui_common.h` or the layout editor | Dashboard accent/background settings must not recolor menu chrome. |
 | Needle, ring or bar that follows a reading | `Glide`, `glideInit(...)`, `glideAim(...)` | Moves the instrument from where it is to each new reading along a straight `lv_anim` instead of jumping a step at a time; see Gliding instruments. Use it for any continuous instrument; discrete block meters have nothing to glide. |
 | Dashboard value updates | `setLabelText(...)`, `setObjHidden(...)`, `setObjTextAlign(...)`, `setObjTextFont(...)`, `setObjTextColor(...)`, `setObjBgColor(...)` | Anything an `update*()` path runs on every tick must skip unchanged writes: LVGL 8 invalidates an object for every style write and every HIDDEN flag write, changed or not (`lv_obj_set_pos` and `lv_obj_set_size` already compare). `cyd_dashboard_redraw` fails a theme that repaints on unchanged values. |
+| Text on a dashboard | `tightenLabelRepaint(...)`, `tightenLabelRepaints(...)`, `kLabelRepaintMargin` | `buildDashboardMode` applies it to every label a dashboard builds, so a new label needs nothing. LVGL repaints a label's box grown by a quarter of its font height (28 px round the Pixel theme's numerals); with the margin at 0 a label is drawn inside its box and nowhere else. A caption wider than its box is therefore cut off at the box, in a full repaint as in a partial one: size the box for the longest translation. `cyd_dashboard_redraw` and `cyd_efficiency_redraw` fail a dashboard label that repaints beyond the margin. |
 
 If an existing constructor is file-local, extend or move that constructor
 instead of reproducing its LVGL styles in a second place.
@@ -156,6 +157,36 @@ replay section.
 - Do not animate expensive dashboard updates at the same time as selector or
   overlay motion.
 
+The theme selector keeps the dashboard at its normal brightness. Contrast comes
+from the individual controls and heading backdrop, without a full-screen shade
+or a forced refresh before the controls slide. A slide owns the whole frame budget, on
+the dashboard's controls as in the selector: the press that starts it already holds
+every live repaint (250 ms) and suspends the instrument glides; the slide extends the
+hold, stops the 100 ms tick's repaints (`uiDashboardTick` returns early while
+`uiUpdatesHeld()`), freezes the battery blink, and runs the display refresh and
+animation timers at `cyd_ui::kSlideFramePeriodMs` (15 ms, normally 30) through
+`boostFrameRate`, so the 140 ms slide gets about twice the frames. Holds only ever
+extend. Suspended glides resume with their elapsed animation state intact. Any new
+slide must go through `slideSelectorPart`, which does all of this; the native
+`cyd_selector_animation` test taps a live, moving dashboard and checks the instruments
+stay still, the slide gets 7 or more frames, and the frame clock returns to normal.
+Selector builds use the shared thumbnail fixture (25 km/h, 1000 W, 52 V,
+19.2 battery A, 44 phase A, 60% duty, 75% battery and a 10-minute ride),
+including its derived stats, gauge scales and graph history. The opening state
+is frozen through the initial hidden-controls delay. Demo readings
+resume when the delay ends; opening another theme starts frozen again.
+Native thumbnail rendering shares the fixture to prevent drift.
+There is no startup sweep
+in the selector: 600 ms after the controls finish hiding, the demo ride is released
+and every needle, ring and bar glides from its thumbnail reading into the ride's own,
+which at that moment is a hard stop from 33 km/h. Returning controls or changing screens
+cancels a pending release; once released, the preview stays live. Native states
+`13_selector_demo_wait` (the theme at rest) and `13_selector_demo_glide` (150 ms into
+the hand-over) cover it, and `cyd_selector_animation` checks that the picture is the
+thumbnail until the release and that no instrument jumps when the ride takes over.
+Native states `13_dash_ui_selector_full` and
+`13_dash_ui_selector_saved` cover the visible selector controls.
+
 ## Translation and verification checklist
 
 Before considering a UI change complete:
@@ -262,11 +293,12 @@ with the shared outer needle (`makeTickNeedle(...)` / `setTickNeedleValue(...)`
 in `dashboards.cpp`). The stock colors follow the Bar Graph dashboard's one hue
 per quantity: speed cyan, phase voltage yellow and input power red, with an orange
 run for the currents (phase amps lightest, then battery amps) and duty between battery amps and input power. They come from `cyd_ui::kMotorData*565` in
-`ui_style.h`, with darker variants for light appearance (Bar Graph itself goes
-black there); explicit dashboard accents override them. Each dial's number is pure white (black in light
-appearance) and its unit caption is the dial's color most of the way to white. Each
-ring has a full dark disc of the dial's color (14/255 over the ground, well below an
-unlit block) out to the blocks' outer edge, so it shows under them
+`ui_style.h`, with a separate default palette for light appearance; explicit dashboard
+accents override them. Each dial's number is pure white (black in light
+appearance) and its caption is the dial's color most of the way to the text
+color. Each ring has a full pale disc in light appearance (a dark disc in dark
+appearance), tinted by the dial's color at 14/255 over the dashboard ground,
+out to the blocks' outer edge, so it shows under them
 (`setSegRingFill(...)`), stopping at the footer bar's row (`fillBottom` in `layout.json`, equal to the footer line's y) so the bar is clear of it; where the speed disc reaches the power dial it is drawn
 beneath it, because the rings are built in order. The power caption is just the
 unit (W or kW). The blocks at each fifth of
@@ -282,8 +314,12 @@ and phase V sit over battery A, input power and duty.
 The segmented ring is the bar meters' blocks bent round a dial: solid blocks
 lit in the ring's color, unlit as a dim ghost of the dial's full-brightness color
 (52/255 toward the dashboard's ground, a little brighter than the bar meters'
-38/255; in light appearance the ghost keeps the dark-mode hue, a pale tint on the
-pale ground, while the lit blocks use the darker variant).
+38/255). Light appearance uses its default dial hue for both lit and inactive
+blocks, with inactive blocks at `cyd_ui::kMotorDataLightUnlitMix` (88/255) over
+the pale ground. Light-mode defaults are RGB (237, 147, 0) for phase voltage,
+(220, 81, 0) for both phase and battery current, (157, 0, 0) for duty and
+(222, 0, 0) for input power and (0, 54, 255) for speed, quantized to the
+display's RGB565 format.
 Every block is the same wedge, about 3.25 px wide (a third thinner than the bar
 meters' 5 px), and the gap between blocks is about 2.25 px along the ring's centre line on
 every ring, so the spacing is the same on the big speed face and
@@ -329,7 +365,12 @@ once it is gone, and a replacement screen built before the old one is deleted is
 not forgotten by it.
 
 Native states: `05_motor_data`, `_rebuild`, `_missing`, `_high`, `_regen`, plus
-`13_sweep_motor_data`; check Finnish, German and light appearance as well.
+`13_selector_demo_glide`; check Finnish, German and light appearance as well.
+
+The self-test sweep on entering a dashboard is switched off (`kStartupSweepAvailable` in
+`dashboards.cpp`): a theme appears at its live readings and the glides take it from there.
+The sweep code and `previewFinishStartupSweep` stay so it can be turned back on, and its
+`13_sweep_*` preview states were removed with it.
 
 ## Gliding instruments
 

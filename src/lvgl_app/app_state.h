@@ -520,6 +520,7 @@ enum GaugeRangeKind { RANGE_SPEED, RANGE_POWER, RANGE_CURRENT, RANGE_MOTOR_CURRE
 extern bool automaticGaugeRanges;
 extern uint32_t learnedGaugeSpeed[3];
 int automaticGaugeMaximum(GaugeRangeKind kind);
+int thumbnailGaugeMaximum(GaugeRangeKind kind);
 int automaticGaugeSource();
 void serviceGaugeRanges();
 void observePreviewGaugeRanges(const DashboardValues &values, uint32_t fields);
@@ -560,10 +561,17 @@ void serviceDemoMode();
 void restartDemoRide();
 void cycleDemoTimeScale();
 void setDemoPreview(bool active);
+void setDemoPreviewFrozen(bool frozen);
+bool demoPreviewIsFrozen();
+// Shared readings and derived stats used by selector entry and thumbnail rendering.
+DashboardValues makeThumbnailDashboardValues();
+BatteryStats makeThumbnailBatteryStats();
 float demoRideSeconds();
 DashboardValues makeDummyValues(bool dashboardOnly = false);
 BatteryStats makeDemoBatteryStats(bool dashboardOnly = false);
-void holdUiUpdates(uint32_t ms);  // pause live repaints while a screen animates
+// Pause every live repaint while a screen animates: the slide gets the whole frame budget.
+// Holds only ever extend.
+void holdUiUpdates(uint32_t ms);
 bool uiUpdatesHeld();
 void setDemoMode(bool active);
 bool demoModeIsActive();

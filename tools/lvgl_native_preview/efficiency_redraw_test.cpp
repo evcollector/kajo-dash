@@ -33,6 +33,10 @@ int main(int argc, char **argv) {
     previewFinishStartupSweep();
     updateDashboardMode(MODE_EFFICIENCY, v, true);
     refreshNow();
+    if (widestLabelRepaintMargin(screen) > kLabelRepaintMargin) {
+      std::cerr << "An Efficiency label repaints more than " << kLabelRepaintMargin << " px around itself\n";
+      return 1;
+    }
     // More than five minutes exercises scrolling, changing scale extrema,
     // flat histories, acceleration/deceleration and the arc's 360-degree seam.
     for (int step = 0; step < 3200; ++step) {

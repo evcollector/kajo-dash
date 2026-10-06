@@ -847,6 +847,7 @@ static lv_obj_t *dashboardLoggingLabel = NULL;
 static lv_timer_t *dashboardControlsTimer = NULL;
 static bool dashboardControlsVisible = false;
 static constexpr uint32_t kSelectorSlideMs = cyd_ui::kMotionMs;
+static constexpr uint32_t kPressHoldMs = 250;
 static uint32_t loggingUiRevision = 0;
 static uint32_t rideCatalogUiRevision = 0;
 static uint8_t rideLogsPage = 0;
@@ -956,6 +957,14 @@ static void hideDashboardControls() {
   }
   if (dashboardSettingsButton) slideSelectorPart(dashboardSettingsButton, -kTopBarButtonH - 2, false);
   if (dashboardLoggingControl) slideSelectorPart(dashboardLoggingControl, 242, false);
+}
+
+// A press is the first sign of a tap, a release later: stop live repaints and instrument
+// glides at once, so the frame budget is free when the slide starts instead of a dashboard
+// frame being under way. A hold that is not a tap (the recovery gesture) loses only this long.
+static void pressHoldCb(lv_event_t *) {
+  holdUiUpdates(kPressHoldMs);
+  pauseDashboardAnimations(kPressHoldMs);
 }
 
 static void dashboardTapCb(lv_event_t *) {
@@ -1288,6 +1297,7 @@ static void showDashboard() {
   }
   refreshDashboardLoggingControl();
   lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(scr, pressHoldCb, LV_EVENT_PRESSED, NULL);
   lv_obj_add_event_cb(scr, dashboardTapCb, LV_EVENT_CLICKED, NULL);
   loadScreen(scr);
 }
@@ -1345,6 +1355,9 @@ void uiDashboardTick() {
   }
   serviceDemoMode();
   serviceGaugeRanges();
+  // A slide is running (or a press that is about to start one): nothing else draws. The clocks
+  // above keep time; every repaint below waits for the next tick.
+  if (uiUpdatesHeld()) return;
   if (currentScreen == SCREEN_SUBMENU && submenuType == SUBMENU_SPEED && speedPage == 0 &&
       !rebuildQueued && rideModeReadout) {
     const char *name = rideModeName(telemetryRideMode());
@@ -4411,9 +4424,12 @@ static void makeDisplayColorReference(lv_obj_t *parent, int x, int y, int w, uin
 
 static void makeDashUiPreview(lv_obj_t *scr) {
   setDemoPreview(true);  // independent from dashboard demo and live logging
+  setDemoPreviewFrozen(true);
   DashboardValues values = makeDummyValues();
   setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL);
+  setDashboardStartupSweepEnabled(false);  // the theme is shown at rest, not self-tested
   buildDashboardMode(scr, dashUiPreviewMode, values);
+  setDashboardStartupSweepEnabled(true);
   updateDashboardMode(dashUiPreviewMode, values, true);
   selectorPreviewLastUpdateMs = millis();
 }
@@ -4425,7 +4441,6 @@ static void makeDashUiPreview(lv_obj_t *scr) {
 // which belongs with the theme it is previewed against.
 
 static lv_obj_t *selectorOverlay = NULL;
-static lv_obj_t *selectorShade = NULL;
 static lv_obj_t *selectorTopBack = NULL;
 static lv_obj_t *selectorTopInfo = NULL;
 static lv_obj_t *selectorTopSave = NULL;
@@ -4438,15 +4453,32 @@ static const int kColorBarH = 44;         // collapsed strip
 static const int kSelectorArrowW = 38;    // side steppers, sized for a thumb
 static const int kSelectorArrowH = 76;
 static const int kSelectorArrowInset = 3;
+static lv_timer_t *selectorDemoTimer = nullptr;
+
+static void cancelSelectorDemoTimer() {
+  if (selectorDemoTimer) lv_timer_del(selectorDemoTimer);
+  selectorDemoTimer = nullptr;
+}
+
+// A clear view of the theme at rest, then the demo ride takes over: the instruments glide from
+// the thumbnail readings into the ride's own, with no self-test sweep in between.
+static void selectorDemoTimerCb(lv_timer_t *) {
+  selectorDemoTimer = nullptr;
+  if (selectorOverlayHidden && !colorPaletteOpen && demoPreviewIsFrozen()) {
+    setDemoPreviewFrozen(false);
+    selectorPreviewLastUpdateMs = 0;  // the first ride reading is due at once
+  }
+}
+
 static bool selectorTransitionActive = false;
 static uint8_t selectorTransitionPending = 0;
-static bool selectorClearShadeWhenDone = false;
 
 static bool selectorPreviewUpdateDue() {
-  // Configuration actions need the whole frame budget. A shaded stationary
+  // Configuration actions need the whole frame budget. A stationary
   // preview only needs a gentle sense of live data; the fully exposed theme
   // retains the normal 10 Hz demo rate.
   if (colorPaletteOpen) return false;
+  if (demoPreviewIsFrozen()) return false;
   const uint32_t now = millis();
   const uint32_t period = selectorOverlayHidden ? 100 : 300;
   if (selectorPreviewLastUpdateMs != 0 && now - selectorPreviewLastUpdateMs < period) return false;
@@ -4466,13 +4498,11 @@ static void selectorSlideAnimReadyCb(lv_anim_t *) {
   if (selectorTransitionPending > 0) selectorTransitionPending--;
   if (selectorTransitionPending > 0) return;
   selectorTransitionActive = false;
-  if (selectorClearShadeWhenDone && selectorShade) {
-    // Hiding keeps the contrast shade behind the moving controls. Restore the
-    // dashboard only after the final control has cleared the screen, so the
-    // full-frame shade redraw never competes with the slide.
-    lv_obj_set_style_bg_opa(selectorShade, LV_OPA_TRANSP, 0);
+  if (selectorOverlayHidden && !colorPaletteOpen) {
+    cancelSelectorDemoTimer();
+    selectorDemoTimer = lv_timer_create(selectorDemoTimerCb, cyd_ui::kSelectorDemoDelayMs, nullptr);
+    lv_timer_set_repeat_count(selectorDemoTimer, 1);
   }
-  selectorClearShadeWhenDone = false;
 }
 
 static void slideSelectorPart(lv_obj_t *obj, int32_t to, bool bounce, bool horizontal,
@@ -4481,6 +4511,8 @@ static void slideSelectorPart(lv_obj_t *obj, int32_t to, bool bounce, bool horiz
   // Dashboard data animation is useful while inspecting a stationary theme,
   // but it should never compete with selector chrome for the frame budget.
   holdUiUpdates(kSelectorSlideMs + 20);
+  pauseDashboardAnimations(kSelectorSlideMs + 20);
+  boostFrameRate(kSelectorSlideMs + 40);
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, obj);
@@ -4505,17 +4537,10 @@ static void selectorToggleCb(lv_event_t *) {
     closeSelectorColors();
     return;
   }
+  cancelSelectorDemoTimer();
   const bool hiding = !selectorOverlayHidden;
   selectorTransitionActive = true;
   selectorTransitionPending = 0;
-  selectorClearShadeWhenDone = hiding;
-  if (selectorShade) {
-    // In both directions, establish the complete contrast layer as its own
-    // frame before any controls move. Hiding removes it only after the last
-    // control is off-screen; showing keeps it behind the returned controls.
-    lv_obj_set_style_bg_opa(selectorShade, LV_OPA_50, 0);
-    lv_refr_now(NULL);
-  }
   slideSelectorPart(selectorTopBack, hiding ? -48 : 4, !hiding, false, true);
   slideSelectorPart(selectorTopInfo, hiding ? -48 : 2, !hiding, false, true);
   slideSelectorPart(selectorTopSave, hiding ? -48 : 4, !hiding, false, true);
@@ -5001,9 +5026,9 @@ static void rebuildSelectorPopup() {
 }
 
 static void animateSelectorChrome(bool hide) {
+  cancelSelectorDemoTimer();
   selectorTransitionActive = true;
   selectorTransitionPending = 0;
-  selectorClearShadeWhenDone = false;
   slideSelectorPart(selectorTopBack, hide ? -48 : 4, !hide, false, true);
   slideSelectorPart(selectorTopInfo, hide ? -48 : 2, !hide, false, true);
   slideSelectorPart(selectorTopSave, hide ? -48 : 4, !hide, false, true);
@@ -5223,6 +5248,7 @@ static void makeSelectorOverlay(lv_obj_t *scr, const char *title, uint8_t itemIn
 
   // tapping the preview area toggles the overlay
   lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(scr, pressHoldCb, LV_EVENT_PRESSED, NULL);
   lv_obj_add_event_cb(scr, selectorToggleCb, LV_EVENT_CLICKED, NULL);
 }
 
@@ -5230,15 +5256,7 @@ static void showDashUiSelector(lv_obj_t *scr, const char *title, uint8_t itemInd
                                const char *itemName, const char *saveText = NULL) {
   makeDashUiPreview(scr);
 
-  // Controls are easier to separate from a busy dashboard at half brightness.
-  // This passive layer sits above the preview but below every selector control.
-  selectorShade = lv_obj_create(scr);
-  lv_obj_remove_style_all(selectorShade);
-  makePassive(selectorShade);
-  lv_obj_set_pos(selectorShade, 0, 0);
-  lv_obj_set_size(selectorShade, 320, 240);
-  lv_obj_set_style_bg_color(selectorShade, lv_color_black(), 0);
-  lv_obj_set_style_bg_opa(selectorShade, LV_OPA_50, 0);
+  // Each control provides its own contrast; keep the dashboard unobscured.
   selectorTransitionActive = false;
 
   makeSelectorOverlay(scr, title, itemIndex, itemCount, itemName, saveText);
@@ -7513,6 +7531,7 @@ static void showTextInput() {
 // ── Dispatcher ────────────────────────────────────────────────────────────────
 
 void uiShow(ScreenMode mode) {
+  cancelSelectorDemoTimer();
   closeReplayScreen();
   if (selectorChoiceTimer) {
     lv_timer_del(selectorChoiceTimer);
@@ -7582,13 +7601,11 @@ void uiShow(ScreenMode mode) {
   linkChipText = NULL;
   linkChipIcon = NULL;
   selectorOverlay = NULL;  // rebuilt by the selector screens
-  selectorShade = NULL;
   selectorTopBack = NULL;
   selectorTopInfo = NULL;
   selectorTopSave = NULL;
   selectorTransitionActive = false;
   selectorTransitionPending = 0;
-  selectorClearShadeWhenDone = false;
   selectorColorBar = NULL;
   selectorPalette = NULL;
   selectorPopup = NULL;

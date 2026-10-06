@@ -26,7 +26,7 @@ int main() {
   const auto full = makeDummyValues();
   check(full.batteryPercent == 100 && close(full.voltage,54.6F) && full.tripKm == 0, "full pack initial state");
   advance(15000);
-  check(close(demoRideSeconds(),15) && close(makeDummyValues().watts, 1500, 120), "1x clock / peak");
+  check(close(demoRideSeconds(),15) && close(makeDummyValues().watts, 2360, 250), "1x clock / hard launch");
   const auto before = makeDummyValues();
   for (int i=0;i<1000;++i) { makeDummyValues(); makeDemoBatteryStats(); controllerSnapshot(); }
   check(close(demoRideSeconds(),15) && makeDummyValues().tripKm == before.tripKm, "reads advanced clock");
@@ -75,8 +75,16 @@ int main() {
   restartDemoRide();
   check(demoRideSeconds()==0 && makeDemoBatteryStats().tripWh==0 && makeDummyValues().batteryPercent==100, "restart failed");
   // Power follows speed: drive power while cruising, regen only while slowing.
-  check(demoRideAt(25,false).watts>300 && demoRideAt(25,false).watts<600, "cruise power");
-  check(demoRideAt(110,false).watts<0 && demoRideAt(117,false).watts>0, "regen / slow-roll power");
+  check(demoRideAt(20,false).watts>300 && demoRideAt(20,false).watts<600, "cruise power");
+  check(demoRideAt(22.5F,false).watts<-300 && demoRideAt(117,false).watts>0, "hard regen / slow-roll power");
+  // Hard on purpose: many launches and stops, so the instruments see sharp steps and reversals.
+  int hardLaunches = 0, hardStops = 0; float peakW = 0, deepestRegenW = 0;
+  for (float t = 0.5F; t < 120; t += .5F) {
+    const float dv = (demoRideAt(t+.5F,false).speedKmh - demoRideAt(t-.5F,false).speedKmh) / 3.6F;  // m/s per second
+    const float w = demoRideAt(t,false).watts; peakW = std::max(peakW, w); deepestRegenW = std::min(deepestRegenW, w);
+    if (dv > 1.2F) ++hardLaunches; if (dv < -1.2F) ++hardStops;
+  }
+  check(hardLaunches >= 20 && hardStops >= 20 && peakW > 1800 && deepestRegenW < -700, "ride is not aggressive enough");
   // Launches from rest once, then never stops: every later moment stays 5-10 km/h or faster.
   check(demoRideAt(0,false).speedKmh==0 && demoRideAt(10,false).speedKmh>5, "ride does not launch from rest");
   float slowest=1000;

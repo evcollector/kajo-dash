@@ -203,4 +203,14 @@ bool latestFrameMetrics(FrameMetrics &metrics) {
   return true;
 }
 
+int widestLabelRepaintMargin(lv_obj_t *root) {
+  int widest = 0;
+  for (uint32_t i = 0; i < lv_obj_get_child_cnt(root); ++i) {
+    lv_obj_t *child = lv_obj_get_child(root, i);
+    if (lv_obj_check_type(child, &lv_label_class)) widest = std::max<int>(widest, _lv_obj_get_ext_draw_size(child));
+    widest = std::max(widest, widestLabelRepaintMargin(child));
+  }
+  return widest;
+}
+
 }  // namespace cyd::preview

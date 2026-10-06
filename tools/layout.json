@@ -1836,7 +1836,7 @@
           "sweepDeg": 240,
           "fillBottom": 206,
           "color": "#f7cf21",
-          "sample": 12.7,
+          "sample": 18.0,
           "needle": true
         },
         {
@@ -1845,7 +1845,7 @@
           "x": 274,
           "y": 84,
           "font": "F24",
-          "text": "12.7",
+          "text": "18.0",
           "color": "WHITE",
           "anchor": "mm",
           "max_w": 62,

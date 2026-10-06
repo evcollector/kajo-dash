@@ -16,6 +16,8 @@ void applyDashboardGradient(lv_obj_t *scr);
 // The startup sweep marks entering a dashboard. Disable it around a rebuild
 // that only restyles the theme already on screen (automatic light/dark).
 void setDashboardStartupSweepEnabled(bool enabled);
+// Suspend only dashboard instrument animations; selector/status motion keeps running.
+void pauseDashboardAnimations(uint32_t durationMs);
 
 #ifdef CYD_LVGL_PREVIEW
 // Preview-only: seeds the Trace history so a rendered still shows a plot.

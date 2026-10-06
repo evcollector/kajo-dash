@@ -51,7 +51,8 @@ int main(int argc, char **argv) {
   for (DashboardMode mode : {MODE_HUD, MODE_GAUGE, MODE_SIMPLE, MODE_BARS, MODE_MOTOR_DATA, MODE_PIXEL_GAUGE,
                              MODE_LARGE_TILES, MODE_BIG_READOUT, MODE_REDLINE, MODE_TRACE, MODE_MINIMAL}) {
     for (bool light : {false, true}) {
-      for (Language lang : {LANG_EN, LANG_FI, LANG_DE}) {
+      // All six: a caption wider than its box shows its overhang, and that differs per language.
+      for (Language lang : {LANG_EN, LANG_FI, LANG_DE, LANG_FR, LANG_ES, LANG_IT}) {
         language = lang;
         dashboardAppearanceMode = light ? DASH_APPEARANCE_LIGHT : DASH_APPEARANCE_DARK;
         dashboardMode = mode;
@@ -67,6 +68,16 @@ int main(int argc, char **argv) {
         previewFinishStartupSweep();
         updateDashboardMode(mode, values, true);
         refreshNow();
+        // A label left at LVGL's own margin (a quarter of its font height) would repaint that
+        // much dead space around itself on every text change.
+        const auto checkLabelMargins = [&](const char *when) {
+          const int margin = widestLabelRepaintMargin(screen);
+          if (margin > kLabelRepaintMargin) {
+            std::cerr << "A label repaints " << margin << " px around itself " << when << ": mode=" << mode << '\n';
+            ok = false;
+          }
+        };
+        checkLabelMargins("after the build");
         for (int step = 0; step < 103; ++step) {
           // Rising/falling meters, large jumps, zero, and sub-pixel power jitter.
           values.speedKmh = step < 60 ? (step <= 30 ? step * 4 : (60 - step) * 4) : 25;
@@ -132,6 +143,7 @@ int main(int argc, char **argv) {
             }
           }
         }
+        checkLabelMargins("after the ride");  // fonts change with the value, which refreshes the margin
         // Not idle yet: a glide under way (a one-reading step takes up to a second), and the 160 ms
         // damping of the meters that follow the live value, both go on while the readings repeat.
         for (int settle = 0; settle < 20; ++settle) runTick(mode, values);

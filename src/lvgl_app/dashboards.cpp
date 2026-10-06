@@ -136,6 +136,7 @@ static void advanceVisualGaugeRanges() {
 }
 
 static int displayGaugeMaximum(GaugeRangeKind kind) {
+  if (demoPreviewIsFrozen()) return thumbnailGaugeMaximum(kind);
   return visualGaugeRanges[kind].shown ? visualGaugeRanges[kind].shown : automaticGaugeMaximum(kind);
 }
 
@@ -431,6 +432,7 @@ static const char *speedFitTemplate() {
 }
 
 static int speedGaugeMax() {
+  if (demoPreviewIsFrozen()) return displayGaugeMaximum(RANGE_SPEED);
   return automaticGaugeRanges ? displayGaugeMaximum(RANGE_SPEED) : speedScaleMaxKmh();
 }
 
@@ -454,6 +456,7 @@ static void formatSpeedScaleMark(int mark, char *buffer, size_t size) {
 
 // Shared effort ceiling; manual mode retains the configured peak.
 static int powerBarMax() {
+  if (demoPreviewIsFrozen()) return displayGaugeMaximum(RANGE_POWER);
   if (automaticGaugeRanges) return displayGaugeMaximum(RANGE_POWER);
   // the demo bike has its own ceiling, so its meter fills the way the rider
   // would see it rather than against the configured vehicle's peak
@@ -465,12 +468,14 @@ static int powerBarMax() {
 // curve tops out at 4.18 V per cell, so a bar scaled to this reads full at the
 // same moment the charge readout says 100%.
 static int packVoltageMax() {
+  if (demoPreviewIsFrozen()) return 84;  // thumbnail pack: 20 cells at 4.18 V
   return max(1, (int)lroundf((float)batterySeriesCount * 4.18F));
 }
 
 // The configured battery-side current limit: what the pack is allowed to
 // deliver, rather than the motor-side figure, which may legitimately exceed it.
 static int packCurrentMax() {
+  if (demoPreviewIsFrozen()) return displayGaugeMaximum(RANGE_CURRENT);
   return automaticGaugeRanges ? displayGaugeMaximum(RANGE_CURRENT) : max(1, (int)batteryMaxAmps);
 }
 
@@ -853,6 +858,10 @@ struct SweepSlot {
 static SweepSlot sweepSlots[12];
 static int sweepSlotCount = 0;
 static uint32_t sweepEndMs = 0;
+// The self-test sweep on entering a dashboard is switched off: the theme appears at its live
+// readings and the glides take it from there. The sweep code stays, so turning this back on
+// restores it (setDashboardStartupSweepEnabled still disables it around a restyle).
+static constexpr bool kStartupSweepAvailable = false;
 static bool startupSweepEnabled = true;
 
 void setDashboardStartupSweepEnabled(bool enabled) {
@@ -919,7 +928,7 @@ static void startSweep(SweepKind kind, lv_obj_t *obj, int target, int maxValue, 
   }
   SweepSlot &slot = sweepSlots[sweepSlotCount++];
   slot = {obj, kind, meter, fn, target, maxValue};
-  if (!startupSweepEnabled) {
+  if (!kStartupSweepAvailable || !startupSweepEnabled) {
     // A rebuild of the theme already on screen: land on the live value
     // through the same draw path, without replaying the self-test.
     sweepExecCb(obj, target);
@@ -960,6 +969,7 @@ static void sweepWith(lv_obj_t *identity, SweepFn fn, int target, int maxValue, 
 // settled on. Deleting the animations alone is not enough — their start values
 // were applied at build time, so a dial, ring or chart reveal would be left
 // sitting at zero.
+
 void previewFinishStartupSweep() {
   for (int i = 0; i < sweepSlotCount; i++) {
     lv_anim_del(sweepSlots[i].obj, sweepExecCb);
@@ -990,16 +1000,64 @@ static Glide glides[kMaxGlides];
 static int glideCount = 0;
 static lv_obj_t *glideScreen = nullptr;
 
+// Retain LVGL's elapsed time and easing state while instrument animations are
+// off the scheduler. Resuming must not early-apply the original starting value.
+static lv_anim_t pausedInstrumentAnimations[12 + kMaxGlides];
+static int pausedInstrumentCount = 0;
+static lv_timer_t *instrumentResumeTimer = nullptr;
+static uint32_t instrumentPausedAt = 0;
+
+static void discardPausedInstruments() {
+  if (instrumentResumeTimer) lv_timer_del(instrumentResumeTimer);
+  instrumentResumeTimer = nullptr;
+  pausedInstrumentCount = 0;
+}
+
+static void resumeInstrumentsCb(lv_timer_t *) {
+  instrumentResumeTimer = nullptr;
+  if (sweepEndMs && sweepEndMs > instrumentPausedAt)
+    sweepEndMs += millis() - instrumentPausedAt;
+  for (int i = 0; i < pausedInstrumentCount; ++i) {
+    pausedInstrumentAnimations[i].early_apply = false;
+    lv_anim_start(&pausedInstrumentAnimations[i]);
+  }
+  pausedInstrumentCount = 0;
+}
+
+void pauseDashboardAnimations(uint32_t durationMs) {
+  if (!glideScreen) return;
+  if (!instrumentResumeTimer) {
+    instrumentPausedAt = millis();
+    auto suspend = [](void *var, lv_anim_exec_xcb_t callback) {
+      lv_anim_t *animation = lv_anim_get(var, callback);
+      if (!animation) return;
+      pausedInstrumentAnimations[pausedInstrumentCount++] = *animation;
+      lv_anim_del(var, animation->exec_cb);
+    };
+    for (int i = 0; i < sweepSlotCount; ++i) suspend(sweepSlots[i].obj, sweepExecCb);
+    for (int i = 0; i < glideCount; ++i) suspend(&glides[i], nullptr);
+    instrumentResumeTimer = lv_timer_create(resumeInstrumentsCb, durationMs, nullptr);
+    lv_timer_set_repeat_count(instrumentResumeTimer, 1);
+  } else {
+    lv_timer_set_period(instrumentResumeTimer, durationMs);
+    lv_timer_reset(instrumentResumeTimer);
+  }
+}
+
 static void glideScreenDeleteCb(lv_event_t *event) {
   // A replacement screen may already have been built before this outgoing one is
   // deleted, so forget only the screen that is actually going.
   if (glideScreen != lv_event_get_target(event)) return;
+  discardPausedInstruments();
+  sweepSlotCount = 0;
+  sweepEndMs = 0;
   for (int i = 0; i < glideCount; ++i) glideStop(glides[i]);
   glideCount = 0;
   glideScreen = nullptr;
 }
 
 static void glideBegin(lv_obj_t *scr) {
+  discardPausedInstruments();
   for (int i = 0; i < glideCount; ++i) glideStop(glides[i]);
   glideCount = 0;
   glideScreen = scr;
@@ -2377,7 +2435,7 @@ static const TelemetryField motorDataFields[] = {TELEMETRY_FIELD_MOTOR_CURRENT, 
 
 static int motorDataMaximum(int i) {
   switch (i) {
-    case 0: return (automaticGaugeRanges ? displayGaugeMaximum(RANGE_MOTOR_CURRENT) : max(1, (int)motorMaxAmps)) * 10;
+    case 0: return ((automaticGaugeRanges || demoPreviewIsFrozen()) ? displayGaugeMaximum(RANGE_MOTOR_CURRENT) : max(1, (int)motorMaxAmps)) * 10;
     case 1: return speedGaugeMax();
     // The phase voltage ceiling tracks the configured pack, not the current sample.
     case 2: return max(1, (int)lroundf(packVoltageMax() * 10.0F / sqrtf(3.0F)));
@@ -2464,10 +2522,10 @@ static void buildMotorData(lv_obj_t *scr, const DashboardValues &v) {
     MotorDataInstrument &instrument = motorData[i];
     const Item &g = *motorDataGauges[i];
     const lv_color_t color = themeColor(dashboardLightModeActive() ? lightStock[i] : stock[i]);
-    // The empty part of a ring is a dim ghost of the dial's full-brightness colour, in light
-    // appearance too, where the lit blocks use the darker variant.
+    // Keep inactive scales readable on the pale light-mode gauge faces.
     makeSegRing(instrument.ring, scr, g.cx, g.cy, g.r, i == 4 ? kMotorDataPowerThickness : segRingThickness(g.r), kMotorDataSweepDeg, color,
-                lv_color_mix(themeColor(stock[i]), dashBlack(), kMotorDataUnlitMix));
+                lv_color_mix(color, dashBlack(), dashboardLightModeActive()
+                    ? cyd_ui::kMotorDataLightUnlitMix : kMotorDataUnlitMix));
     setSegRingFill(instrument.ring, lv_color_mix(color, dashBlack(), kMotorDataDiscMix),
                     MOTOR_DATA_FOOTER_TOP.y);  // the footer bar stays clear of the discs
     setSegRingMajors(instrument.ring, kMotorDataMajorExtraPx, kMotorDataMajorSteps);
@@ -2476,8 +2534,7 @@ static void buildMotorData(lv_obj_t *scr, const DashboardValues &v) {
     glideAdd(motorDataPlace, &instrument);
     lv_obj_set_style_line_color(instrument.needle.body, color, 0);
     const lv_color_t numberColor = lv_color_mix(whiteLv(), color, 225);
-    // The number and its unit are the dial's color a long way toward white (toward black in light appearance, where
-    // white is black), and the disc inside the ring a dark shade of it, like an unlit block but deeper.
+    // Readouts are white in dark appearance and black on the pale light faces.
     instrument.value = makeLabel(scr, *motorDataValues[i], "", whiteLv());
     instrument.caption = makeLabel(scr, *captions[i], "", numberColor);
     setFittedText(instrument.caption, *captions[i], names[i], F1);
@@ -3545,7 +3602,23 @@ static void appendDemoTraceSample(float absoluteSeconds) {
   if (demoTraceCount < kTraceSamples) demoTraceCount++;
 }
 
+static void seedThumbnailTrace(float *speed, float *power) {
+  for (uint16_t i = 0; i < kTraceSamples; i++) {
+    const float phase = (float)i / (kTraceSamples - 1);
+    const float ride = 0.52F + 0.30F * sinf(phase * 6.4F) + 0.11F * sinf(phase * 17.0F);
+    speed[i] = constrain(ride, .06F, .96F) * thumbnailGaugeMaximum(RANGE_SPEED);
+    power[i] = constrain(ride * .72F + .16F * sinf(phase * 11), .03F, .9F) * thumbnailGaugeMaximum(RANGE_POWER);
+  }
+}
+
 static void seedDemoTraceHistory() {
+  if (demoPreviewIsFrozen()) {
+    seedThumbnailTrace(demoTraceSpeedPct, demoTracePowerPct);
+    demoTraceHead = 0;
+    demoTraceCount = kTraceSamples;
+    demoTraceLastMs = 600000;
+    return;
+  }
   const float now = demoRideSeconds();
   const float spacing = kTracePeriodMs / 1000.0F;
   demoTraceHead = 0;
@@ -3606,15 +3679,8 @@ static void fillTraceChart() {
 }
 
 #ifdef CYD_LVGL_PREVIEW
-// Preview-only: on hardware the history fills in over ~60 s of riding, but a
-// rendered still would show an empty plot, so seed a representative ride.
 void previewSeedTrace() {
-  for (uint16_t i = 0; i < kTraceSamples; i++) {
-    const float phase = (float)i / (kTraceSamples - 1);
-    const float ride = 0.52F + 0.30F * sinf(phase * 6.4F) + 0.11F * sinf(phase * 17.0F);
-    traceSpeedPct[i] = constrain(ride, .06F, .96F) * speedGaugeMax();
-    tracePowerPct[i] = constrain(ride * .72F + .16F * sinf(phase * 11), .03F, .9F) * tracePowerMax();
-  }
+  seedThumbnailTrace(traceSpeedPct, tracePowerPct);
   traceHead = 0;
   traceCount = kTraceSamples;
 }
@@ -4534,7 +4600,7 @@ static void buildEfficiency(lv_obj_t *scr, const DashboardValues &v) {
   efficiencyDialSpeed = glidePosition(v.speedKmh, speedGaugeMax());
   glideAdd(efficiencySpeedPlace, nullptr);
   glideAim(glides[0], efficiencyDialSpeed, false);
-  efficiencyDialScaleX10 = automaticGaugeRanges ? displayGaugeMaximum(RANGE_EFFICIENCY) * 10 : efficiencyBaselineScaleX10(stats);
+  efficiencyDialScaleX10 = (automaticGaugeRanges || demoPreviewIsFrozen()) ? displayGaugeMaximum(RANGE_EFFICIENCY) * 10 : efficiencyBaselineScaleX10(stats);
   efficiencyDialRateX10 = currentEfficiencyX10(v, stats);
   efficiencyFilteredRateX10 = efficiencyDialRateX10;
   efficiencyNeedleLastMs = millis();
@@ -4753,6 +4819,7 @@ void applyDashboardGradient(lv_obj_t *scr) {
 void buildDashboardMode(lv_obj_t *scr, DashboardMode mode, const DashboardValues &values) {
   const bool restoreChrome = uiChromeAccentEnabled();
   setUiChromeAccent(false);
+  const uint32_t firstChild = lv_obj_get_child_cnt(scr);  // anything above it is not this dashboard's
   memset(&dw, 0, sizeof(dw));
   resetVisualGaugeRanges();
   resetVisualGaugeValues(values);
@@ -4807,6 +4874,7 @@ void buildDashboardMode(lv_obj_t *scr, DashboardMode mode, const DashboardValues
       break;
   }
   applyDashboardDataOverrides(mode, values);
+  tightenLabelRepaints(scr, firstChild);
   setUiChromeAccent(restoreChrome);
 }
 
@@ -4832,6 +4900,7 @@ static void refreshGaugeRanges(DashboardMode mode) {
 }
 
 void updateDashboardMode(DashboardMode mode, const DashboardValues &values, bool force) {
+  if (instrumentResumeTimer) return;
   if (!force && millis() < sweepEndMs) return;  // let the startup sweep play out
   const bool restoreChrome = uiChromeAccentEnabled();
   setUiChromeAccent(false);

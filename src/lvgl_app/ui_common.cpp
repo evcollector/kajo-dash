@@ -57,6 +57,64 @@ void setLabelText(lv_obj_t *label, const char *text) {
   }
 }
 
+// Runs after the label's own handler, which asks for a quarter of the font height.
+static void clampLabelRepaintCb(lv_event_t *e) {
+  lv_coord_t *size = static_cast<lv_coord_t *>(lv_event_get_param(e));
+  if (*size > kLabelRepaintMargin) *size = kLabelRepaintMargin;
+}
+
+void tightenLabelRepaint(lv_obj_t *label) {
+  lv_obj_remove_event_cb(label, clampLabelRepaintCb);  // one handler however often this runs
+  lv_obj_add_event_cb(label, clampLabelRepaintCb, LV_EVENT_REFR_EXT_DRAW_SIZE, nullptr);
+  lv_obj_refresh_ext_draw_size(label);
+}
+
+void tightenLabelRepaints(lv_obj_t *root, uint32_t firstChild) {
+  for (uint32_t i = firstChild; i < lv_obj_get_child_cnt(root); ++i) {
+    lv_obj_t *child = lv_obj_get_child(root, i);
+    if (lv_obj_check_type(child, &lv_label_class)) tightenLabelRepaint(child);
+    tightenLabelRepaints(child);
+  }
+}
+
+// LVGL's animation timer is created with the display refresh period and is not exported.
+// It is the one timer with that period and no user data (the refresh timer carries its
+// display, the input timers their device, and no application timer runs at 30 ms).
+static lv_timer_t *animationTimer() {
+  for (lv_timer_t *timer = lv_timer_get_next(nullptr); timer; timer = lv_timer_get_next(timer))
+    if (timer->user_data == nullptr && timer->period == LV_DISP_DEF_REFR_PERIOD) return timer;
+  return nullptr;
+}
+
+static lv_timer_t *frameRateTimer = nullptr;
+
+static void setFramePeriod(uint32_t period) {
+  lv_disp_t *display = lv_disp_get_default();
+  if (display) lv_timer_set_period(_lv_disp_get_refr_timer(display), period);
+  if (lv_timer_t *animation = animationTimer()) lv_timer_set_period(animation, period);
+}
+
+static void frameRateRestoreCb(lv_timer_t *) {
+  frameRateTimer = nullptr;  // one-shot: LVGL deletes it after this call
+  setFramePeriod(LV_DISP_DEF_REFR_PERIOD);
+}
+
+void boostFrameRate(uint32_t durationMs) {
+  setFramePeriod(cyd_ui::kSlideFramePeriodMs);
+  if (frameRateTimer) {
+    lv_timer_set_period(frameRateTimer, durationMs);
+    lv_timer_reset(frameRateTimer);
+    return;
+  }
+  frameRateTimer = lv_timer_create(frameRateRestoreCb, durationMs, nullptr);
+  lv_timer_set_repeat_count(frameRateTimer, 1);
+}
+
+uint32_t currentFramePeriod() {
+  lv_disp_t *display = lv_disp_get_default();
+  return display ? _lv_disp_get_refr_timer(display)->period : 0;
+}
+
 void setObjHidden(lv_obj_t *obj, bool hidden) {
   if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN) == hidden) return;
   if (hidden) lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
@@ -487,6 +545,7 @@ SegBatteryWidget makeSegBattery(lv_obj_t *parent, const cyd_layout::Item &item, 
 // upper half of the range, so it starts visible and spends equal time on and
 // off. Only a real change touches the style, keeping the redraw to one flip.
 static void segBatteryBlinkCb(void *var, int32_t value) {
+  if (uiUpdatesHeld()) return;  // a slide has the frame budget; the blink resumes after it
   lv_obj_t *block = static_cast<lv_obj_t *>(var);
   const lv_opa_t opa = value >= 50 ? LV_OPA_COVER : LV_OPA_TRANSP;
   if (lv_obj_get_style_bg_opa(block, LV_PART_MAIN) != opa) lv_obj_set_style_bg_opa(block, opa, 0);

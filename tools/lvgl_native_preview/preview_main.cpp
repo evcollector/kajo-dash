@@ -13,6 +13,7 @@
 #include "host_runtime.h"
 #include "ride_replay_core.h"
 #include "screens.h"
+#include "ui_style.h"
 
 extern void previewSetLoggingState(RideLoggingMode mode, bool recording);
 extern void previewSetCardState(bool ready, bool checking);
@@ -38,9 +39,8 @@ static void capture(const fs::path &output, const std::string &name) {
   }
 }
 
-// Every still except the startup-sweep states shows the dashboard at rest.
-// The sweep applies its start values at build time, so without settling it a
-// dashboard behind a popup would be captured on the sweep's first frame.
+// Every still shows the dashboard at rest. previewFinishStartupSweep settles a sweep if one is
+// ever switched back on (kStartupSweepAvailable in dashboards.cpp).
 static void showRestingDashboard() {
   uiShow(SCREEN_DASHBOARD);
   previewFinishStartupSweep();
@@ -59,21 +59,6 @@ static void showDashboard(const fs::path &output, DashboardMode mode, const char
   // Hardware fills this graph in over five minutes of riding.
   if (mode == MODE_EFFICIENCY) previewSeedEfficiency();
   capture(output, name);
-}
-
-// The startup sweep at its peak: every instrument at full scale and every
-// readout at its widest value. A fixed 100 km/h scale forces three-digit speed
-// text, which is what overflowed boxes sized for the resting value.
-static void showStartupSweepPeak(const fs::path &output, DashboardMode mode, const char *name) {
-  const bool automatic = automaticGaugeRanges;
-  automaticGaugeRanges = false;
-  if (mode == MODE_TRACE) previewSeedTrace();
-  uiPreviewSetDashboardMode(mode);
-  uiShow(SCREEN_DASHBOARD);
-  cyd::preview::advanceTime(420);
-  capture(output, name);
-  previewFinishStartupSweep();
-  automaticGaugeRanges = automatic;
 }
 
 static void showGaugeRangeTransition(const fs::path &output, DashboardMode mode, const char *name) {
@@ -247,20 +232,6 @@ int main(int argc, char **argv) {
     if (selected("10_trace")) {
       previewSeedTrace();  // hardware fills this history in over ~60 s of riding
       showDashboard(output, MODE_TRACE, "10_trace");
-      if (stopAfterSelected()) return 0;
-    }
-
-    const std::pair<DashboardMode, const char *> sweepStates[] = {
-        {MODE_HUD, "13_sweep_cyber_hud"},       {MODE_GAUGE, "13_sweep_dual_gauge"},
-        {MODE_SIMPLE, "13_sweep_simple"},       {MODE_BARS, "13_sweep_bar_graph"},
-        {MODE_MOTOR_DATA, "13_sweep_motor_data"}, {MODE_PIXEL_GAUGE, "13_sweep_pixel_gauge"},
-        {MODE_LARGE_TILES, "13_sweep_large_tiles"}, {MODE_BIG_READOUT, "13_sweep_big_readout"},
-        {MODE_REDLINE, "13_sweep_redline"},     {MODE_TRACE, "13_sweep_trace"},
-        {MODE_MINIMAL, "13_sweep_minimal_ride"}, {MODE_EFFICIENCY, "13_sweep_efficiency"},
-    };
-    for (const auto &state : sweepStates) {
-      if (!selected(state.second)) continue;
-      showStartupSweepPeak(output, state.first, state.second);
       if (stopAfterSelected()) return 0;
     }
 
@@ -505,6 +476,27 @@ int main(int argc, char **argv) {
       uiShow(SCREEN_SUBMENU);
       uiDashboardTick();
       capture(output, "13_dash_ui_selector_full");
+      if (stopAfterSelected()) return 0;
+    }
+    for (const char *state : {"13_selector_demo_wait", "13_selector_demo_glide"}) {
+      if (!selected(state)) continue;
+      uiPreviewSetDashboardMode(MODE_MOTOR_DATA);
+      dashboardAppearanceMode = previewAppearance;
+      uiPreviewSetSubmenu(SUBMENU_DASH_UI, 0, false);
+      uiPreviewSetColorPalette(true);
+      uiPreviewSetColorPalette(false);
+      uiShow(SCREEN_SUBMENU);
+      cyd::preview::refreshNow();
+      lv_event_send(lv_scr_act(), LV_EVENT_CLICKED, nullptr);
+      cyd::preview::advanceTime(cyd_ui::kMotionMs + 200);  // controls hidden, theme still at rest
+      if (std::string(state) == "13_selector_demo_glide") {
+        // The demo ride is released about 750 ms after the tap; this is 150 ms into the glide.
+        for (int elapsed = cyd_ui::kMotionMs + 200; elapsed < 900; elapsed += 10) {
+          cyd::preview::advanceTime(10);
+          uiDashboardTick();
+        }
+      }
+      capture(output, state);
       if (stopAfterSelected()) return 0;
     }
     if (selected("13_dash_ui_selector_saved")) {

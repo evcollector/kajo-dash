@@ -588,19 +588,15 @@ int main() {
   previewSetTelemetryLink(LINK_LIVE);
   uiShow(SCREEN_DASHBOARD);cyd::preview::advanceTime(200);
 
-  // Entering the dashboard plays the startup sweep; an automatic light/dark
-  // flip restyles the same dashboard and must not replay it.
+  // Entering the dashboard shows the live readings at once: no startup sweep plays, and an
+  // automatic light/dark flip restyles the same dashboard without animating either.
   dashboardAppearanceMode = DASH_APPEARANCE_AUTO;
   previewSetLightSensor(800, 20);
   uiShow(SCREEN_DASHBOARD);cyd::preview::advanceTime(20);
-  if(!expect(lv_anim_count_running() > 0,"entering the dashboard did not start the sweep"))return 1;
-  cyd::preview::advanceTime(2000);uiDashboardTick();
-  if(!expect(lv_anim_count_running() == 0,"the entry sweep did not finish"))return 1;
+  if(!expect(lv_anim_count_running() == 0,"entering the dashboard started an animation"))return 1;
   previewSetLightSensor(3500, 90);uiDashboardTick();cyd::preview::advanceTime(20);
   if(!expect(dashboardLightModeActive(),"the automatic light switch did not take effect") ||
-     !expect(lv_anim_count_running() == 0,"the automatic light switch replayed the startup sweep"))return 1;
-  uiShow(SCREEN_DASHBOARD);cyd::preview::advanceTime(20);
-  if(!expect(lv_anim_count_running() > 0,"the sweep stayed disabled after the appearance rebuild"))return 1;
+     !expect(lv_anim_count_running() == 0,"the automatic light switch started an animation"))return 1;
   dashboardAppearanceMode = DASH_APPEARANCE_DARK;
   uiShow(SCREEN_DASHBOARD);cyd::preview::advanceTime(2000);
 

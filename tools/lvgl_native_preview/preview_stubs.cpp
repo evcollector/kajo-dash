@@ -365,8 +365,7 @@ void previewSetCardState(bool ready, bool checking) {
 static TelemetryLink previewLink = LINK_LIVE;
 static uint8_t previewFault = 0;
 static bool previewInteractive = false;
-static DashboardValues previewDashboardValues = {
-    25, 1000, 52.0F, 19.2F, 44.0F, 42, 38, 12.5F, 1250, 22.5F, 600, 75, 0.6F, 12.737F};
+static DashboardValues previewDashboardValues = makeThumbnailDashboardValues();
 
 void previewSetInteractiveMode(bool enabled) {
   previewInteractive = enabled;
@@ -437,7 +436,7 @@ bool getLiveDashboardValues(DashboardValues &values) {
 // Representative numbers so the battery page renders with content; hardware
 // accumulates these from the controller's counters.
 BatteryStats getBatteryStats() {
-  BatteryStats stats = {};
+  BatteryStats stats = makeThumbnailBatteryStats();
   stats.tripWh = previewInteractive ? previewDashboardValues.tripKm * 20.0F : 250.0F;
   stats.tripRegenWh = 15.0F;
   stats.tripKm = previewDashboardValues.tripKm;

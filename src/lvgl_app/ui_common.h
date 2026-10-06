@@ -32,6 +32,28 @@ void makePassive(lv_obj_t *obj);
 // lv_label_set_text that skips (and does not invalidate) when unchanged
 void setLabelText(lv_obj_t *label, const char *text);
 
+// LVGL repaints a label's box grown by a quarter of the font height on every side, in case
+// a glyph overhangs it. Dashboard text sits inside its box, so that margin is dead space:
+// the Pixel theme's 112 px numerals repainted 28 px of it all round (42k px) on every digit
+// change. This caps the margin at kLabelRepaintMargin. buildDashboardMode applies it to
+// every label a dashboard builds, so a new label needs nothing; call it by hand only for a
+// label created after the build.
+// With no margin a label is drawn inside its box and nowhere else. That is also what keeps a
+// partial repaint equal to a full one: LVGL skips a label whose box a repaint rectangle
+// misses, so text overhanging its box showed or vanished depending on what a neighbour
+// happened to repaint. A caption wider than its box is therefore cut off at the box, so make
+// the box fit the longest translation.
+constexpr int kLabelRepaintMargin = 0;
+void tightenLabelRepaint(lv_obj_t *label);
+// Every label below `root`, starting from the direct child numbered `firstChild`.
+void tightenLabelRepaints(lv_obj_t *root, uint32_t firstChild = 0);
+
+// Overlay slides run on a faster frame clock than the dashboards: LVGL's display refresh and
+// animation timers drop from 30 ms to cyd_ui::kSlideFramePeriodMs for `durationMs`, then go
+// back. Called by every slide, so a slide of 140 ms gets about twice the frames.
+void boostFrameRate(uint32_t durationMs);
+uint32_t currentFramePeriod();  // the display refresh period right now, for tests
+
 // LVGL 8 invalidates an object on every style write and every HIDDEN flag write,
 // changed or not (lv_obj_set_pos and lv_obj_set_size already compare first). A
 // dashboard update that repeats these each tick repaints those objects each tick,

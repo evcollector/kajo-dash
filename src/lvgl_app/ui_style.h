@@ -12,19 +12,20 @@ namespace cyd_ui {
 // dashboard: motion cyan, potential yellow, effort red (input power), and an orange
 // run from the phase amps (lightest) through the battery amps to duty, which sits
 // between battery amps and input power. Explicit dashboard accents override it; the
-// light variants are the same hues darkened to read on white.
+// light variants use amber voltage, matching orange currents and red duty/power.
 constexpr uint16_t kMotorDataSpeed565 = 0x05FF;
 constexpr uint16_t kMotorDataPhase565 = 0xFC00;
 constexpr uint16_t kMotorDataDuty565 = 0xF9E1;
 constexpr uint16_t kMotorDataCurrent565 = 0xFB40;
 constexpr uint16_t kMotorDataVoltage565 = 0xF664;
 constexpr uint16_t kMotorDataPower565 = 0xF8A2;
-constexpr uint16_t kMotorDataSpeedLight565 = 0x03B6;
-constexpr uint16_t kMotorDataPhaseLight565 = 0xA320;
-constexpr uint16_t kMotorDataDutyLight565 = 0xA960;
-constexpr uint16_t kMotorDataCurrentLight565 = 0xA2E0;
-constexpr uint16_t kMotorDataVoltageLight565 = 0x8B60;
-constexpr uint16_t kMotorDataPowerLight565 = 0xB000;
+constexpr uint16_t kMotorDataSpeedLight565 = 0x01BF; // RGB 0, 54, 255
+constexpr uint16_t kMotorDataPhaseLight565 = 0xDA80; // RGB 220, 81, 0
+constexpr uint16_t kMotorDataDutyLight565 = 0x9800; // RGB 157, 0, 0
+constexpr uint16_t kMotorDataCurrentLight565 = 0xDA80; // RGB 220, 81, 0
+constexpr uint16_t kMotorDataVoltageLight565 = 0xEC80; // RGB 237, 147, 0
+constexpr uint16_t kMotorDataPowerLight565 = 0xD800; // RGB 222, 0, 0
+constexpr uint8_t kMotorDataLightUnlitMix = 88;
 // Replay uses fixed semantic colors, independent of dashboard customization.
 // One per ride_replay::Field, so a field keeps its color in whichever chart
 // shows it: speed cyan, power red, voltage yellow, pack current orange, phase
@@ -59,6 +60,9 @@ constexpr int kTopBarRightX = kScreenWidth - kTopBarInset - kTopBarWidth;
 constexpr int kStatusToastVisibleY = 197;
 constexpr int kStatusToastHiddenY = 244;
 constexpr uint32_t kMotionMs = 140;
+// Frame clock while an overlay slides; LVGL's default is 30 ms (see boostFrameRate).
+constexpr uint32_t kSlideFramePeriodMs = 15;
+constexpr uint32_t kSelectorDemoDelayMs = 600;
 
 constexpr uint16_t kChromeAccent565 = 0xFB40;
 constexpr uint16_t kControlSurface565 = 0x1082;

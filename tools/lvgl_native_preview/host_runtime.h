@@ -64,4 +64,8 @@ bool capturePpm(const std::filesystem::path &path);
 // explicitly uncalibrated 40 MHz RGB565 transfer estimate.
 bool latestFrameMetrics(FrameMetrics &metrics);
 
+// The largest margin, in pixels, any label below `root` repaints around its box on a text
+// change. Dashboards cap it at kLabelRepaintMargin (see tightenLabelRepaint).
+int widestLabelRepaintMargin(lv_obj_t *root);
+
 }  // namespace cyd::preview

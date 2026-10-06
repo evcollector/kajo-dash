@@ -355,8 +355,14 @@
       <div class="ui-kit-title">Motor Data · segmented rings</div>
       <p>makeSegRing / makeTickNeedle: the bar meters' blocks bent round a dial, lit solid and unlit as a
       dark ghost, with a short white-core pointer. Block spacing is the same on every ring (about 5.5 px pitch), so only
-      the block count follows the radius, and the blocks grow taller with the dial. Speed &gt; input power &gt; four side gauges. Default current is green, voltage cyan, power orange;
-      explicit accents override this palette. Open “05 Motor Data” for the 320×240 visual reference.</p>
+      the block count follows the radius, and the blocks grow taller with the dial. Speed &gt; input power &gt; four side gauges. Default current is orange, speed cyan, voltage yellow, power red;
+      explicit accents override this palette. Light mode uses amber phase voltage RGB(237,147,0), orange phase and battery current RGB(220,81,0),
+      red duty RGB(157,0,0) and power RGB(222,0,0), with blue speed RGB(0,54,255). Lit and inactive blocks
+      share each dial hue (inactive mix 88/255) over pale tinted gauge faces.
+      The surrounding canvas stays light, with dark readouts and needle cores.
+      Inactive segments mix 52/255 of their hue over the gauge ground. Open “05 Motor Data” for the 320×240 visual reference.
+      The 52 V / 60% duty sample shows 18.0 V peak.</p>
+      <img src="../preview_output/lvgl/05_motor_data_light.png" width="320" height="240" alt="Motor Data in light appearance">
     </section>
 
     <section class="ui-kit-section">
@@ -421,6 +427,8 @@
         <div class="cyd-slider"><div class="cyd-slider-fill"></div><span class="cyd-slider-label">68%</span></div>
       </div>
       <p class="ui-kit-note">Segments share one clean housing. Use orange only for the active choice.</p>
+      <p class="ui-kit-note">Theme previews stay at normal brightness. Individual controls provide contrast without a full-screen shade. Themes open frozen on the shared thumbnail readings and graph state. Gauge sweeps wait until 600 ms after the controls hide; active instrument animations pause during control slides.</p>
+      <img src="../preview_output/lvgl/13_dash_ui_selector_full.png" width="320" height="240" alt="Theme selector without full-screen shading">
     </section>
 
     <section class="ui-kit-section">
@@ -671,7 +679,7 @@
         { id: "currentBarFrame", kind: "shape", type: "rect", x: 12, y: 192, w: 112, h: 20, outline: "YELLOW" },
         { id: "separator", kind: "shape", type: "line", points: [[205,18],[205,224]], color: "CYAN" }
       ],
-      motorData: [{"id": "batteryIcon", "kind": "shape", "type": "battery", "icon": "battery", "x": 282, "y": 6, "w": 31, "h": 14, "color": "GREEN", "sample": 66, "segs": 5}, {"id": "clockIcon", "kind": "shape", "type": "icon", "icon": "uptime", "x": 6, "y": 5, "w": 16, "h": 16, "color": "WHITE"}, {"id": "phaseAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 83, "r": 42, "max": 150, "sweepDeg": 240, "fillBottom": 206, "color": "#ff8000", "sample": 86.4, "needle": true}, {"id": "speedGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 90, "r": 62, "max": 50, "sweepDeg": 240, "fillBottom": 206, "color": "#00beff", "sample": 25, "needle": true}, {"id": "phaseVoltsGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 83, "r": 42, "max": 25, "sweepDeg": 240, "fillBottom": 206, "color": "#f7cf21", "sample": 12.7, "needle": true}, {"id": "battAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff6900", "sample": 47.7, "needle": true}, {"id": "powerGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 175, "r": 48, "max": 5000, "sweepDeg": 240, "fillBottom": 206, "thickness": 7, "color": "#ff1410", "sample": 2480, "needle": true}, {"id": "dutyGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff3e08", "sample": 60, "needle": true}, {"id": "footerTop", "kind": "shape", "type": "line", "points": [[2, 206], [318, 206]], "color": "DIM"}],
+      motorData: [{"id": "batteryIcon", "kind": "shape", "type": "battery", "icon": "battery", "x": 282, "y": 6, "w": 31, "h": 14, "color": "GREEN", "sample": 66, "segs": 5}, {"id": "clockIcon", "kind": "shape", "type": "icon", "icon": "uptime", "x": 6, "y": 5, "w": 16, "h": 16, "color": "WHITE"}, {"id": "phaseAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 83, "r": 42, "max": 150, "sweepDeg": 240, "fillBottom": 206, "color": "#ff8000", "sample": 86.4, "needle": true}, {"id": "speedGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 90, "r": 62, "max": 50, "sweepDeg": 240, "fillBottom": 206, "color": "#00beff", "sample": 25, "needle": true}, {"id": "phaseVoltsGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 83, "r": 42, "max": 25, "sweepDeg": 240, "fillBottom": 206, "color": "#f7cf21", "sample": 18.0, "needle": true}, {"id": "battAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff6900", "sample": 47.7, "needle": true}, {"id": "powerGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 175, "r": 48, "max": 5000, "sweepDeg": 240, "fillBottom": 206, "thickness": 7, "color": "#ff1410", "sample": 2480, "needle": true}, {"id": "dutyGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff3e08", "sample": 60, "needle": true}, {"id": "footerTop", "kind": "shape", "type": "line", "points": [[2, 206], [318, 206]], "color": "DIM"}],
       pixelGauge: [
         { id: "outerFrame", kind: "shape", type: "rect", x: 2, y: 5, w: 316, h: 232, outline: "DIM" },
         { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 276, y: 10, w: 24, h: 16, color: "GREEN", sample: 66 },

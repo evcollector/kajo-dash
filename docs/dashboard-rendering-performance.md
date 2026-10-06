@@ -362,3 +362,58 @@ hiding it. The captions are now 60 px wide, enough for all of them.
 
 These are native display-transfer figures. Whether the extra frames cost the chip
 anything noticeable is for the `LVGL perf` serial report on the bike.
+
+
+## Label repaint margin (2026-10-06)
+
+LVGL repaints a label's box grown by a quarter of the font height on every side, so that a
+glyph overhanging its box is never cut off. Dashboard text sits inside its box, so on the
+big readouts that margin was mostly dead space: the Pixel theme's 112 px numerals grew by
+28 px all round, and every digit change repainted 263 x 161 pixels, over half the screen,
+behind a number about 150 px wide. `buildDashboardMode` now sets every label it built to a
+margin of `kLabelRepaintMargin` (0): a label is drawn inside its box and repainted inside
+it (`tightenLabelRepaint`, a handler on the label's `LV_EVENT_REFR_EXT_DRAW_SIZE` that
+caps what the label's own handler asked for; menus and other screens keep LVGL's margin).
+
+Mean pixels flushed per 100 ms tick on the native display, the scripted 30 s ride used
+above (updating the way the firmware does), and pixels flushed by each theme's startup
+sweep, which includes its 77k-pixel build frame (a 100 ms tick of 10 clock slices; idle
+stays at 0 everywhere but Efficiency's scrolling plot):
+
+| Theme | Ride px before | Ride px after | Sweep px before | Sweep px after |
+| --- | ---: | ---: | ---: | ---: |
+| Cyber HUD | 14,153 | 9,708 (-31%) | 439k | 306k (-30%) |
+| Dual Gauge | 13,575 | 10,293 (-24%) | 429k | 312k (-27%) |
+| Simple | 8,878 | 6,393 (-28%) | 473k | 334k (-29%) |
+| Bar Graph | 13,181 | 9,884 (-25%) | 128k | 128k |
+| Motor Data | 27,134 | 19,978 (-26%) | 992k | 773k (-22%) |
+| Pixel | 15,316 | 10,493 (-31%) | 797k | 562k (-29%) |
+| Tiles | 6,921 | 4,299 (-38%) | 226k | 167k (-26%) |
+| Ride Console | 19,265 | 14,691 (-24%) | 602k | 460k (-24%) |
+| Redline | 10,044 | 7,216 (-28%) | 373k | 263k (-29%) |
+| Trace | 7,229 | 4,879 (-33%) | 562k | 492k (-12%) |
+| Minimal | 11,670 | 9,333 (-20%) | 396k | 287k (-28%) |
+| Efficiency | 6,146 | 5,308 (-14%) | 340k | 282k (-17%) |
+
+The handler costs one event descriptor per label: 0.3 to 0.8 KB more heap per theme on the
+64-bit host, about half that on the chip (LVGL allocates from the system heap here).
+Every full render of every preview state (177 of them, dark, light and all six languages)
+is pixel-identical to before except Pixel's range caption in French, Spanish and Italian,
+described next. Native display-transfer figures; the chip's frame time is still for the
+`LVGL perf` serial report on the bike.
+
+What this turned up: Pixel's range caption (`AUTONOMIE`, `AUTONOMÍA`, `AUTONOMIA`) is
+108 px of text in a 96 px box, so it was already cut off mid-letter. With LVGL's margin
+the cut fell 4 px beyond the box, and whether that last sliver of the final letter showed
+depended on what its neighbours repainted: LVGL skips a label whose box a repaint
+rectangle misses, so the sliver came and went with the margin of the label beside it.
+With the margin at 0 it is gone from the full picture as well (8 to 12 pixels), which keeps
+partial and full repaints equal. The word is still cut off; fitting it is a design choice
+for the Pixel theme (a shorter caption, or the 8 px face its escape hatch provides) and is
+not part of this change.
+
+`cyd_dashboard_redraw` now runs all six languages, since an overhang is language-specific,
+and both it and `cyd_efficiency_redraw` fail a dashboard label whose repaint margin is
+above `kLabelRepaintMargin` (with the handler left off, all 11 themes fail it). In English,
+Finnish and German every incremental frame matches a full repaint at margins of 0, 2 and
+4 px; in the other three that caption alone differs at 4 px and everything agrees at 0.
