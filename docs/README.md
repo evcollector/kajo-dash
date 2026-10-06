@@ -15,6 +15,12 @@ These are binding. Code comments and `AGENTS.md` reference them by path.
 | [companion-protocol.md](companion-protocol.md) | The Bluetooth Link protocol the companion app speaks. |
 | [ota-update-design.md](ota-update-design.md) | The signed firmware update protocol and trust model. |
 
+## Overview
+
+| Document | Covers |
+| --- | --- |
+| [architecture.md](architecture.md) | The tech stack, which tasks run on which core, how telemetry reaches the screen, and the threading rules. Start here to get oriented. |
+
 ## Features — what the firmware does
 
 | Document | Covers |

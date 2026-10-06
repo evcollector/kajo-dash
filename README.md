@@ -101,6 +101,23 @@ settings screen, and the ride replay views.
 There are no tagged releases yet. Expect settings and ride-log formats to change
 without migration until the first one.
 
+## How it is built
+
+| | |
+| --- | --- |
+| **Hardware** | ESP32 (dual-core, 4 MB flash, no PSRAM) on the Sunton ESP32-2432S028R |
+| **Firmware** | C++ on the Arduino core for ESP32 (ESP-IDF and FreeRTOS underneath), built with PlatformIO |
+| **UI** | [LVGL](https://lvgl.io) 8.4 at 320x240, drawn through TFT_eSPI with DMA |
+| **Bluetooth** | NimBLE-Arduino: one controller connection, plus a phone link and signed updates on request |
+| **Storage** | NVS for settings, microSD for ride logs, two OTA slots for updates |
+
+LVGL runs in the Arduino `loop()` on core 1. Controller polling, Bluetooth
+workers and the SD card writer are separate FreeRTOS tasks on core 0 that hand
+the UI one consistent telemetry snapshot at a time. The same UI sources also
+build for Windows, so every screenshot here and the simulator come from the real
+screens, not a mock-up. Task layout, data flow and threading rules are in
+[docs/architecture.md](docs/architecture.md).
+
 ## Safety
 
 Currently this firmware just displays and records telemetry (Though profiles and settings adjustment support is coming). 
@@ -226,6 +243,7 @@ is unambiguous, and a second hold confirms the settings reset.
 
 | | |
 | --- | --- |
+| [Architecture](docs/architecture.md) | Tech stack, tasks and cores, data flow, threading rules |
 | [Wiring](docs/wiring.md) | Controller wiring, power, pin map |
 | [Development](docs/development.md) | Building, simulator, preview renderer, tests, releases |
 | [Firmware updates](tools/firmware_update/README.md) | Bluetooth uploader, signing, installing your own builds |
