@@ -8,23 +8,23 @@
 // ui_common.cpp (generic drawing) and screens.cpp (interactive menu chrome).
 // New UI should consume these names instead of copying their numeric values.
 namespace cyd_ui {
-// Motor Effort stock instrument palette, one hue per quantity as in the Bar Graph
+// Motor Data stock instrument palette, one hue per quantity as in the Bar Graph
 // dashboard: motion cyan, potential yellow, effort red (input power), and an orange
 // run from the phase amps (lightest) through the battery amps to duty, which sits
 // between battery amps and input power. Explicit dashboard accents override it; the
 // light variants are the same hues darkened to read on white.
-constexpr uint16_t kEffortSpeed565 = 0x05FF;
-constexpr uint16_t kEffortPhase565 = 0xFC00;
-constexpr uint16_t kEffortDuty565 = 0xF9E1;
-constexpr uint16_t kEffortCurrent565 = 0xFB40;
-constexpr uint16_t kEffortVoltage565 = 0xF664;
-constexpr uint16_t kEffortPower565 = 0xF8A2;
-constexpr uint16_t kEffortSpeedLight565 = 0x03B6;
-constexpr uint16_t kEffortPhaseLight565 = 0xA320;
-constexpr uint16_t kEffortDutyLight565 = 0xA960;
-constexpr uint16_t kEffortCurrentLight565 = 0xA2E0;
-constexpr uint16_t kEffortVoltageLight565 = 0x8B60;
-constexpr uint16_t kEffortPowerLight565 = 0xB000;
+constexpr uint16_t kMotorDataSpeed565 = 0x05FF;
+constexpr uint16_t kMotorDataPhase565 = 0xFC00;
+constexpr uint16_t kMotorDataDuty565 = 0xF9E1;
+constexpr uint16_t kMotorDataCurrent565 = 0xFB40;
+constexpr uint16_t kMotorDataVoltage565 = 0xF664;
+constexpr uint16_t kMotorDataPower565 = 0xF8A2;
+constexpr uint16_t kMotorDataSpeedLight565 = 0x03B6;
+constexpr uint16_t kMotorDataPhaseLight565 = 0xA320;
+constexpr uint16_t kMotorDataDutyLight565 = 0xA960;
+constexpr uint16_t kMotorDataCurrentLight565 = 0xA2E0;
+constexpr uint16_t kMotorDataVoltageLight565 = 0x8B60;
+constexpr uint16_t kMotorDataPowerLight565 = 0xB000;
 // Replay uses fixed semantic colors, independent of dashboard customization.
 // One per ride_replay::Field, so a field keeps its color in whichever chart
 // shows it: speed cyan, power red, voltage yellow, pack current orange, phase

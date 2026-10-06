@@ -77,11 +77,12 @@ static bool autoAppearanceLight = false;
 static DashboardMode accentRenderMode = MODE_HUD;
 
 static bool dashboardCustomizationsInitialized = false;
-// Motor Effort profile revisions: 1 replaced Mono's seven-slot layout; 2 made
+// Motor Data profile revisions: 1 replaced Mono's seven-slot layout; 2 made
 // duty a dial, so the third footer slot now defaults to battery voltage; 3 added
 // a fourth footer slot, trip distance.
-static constexpr uint8_t kMotorEffortProfileRevision = 3;
-static constexpr const char *kMotorEffortProfileRevisionKey = "effortRev";
+static constexpr uint8_t kMotorDataProfileRevision = 3;
+// The stored key keeps the theme's first name, so renaming it does not reset a saved layout.
+static constexpr const char *kMotorDataProfileRevisionKey = "effortRev";
 // Increment when Bar Graph profile slot meanings or defaults change. NVS
 // survives normal USB/OTA firmware flashing, so an unversioned profile can
 // otherwise apply stale prototype-era choices to a newly flashed layout.
@@ -99,7 +100,7 @@ static const DashboardDataItem kDashboardDataDefaults[MODE_COUNT][DASH_DATA_SLOT
     // Bar Graph: the five meter rows, then the six side readouts.
     {DATA_BATTERY, DATA_SPEED, DATA_POWER, DATA_VOLTAGE, DATA_CURRENT, DATA_MOTOR_TEMP, DATA_ESC_TEMP,
      DATA_TRIP, DATA_ODOMETER, DATA_AVG_SPEED, DATA_UPTIME},
-    // Motor Effort: fixed instruments (duty is a dial), four configurable footer slots.
+    // Motor Data: fixed instruments (duty is a dial), four configurable footer slots.
     {DATA_MOTOR_TEMP, DATA_ESC_TEMP, DATA_VOLTAGE, DATA_TRIP},
     // Pixel: trip in the rail, then range and power along the lower row. Speed,
     // charge and ride mode are fixed instruments, so they are not slots.
@@ -258,7 +259,7 @@ static uint16_t defaultAccentColor565() {
     switch (accentRenderMode) {
       case MODE_GAUGE:
       case MODE_BARS:
-      case MODE_MOTOR_EFFORT:
+      case MODE_MOTOR_DATA:
       case MODE_PIXEL_GAUGE:
         return 0x1484;  // deep leaf green
       case MODE_LARGE_TILES:
@@ -284,7 +285,7 @@ static uint16_t defaultAccentColor565() {
   switch (accentRenderMode) {
     case MODE_GAUGE:
     case MODE_BARS:
-    case MODE_MOTOR_EFFORT:
+    case MODE_MOTOR_DATA:
       return COLOR565_GREEN;
     case MODE_PIXEL_GAUGE:
       // Phosphor lime rather than the pure RGB green the gauges use: against
@@ -319,7 +320,7 @@ static uint16_t defaultAccentDarkColor565() {
     switch (accentRenderMode) {
       case MODE_GAUGE:
       case MODE_BARS:
-      case MODE_MOTOR_EFFORT:
+      case MODE_MOTOR_DATA:
       case MODE_PIXEL_GAUGE:
         return 0x0AC2;
       case MODE_LARGE_TILES:
@@ -345,7 +346,7 @@ static uint16_t defaultAccentDarkColor565() {
   switch (accentRenderMode) {
     case MODE_GAUGE:
     case MODE_BARS:
-    case MODE_MOTOR_EFFORT:
+    case MODE_MOTOR_DATA:
     case MODE_PIXEL_GAUGE:
       return 0x03A0;
     case MODE_LARGE_TILES:
@@ -575,8 +576,8 @@ const char *modeName(DashboardMode mode) {
       return txt("Tiles", "Ruudut", "Kacheln", "Tuiles", "Paneles", "Riquadri");
     case MODE_PIXEL_GAUGE:
       return "Pixel";
-    case MODE_MOTOR_EFFORT:
-      return txt("Motor Effort", "Moottorikuorma", "Motorlast", "Effort moteur", "Carga motor", "Carico motore");
+    case MODE_MOTOR_DATA:
+      return txt("Motor Data", "Moottoridata", "Motordaten", "Données moteur", "Datos motor", "Dati motore");
     case MODE_BARS:
       return txt("Bar Graph", "Palkit", "Balken", "Barres", "Barras", "Barre");
     case MODE_SIMPLE:
@@ -1386,7 +1387,7 @@ void saveAppSettings() {
   if (writeAll || memcmp(current.profiles, persistedAppSettings.profiles, sizeof(current.profiles)) != 0) {
     preferences.putBytes("uiProfiles", current.profiles, sizeof(current.profiles));
     preferences.putUChar(kBarGraphProfileRevisionKey, kBarGraphProfileRevision);
-    preferences.putUChar(kMotorEffortProfileRevisionKey, kMotorEffortProfileRevision);
+    preferences.putUChar(kMotorDataProfileRevisionKey, kMotorDataProfileRevision);
   }
   preferences.end();
   persistedAppSettings = current;
@@ -1401,7 +1402,7 @@ void saveDashboardCustomizationProfiles() {
   const bool saved = preferences.putBytes("uiProfiles", dashboardCustomizations, sizeof(dashboardCustomizations)) ==
                          sizeof(dashboardCustomizations) &&
                      preferences.putUChar(kBarGraphProfileRevisionKey, kBarGraphProfileRevision) == sizeof(uint8_t) &&
-                     preferences.putUChar(kMotorEffortProfileRevisionKey, kMotorEffortProfileRevision) == sizeof(uint8_t);
+                     preferences.putUChar(kMotorDataProfileRevisionKey, kMotorDataProfileRevision) == sizeof(uint8_t);
   preferences.end();
   if (saved && persistedAppSettingsKnown)
     memcpy(persistedAppSettings.profiles, dashboardCustomizations, sizeof(dashboardCustomizations));
@@ -1632,7 +1633,7 @@ void loadAppSettings() {
   if (!controllerBackendById(backendId)) backendId = CONTROLLER_ID_VESC_UART;
   controllerSelectionForId(backendId, controllerType, controllerConnection);
   displayBrightnessPercent = constrain(displayBrightnessPercent, DISPLAY_BRIGHTNESS_MIN, DISPLAY_BRIGHTNESS_MAX);
-  const uint8_t storedMotorEffortProfileRevision = preferences.getUChar(kMotorEffortProfileRevisionKey, 0);
+  const uint8_t storedMotorDataProfileRevision = preferences.getUChar(kMotorDataProfileRevisionKey, 0);
   const uint8_t storedBarGraphProfileRevision = preferences.getUChar(kBarGraphProfileRevisionKey, 0);
   const size_t storedLength = preferences.getBytesLength("uiProfiles");
   const bool dashboardProfileBlobCurrent = storedLength == sizeof(dashboardCustomizations);
@@ -1651,15 +1652,15 @@ void loadAppSettings() {
       custom.data[slot] = static_cast<uint8_t>(kDashboardDataDefaults[MODE_BARS][slot]);
     }
   }
-  // A Motor Effort profile saved under an older revision (Mono's seven slots, or
+  // A Motor Data profile saved under an older revision (Mono's seven slots, or
   // the footer that defaulted to duty) is reset rather than reinterpreted as the
   // current footer slots.
-  const bool resetMotorEffortProfile = storedMotorEffortProfileRevision != kMotorEffortProfileRevision;
-  if (resetMotorEffortProfile) resetDashboardCustomization(MODE_MOTOR_EFFORT);
-  if ((!dashboardProfileBlobCurrent || resetBarGraphProfile || resetMotorEffortProfile) && preferences.begin("app", false)) {
+  const bool resetMotorDataProfile = storedMotorDataProfileRevision != kMotorDataProfileRevision;
+  if (resetMotorDataProfile) resetDashboardCustomization(MODE_MOTOR_DATA);
+  if ((!dashboardProfileBlobCurrent || resetBarGraphProfile || resetMotorDataProfile) && preferences.begin("app", false)) {
     preferences.putBytes("uiProfiles", dashboardCustomizations, sizeof(dashboardCustomizations));
     preferences.putUChar(kBarGraphProfileRevisionKey, kBarGraphProfileRevision);
-    preferences.putUChar(kMotorEffortProfileRevisionKey, kMotorEffortProfileRevision);
+    preferences.putUChar(kMotorDataProfileRevisionKey, kMotorDataProfileRevision);
     preferences.end();
   }
   for (uint8_t mode = 0; mode < MODE_COUNT; mode++) {

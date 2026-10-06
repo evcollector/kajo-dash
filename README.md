@@ -41,7 +41,7 @@
   </tr>
   <tr>
     <td align="center" width="25%"><img src="preview_output/lvgl/04_bar_graph.png" alt="Bar Graph theme"><br>Bar Graph</td>
-    <td align="center" width="25%"><img src="preview_output/lvgl/05_motor_effort.png" alt="Motor Effort theme"><br>Motor Effort</td>
+    <td align="center" width="25%"><img src="preview_output/lvgl/05_motor_data.png" alt="Motor Data theme"><br>Motor Data</td>
     <td align="center" width="25%"><img src="preview_output/lvgl/08_big_readout.png" alt="Big Readout theme"><br>Big Readout</td>
     <td align="center" width="25%"><img src="preview_output/lvgl/11_minimal_ride.png" alt="Minimal Ride theme"><br>Minimal Ride</td>
   </tr>

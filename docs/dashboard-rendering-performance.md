@@ -229,3 +229,75 @@ repaint from scratch and checks the page turns with an instant reader, a slow
 one and a very slow one. The window builder is tested in `cyd_ride_replay`
 against an independent definition of each column, including held readings,
 holes, corrupt records and missing fields, and the read counts above.
+
+
+## Unchanged values repainted six themes (2026-10-06)
+
+Reviewing what the Motor Data theme had needed turned up one rule that the
+other themes had not been held to: LVGL 8 invalidates an object on **every**
+style write and every `HIDDEN` flag write, whether or not the value changed
+(`lv_obj_set_pos` and `lv_obj_set_size` compare first, so those were fine). An
+`update*()` that rewrote a text alignment, a font, a colour or a needle's
+visibility on each 100 ms tick therefore repainted those objects on each tick
+with nothing different to show. Six themes did it: Motor Data's needles (twelve
+flag writes a tick), Pixel's speed and power fonts, Tiles and Trace and Simple
+through the shared value-and-unit placement helpers (a text alignment), and Ride
+Console's power beam colour. Cyber HUD, Dual Gauge, Bar Graph, Redline and Minimal
+already repainted nothing.
+
+The writes now go through `setObjHidden(...)`, `setObjTextAlign(...)`,
+`setObjTextFont(...)`, `setObjTextColor(...)` and `setObjBgColor(...)` in
+`ui_common`, which compare with what the object was last given and skip when it is
+the same. Every theme's renders in dark, light and Finnish are byte-identical to
+before (174 of the 175 states each; the other is the display panel, whose firmware
+build-time string changed).
+
+Mean pixels flushed per 100 ms tick on the native display, updating the way the
+firmware does (tiers on their own clocks). "Idle" is a held, unchanged reading;
+"ride" is a scripted 30 s ride (speed, power, current, duty and temperatures all
+moving):
+
+| Theme | Idle before | Idle after | Ride before | Ride after |
+| --- | ---: | ---: | ---: | ---: |
+| Cyber HUD | 0 | 0 | 14,153 | 14,153 |
+| Dual Gauge | 0 | 0 | 11,647 | 11,647 |
+| Simple | 524 | 0 | 9,271 | 8,878 |
+| Bar Graph | 0 | 0 | 13,181 | 13,181 |
+| Motor Data | 5,427 | 0 | 30,198 | 27,134 |
+| Pixel | 50,606 | 0 | 50,329 | 15,316 |
+| Tiles | 11,736 | 0 | 16,165 | 6,921 |
+| Ride Console | 2,120 | 0 | 19,126 | 17,458 |
+| Redline | 0 | 0 | 7,976 | 7,976 |
+| Trace | 1,836 | 0 | 7,307 | 7,229 |
+| Minimal | 0 | 0 | 22,470 | 22,470 |
+| Efficiency | 1,377 | 1,377 | 4,881 | 4,881 |
+
+Pixel is the large one: every tick rewrote the 224x112 speed readout's font, so a
+parked bike redrew about two thirds of the screen ten times a second (7 flushes a
+tick, now none). Efficiency's remaining idle figure is its history plot scrolling
+once a second, which is a real change; it has its own test. Motor Data still costs
+the most per ride tick because its needles and rings glide through about three
+animation frames per reading by design; its flushes per tick fell from 14.8 to
+11.8.
+
+`cyd_dashboard_redraw` now runs every theme but Efficiency (eleven, where it ran
+three), so its two checks (an update with unchanged values must not repaint, and
+every partial repaint must equal a full one) cover the other eight as well. The ring theme is held to the
+`cyd_seg_ring` tolerance (two pixels, 9/255 at most, from LVGL's arc mask) and the
+rest stay exact. Removing the `HIDDEN` guard makes it
+fail for Motor Data; removing the text-alignment guard makes it fail for Simple,
+Tiles and Trace.
+
+What was **not** changed, because it would not make anything faster: the
+one-object-per-ring drawing that Motor Data and Minimal use. Objects and heap by
+theme on the host (64-bit pointers, so compare the ratios, not the bytes): Dual
+Gauge 130 objects and 28 KB, Bar Graph 119 and 23 KB, Redline 101 and 22 KB, Simple
+69 and 13 KB, Cyber HUD 52 and 12 KB, Motor Data 52 and 12 KB, and the remaining
+themes between 25 and 44 objects. The tick dials of Dual Gauge and Redline and the
+block meters of Bar Graph and Simple are an object per tick or block, so they
+would shrink toward Motor Data's figures if drawn as one custom object each. That
+saves memory, not time: building any theme takes a millisecond or less on the host
+and a full repaint under three quarters of one, whereas an arc costs more to draw
+than a line (a full Motor Data repaint is about 1.2 ms against 0.3 to 0.7 for the
+other themes). Do it if free heap on the device turns out to be short; the figures above
+come from the host and say nothing about the chip.

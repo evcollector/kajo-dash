@@ -49,7 +49,7 @@ measurements so historical values remain accurate when the scale changes.
 15 minutes of riding (and not while stopped or while the reading is high), duplicate
 timestamps, clock rollover, the displayed ceiling following and easing, persistence,
 backend/preview isolation, manual/reset menu actions, and incremental versus full
-redraws on all twelve themes. `cyd_effort_glide` checks that Motor Effort's ring stays
+redraws on all twelve themes. `cyd_motor_data_glide` checks that Motor Data's ring stays
 pegged while a rising speed pushes the scale.
 
 Native preview states `02_dual_gauge_range_transition` and

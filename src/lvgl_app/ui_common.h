@@ -32,6 +32,17 @@ void makePassive(lv_obj_t *obj);
 // lv_label_set_text that skips (and does not invalidate) when unchanged
 void setLabelText(lv_obj_t *label, const char *text);
 
+// LVGL 8 invalidates an object on every style write and every HIDDEN flag write,
+// changed or not (lv_obj_set_pos and lv_obj_set_size already compare first). A
+// dashboard update that repeats these each tick repaints those objects each tick,
+// so use these in any path that runs more than once per screen build.
+void setObjHidden(lv_obj_t *obj, bool hidden);
+void setObjTextAlign(lv_obj_t *obj, lv_text_align_t align);
+void setObjTextFont(lv_obj_t *obj, const lv_font_t *font);
+void setObjTextColor(lv_obj_t *obj, lv_color_t color);
+// The selector is LV_PART_MAIN, or LV_PART_INDICATOR for a bar's fill.
+void setObjBgColor(lv_obj_t *obj, lv_color_t color, lv_style_selector_t selector = LV_PART_MAIN);
+
 // Plain object helpers
 lv_obj_t *makePanel(lv_obj_t *parent, int x, int y, int w, int h, int radius, lv_color_t border, lv_color_t bg,
                     bool filled);

@@ -57,6 +57,46 @@ void setLabelText(lv_obj_t *label, const char *text) {
   }
 }
 
+void setObjHidden(lv_obj_t *obj, bool hidden) {
+  if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN) == hidden) return;
+  if (hidden) lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_clear_flag(obj, LV_OBJ_FLAG_HIDDEN);
+}
+
+// What this object itself was last given for a property; absent until it is first set.
+static bool localStyleIs(lv_obj_t *obj, lv_style_prop_t prop, lv_style_selector_t selector,
+                         bool (*same)(const lv_style_value_t &, const lv_style_value_t &), const lv_style_value_t &want) {
+  lv_style_value_t current;
+  return lv_obj_get_local_style_prop(obj, prop, &current, selector) == LV_STYLE_RES_FOUND && same(current, want);
+}
+static bool sameNumber(const lv_style_value_t &a, const lv_style_value_t &b) { return a.num == b.num; }
+static bool samePointer(const lv_style_value_t &a, const lv_style_value_t &b) { return a.ptr == b.ptr; }
+static bool sameColor(const lv_style_value_t &a, const lv_style_value_t &b) { return a.color.full == b.color.full; }
+
+void setObjTextAlign(lv_obj_t *obj, lv_text_align_t align) {
+  lv_style_value_t want = {};
+  want.num = align;
+  if (!localStyleIs(obj, LV_STYLE_TEXT_ALIGN, 0, sameNumber, want)) lv_obj_set_style_text_align(obj, align, 0);
+}
+
+void setObjTextFont(lv_obj_t *obj, const lv_font_t *font) {
+  lv_style_value_t want = {};
+  want.ptr = font;
+  if (!localStyleIs(obj, LV_STYLE_TEXT_FONT, 0, samePointer, want)) lv_obj_set_style_text_font(obj, font, 0);
+}
+
+void setObjTextColor(lv_obj_t *obj, lv_color_t color) {
+  lv_style_value_t want = {};
+  want.color = color;
+  if (!localStyleIs(obj, LV_STYLE_TEXT_COLOR, 0, sameColor, want)) lv_obj_set_style_text_color(obj, color, 0);
+}
+
+void setObjBgColor(lv_obj_t *obj, lv_color_t color, lv_style_selector_t selector) {
+  lv_style_value_t want = {};
+  want.color = color;
+  if (!localStyleIs(obj, LV_STYLE_BG_COLOR, selector, sameColor, want)) lv_obj_set_style_bg_color(obj, color, selector);
+}
+
 static lv_obj_t *makeBase(lv_obj_t *parent) {
   lv_obj_t *obj = lv_obj_create(parent);
   lv_obj_remove_style_all(obj);

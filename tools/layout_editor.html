@@ -352,11 +352,11 @@
     </div>
 
     <section class="ui-kit-section">
-      <div class="ui-kit-title">Motor Effort · segmented rings</div>
+      <div class="ui-kit-title">Motor Data · segmented rings</div>
       <p>makeSegRing / makeTickNeedle: the bar meters' blocks bent round a dial, lit solid and unlit as a
       dark ghost, with a short white-core pointer. Block spacing is the same on every ring (about 5.5 px pitch), so only
       the block count follows the radius, and the blocks grow taller with the dial. Speed &gt; input power &gt; four side gauges. Default current is green, voltage cyan, power orange;
-      explicit accents override this palette. Open “05 Motor Effort” for the 320×240 visual reference.</p>
+      explicit accents override this palette. Open “05 Motor Data” for the 320×240 visual reference.</p>
     </section>
 
     <section class="ui-kit-section">
@@ -636,7 +636,7 @@
     const PREVIEW_IMAGES = {};
     const BACKGROUND_BASE = {
       hud: "BLACK", dualGauge: "BLACK", simple: "BLACK", barGraph: "BLACK",
-      motorEffort: "BLACK", pixelGauge: "BLACK", largeTiles: "#e5e2d8",
+      motorData: "BLACK", pixelGauge: "BLACK", largeTiles: "#e5e2d8",
       bigReadout: "BLACK", redline: "BLACK"
     };
     const SHAPE_PRESETS = {
@@ -671,7 +671,7 @@
         { id: "currentBarFrame", kind: "shape", type: "rect", x: 12, y: 192, w: 112, h: 20, outline: "YELLOW" },
         { id: "separator", kind: "shape", type: "line", points: [[205,18],[205,224]], color: "CYAN" }
       ],
-      motorEffort: [{"id": "batteryIcon", "kind": "shape", "type": "battery", "icon": "battery", "x": 282, "y": 6, "w": 31, "h": 14, "color": "GREEN", "sample": 66, "segs": 5}, {"id": "clockIcon", "kind": "shape", "type": "icon", "icon": "uptime", "x": 6, "y": 5, "w": 16, "h": 16, "color": "WHITE"}, {"id": "phaseAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 83, "r": 42, "max": 150, "sweepDeg": 240, "fillBottom": 206, "color": "#ff8000", "sample": 86.4, "needle": true}, {"id": "speedGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 90, "r": 62, "max": 50, "sweepDeg": 240, "fillBottom": 206, "color": "#00beff", "sample": 25, "needle": true}, {"id": "phaseVoltsGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 83, "r": 42, "max": 25, "sweepDeg": 240, "fillBottom": 206, "color": "#f7cf21", "sample": 12.7, "needle": true}, {"id": "battAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff6900", "sample": 47.7, "needle": true}, {"id": "powerGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 175, "r": 48, "max": 5000, "sweepDeg": 240, "fillBottom": 206, "thickness": 7, "color": "#ff1410", "sample": 2480, "needle": true}, {"id": "dutyGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff3e08", "sample": 60, "needle": true}, {"id": "footerTop", "kind": "shape", "type": "line", "points": [[2, 206], [318, 206]], "color": "DIM"}],
+      motorData: [{"id": "batteryIcon", "kind": "shape", "type": "battery", "icon": "battery", "x": 282, "y": 6, "w": 31, "h": 14, "color": "GREEN", "sample": 66, "segs": 5}, {"id": "clockIcon", "kind": "shape", "type": "icon", "icon": "uptime", "x": 6, "y": 5, "w": 16, "h": 16, "color": "WHITE"}, {"id": "phaseAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 83, "r": 42, "max": 150, "sweepDeg": 240, "fillBottom": 206, "color": "#ff8000", "sample": 86.4, "needle": true}, {"id": "speedGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 90, "r": 62, "max": 50, "sweepDeg": 240, "fillBottom": 206, "color": "#00beff", "sample": 25, "needle": true}, {"id": "phaseVoltsGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 83, "r": 42, "max": 25, "sweepDeg": 240, "fillBottom": 206, "color": "#f7cf21", "sample": 12.7, "needle": true}, {"id": "battAmpsGauge", "kind": "shape", "type": "segRing", "cx": 46, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff6900", "sample": 47.7, "needle": true}, {"id": "powerGauge", "kind": "shape", "type": "segRing", "cx": 160, "cy": 175, "r": 48, "max": 5000, "sweepDeg": 240, "fillBottom": 206, "thickness": 7, "color": "#ff1410", "sample": 2480, "needle": true}, {"id": "dutyGauge", "kind": "shape", "type": "segRing", "cx": 274, "cy": 172, "r": 42, "max": 100, "sweepDeg": 240, "fillBottom": 206, "color": "#ff3e08", "sample": 60, "needle": true}, {"id": "footerTop", "kind": "shape", "type": "line", "points": [[2, 206], [318, 206]], "color": "DIM"}],
       pixelGauge: [
         { id: "outerFrame", kind: "shape", type: "rect", x: 2, y: 5, w: 316, h: 232, outline: "DIM" },
         { id: "batteryIcon", kind: "shape", type: "battery", icon: "battery", x: 276, y: 10, w: 24, h: 16, color: "GREEN", sample: 66 },
@@ -780,7 +780,7 @@
       dualGauge: "02 Dual Gauge",
       simple: "03 Simple",
       barGraph: "04 Bar Graph",
-      motorEffort: "05 Motor Effort",
+      motorData: "05 Motor Data",
       pixelGauge: "06 Pixel",
       largeTiles: "07 Tiles",
       bigReadout: "08 Ride Console",
@@ -1432,8 +1432,8 @@
       const count = Math.max(1, Math.floor((sweep + gap) / pitch)), extent = count * pitch - gap;
       return { count, pitch, block: pitch - gap, extent, start: 270 - Math.trunc(extent / 2) };
     }
-    // Blocks at k/5 of the ring reach 3 px further in (kEffortMajorSteps / kEffortMajorExtraPx), and a dark disc
-    // (kEffortDiscMix, 14/255) sits inside.
+    // Blocks at k/5 of the ring reach 3 px further in (kMotorDataMajorSteps / kMotorDataMajorExtraPx), and a dark disc
+    // (kMotorDataDiscMix, 14/255) sits inside.
     function ringIsMajor(i, count) { for (let k = 0; k <= 5; k++) if (Math.floor((k * (count - 1) + 2) / 5) === i) return true; return false; }
     // The disc, cut flat `cut` px under its centre (`fillBottom` in layout.json: the footer bar's row).
     function ringDiscPath(cx, cy, reach, cut) {

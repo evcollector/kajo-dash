@@ -18,7 +18,9 @@ int main(int argc, char **argv) {
   loadAppSettings();
   bool ok = true;
   std::cout << "mode,appearance,language,step,pixels,flushes,hash\n";
-  for (DashboardMode mode : {MODE_HUD, MODE_GAUGE, MODE_REDLINE}) {
+  // Every theme but Efficiency, whose plot scrolls on a clock and has its own test.
+  for (DashboardMode mode : {MODE_HUD, MODE_GAUGE, MODE_SIMPLE, MODE_BARS, MODE_MOTOR_DATA, MODE_PIXEL_GAUGE,
+                             MODE_LARGE_TILES, MODE_BIG_READOUT, MODE_REDLINE, MODE_TRACE, MODE_MINIMAL}) {
     for (bool light : {false, true}) {
       for (Language lang : {LANG_EN, LANG_FI, LANG_DE}) {
         language = lang;
@@ -87,9 +89,22 @@ int main(int argc, char **argv) {
           lv_obj_invalidate(screen);
           refreshNow();
           if (std::memcmp(incremental.data(), framebuffer(), incremental.size() * sizeof(lv_color_t))) {
-            std::cerr << "Incremental/full mismatch: mode=" << mode << " light=" << light
-                      << " lang=" << lang << " step=" << step << '\n';
-            ok = false;
+            int differing = 0, worst = 0;
+            for (int i = 0; i < 320 * 240; ++i) {
+              const uint32_t a = lv_color_to32(incremental[i]), b = lv_color_to32(framebuffer()[i]);
+              if (a == b) continue;
+              ++differing;
+              for (int shift : {0, 8, 16}) worst = max(worst, std::abs(int((a >> shift) & 0xFF) - int((b >> shift) & 0xFF)));
+            }
+            // Segmented rings are arcs, and LVGL's arc mask antialiases a pixel or two differently
+            // depending on where a repainted rectangle starts: two pixels, 9/255 at most, as in
+            // cyd_seg_ring. A stale block would differ by 100 or more. Everything else must be exact.
+            const bool arcNoise = mode == MODE_MOTOR_DATA && differing <= 16 && worst <= 24;
+            if (!arcNoise) {
+              std::cerr << "Incremental/full mismatch: mode=" << mode << " light=" << light << " lang=" << lang
+                        << " step=" << step << " pixels=" << differing << " worst=" << worst << '\n';
+              ok = false;
+            }
           }
         }
         FrameMetrics idleBefore, idleAfter;

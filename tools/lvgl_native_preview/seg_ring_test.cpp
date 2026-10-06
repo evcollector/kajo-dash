@@ -93,7 +93,7 @@ int main() {
   lv_scr_load(screen);
   lv_obj_del(old);
 
-  // Four rings laid out like Motor Effort's, so the big ones overlap each other's squares.
+  // Four rings laid out like Motor Data's, so the big ones overlap each other's squares.
   const Spec specs[4] = {{44, 79, 34, lv_color_make(0, 255, 0)},
                          {160, 78, 59, lv_color_make(0, 255, 255)},
                          {160, 170, 48, lv_color_make(255, 160, 0)},

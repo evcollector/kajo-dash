@@ -468,7 +468,7 @@ Step 4 is the risky one. It moves FreeRTOS task creation and touches the shared
 snapshot under its lock. It deserves its own commit, with a clean render diff
 either side of it.
 
-### Motor Effort telemetry
+### Motor Data telemetry
 
 VESC supplies signed `dutyCycle` from GET_VALUES (int16 / 1000).
 `phaseVoltage` is derived as `Vbus * abs(dutyCycle) / sqrt(3)` under the

@@ -509,8 +509,8 @@ static void placeValueUnitAtRight(lv_obj_t *valueLabel, lv_obj_t *unitLabel, con
   lv_point_t unitSize;
   lv_txt_get_size(&valueSize, lv_label_get_text(valueLabel), valueFont, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   lv_txt_get_size(&unitSize, lv_label_get_text(unitLabel), unitFont, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-  lv_obj_set_style_text_align(valueLabel, LV_TEXT_ALIGN_LEFT, 0);
-  lv_obj_set_style_text_align(unitLabel, LV_TEXT_ALIGN_LEFT, 0);
+  setObjTextAlign(valueLabel, LV_TEXT_ALIGN_LEFT);
+  setObjTextAlign(unitLabel, LV_TEXT_ALIGN_LEFT);
   lv_obj_set_size(valueLabel, valueSize.x, lv_font_get_line_height(valueFont) + 2);
   lv_obj_set_size(unitLabel, unitSize.x, lv_font_get_line_height(unitFont) + 2);
   lv_obj_set_pos(unitLabel, right - unitSize.x, unitItem.y);
@@ -528,7 +528,7 @@ static void centerValueUnitOnBaseline(lv_obj_t *valueLabel, lv_obj_t *unitLabel,
   lv_txt_get_size(&unitSize, lv_label_get_text(unitLabel), unitFont, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
   const int left = centerX - (valueSize.x + gap + unitSize.x) / 2;
   const int valueY = lv_obj_get_y(valueLabel);
-  lv_obj_set_style_text_align(valueLabel, LV_TEXT_ALIGN_LEFT, 0);
+  setObjTextAlign(valueLabel, LV_TEXT_ALIGN_LEFT);
   lv_obj_set_width(valueLabel, valueSize.x + 1);
   lv_obj_set_x(valueLabel, left);
   lv_obj_set_pos(unitLabel, left + valueSize.x + gap, valueY + valueSize.y - unitSize.y + unitYOffset);
@@ -549,7 +549,7 @@ static void bottomLeftValueUnitInTile(lv_obj_t *valueLabel, lv_obj_t *unitLabel,
   const int valueY = tile.y + tile.h - bottomInset - valueFont->line_height;
   const int valueBaseline = valueY + valueFont->line_height - valueFont->base_line;
   const int unitY = valueBaseline - (unitFont->line_height - unitFont->base_line);
-  lv_obj_set_style_text_align(valueLabel, LV_TEXT_ALIGN_LEFT, 0);
+  setObjTextAlign(valueLabel, LV_TEXT_ALIGN_LEFT);
   lv_obj_set_size(valueLabel, valueSize.x + 1, valueFont->line_height + 2);
   lv_obj_set_pos(valueLabel, tile.x + leftInset, valueY);
   lv_obj_set_pos(unitLabel, tile.x + leftInset + valueSize.x + gap, unitY);
@@ -815,7 +815,7 @@ static void applyDashboardDataOverrides(DashboardMode mode, const DashboardValue
     // Wh/km. Other themes retain their native slot typography.
     if (mode == MODE_LARGE_TILES || mode == MODE_REDLINE || mode == MODE_MINIMAL)
       lv_obj_set_style_text_font(value, F2, 0);
-    else if (mode == MODE_BIG_READOUT || mode == MODE_MOTOR_EFFORT)
+    else if (mode == MODE_BIG_READOUT || mode == MODE_MOTOR_DATA)
       lv_obj_set_style_text_font(value, F1, 0);
     else if (mode == MODE_BARS) {
       // A reassigned row prints value and unit in one label, which at the
@@ -2328,7 +2328,7 @@ static void updateBars(const DashboardValues &v) {
   }
 }
 
-// ── Motor Effort ─────────────────────────────────────────────────────────────
+// ── Motor Data ─────────────────────────────────────────────────────────────
 // Six fixed instruments: a segmented ring (the bar meters' blocks bent round the
 // dial) with the shared outer needle. Only footer slots may be reassigned, so a
 // gauge never changes its meaning.
@@ -2344,20 +2344,20 @@ static void updateBars(const DashboardValues &v) {
 // true speed by about 1 km/h (a quarter to half a second), where a big change takes
 // 0.3 s at most and keeps up. The numbers show the live reading at once. The first
 // reading, and every step of the startup sweep, is placed without gliding.
-constexpr int kEffortUnlitMix = 52;    // of 255 toward the full-brightness color, over the ground
-constexpr int kEffortDiscMix = 14;     // of 255 toward the dial's color, over the dashboard ground (well below the 38 of an unlit block)
-constexpr int kEffortMajorExtraPx = 3;  // the longer blocks, reaching inward, as the dual gauge's major ticks
-constexpr int kEffortMajorSteps = 5;    // at every fifth of the dial
-constexpr int kEffortPowerThickness = 7;  // the input power ring's blocks are shorter, leaving its number room
-constexpr int kEffortSweepDeg = 240;  // the most a ring may span, centred on 12 o'clock
+constexpr int kMotorDataUnlitMix = 52;    // of 255 toward the full-brightness color, over the ground
+constexpr int kMotorDataDiscMix = 14;     // of 255 toward the dial's color, over the dashboard ground (well below the 38 of an unlit block)
+constexpr int kMotorDataMajorExtraPx = 3;  // the longer blocks, reaching inward, as the dual gauge's major ticks
+constexpr int kMotorDataMajorSteps = 5;    // at every fifth of the dial
+constexpr int kMotorDataPowerThickness = 7;  // the input power ring's blocks are shorter, leaving its number room
+constexpr int kMotorDataSweepDeg = 240;  // the most a ring may span, centred on 12 o'clock
 // A position is a fraction of the scale in 4096ths: finer than a pixel of needle
 // travel, so a glide has many steps where a 1 km/h change has one.
-constexpr int kEffortScale = 4096;
-constexpr uint32_t kEffortGlideMinMs = 100;
-constexpr uint32_t kEffortGlideSmallMaxMs = 1000;    // a step of up to kEffortSmallStep
-constexpr uint32_t kEffortGlideBigMaxMs = 300;       // anything bigger
-constexpr int kEffortSmallStep = kEffortScale / 20;  // 5% of the scale, about one reading of the speed
-struct EffortInstrument {
+constexpr int kMotorDataScale = 4096;
+constexpr uint32_t kMotorDataGlideMinMs = 100;
+constexpr uint32_t kMotorDataGlideSmallMaxMs = 1000;    // a step of up to kMotorDataSmallStep
+constexpr uint32_t kMotorDataGlideBigMaxMs = 300;       // anything bigger
+constexpr int kMotorDataSmallStep = kMotorDataScale / 20;  // 5% of the scale, about one reading of the speed
+struct MotorDataInstrument {
   SegRingWidget ring;
   TickNeedle needle;
   lv_obj_t *value;
@@ -2367,27 +2367,27 @@ struct EffortInstrument {
   uint32_t changedAt;  // millis() when the target last changed
   bool placed;         // false until the first reading
 };
-static EffortInstrument effort[6];
+static MotorDataInstrument motorData[6];
 
-static void effortPlace(EffortInstrument &instrument, int position) {
+static void motorDataPlace(MotorDataInstrument &instrument, int position) {
   instrument.position = position;
-  setSegRingValue(instrument.ring, position, kEffortScale);
+  setSegRingValue(instrument.ring, position, kMotorDataScale);
   setTickNeedleValue(instrument.needle, position);
 }
-static void effortGlideCb(void *instrument, int32_t position) {
-  effortPlace(*static_cast<EffortInstrument *>(instrument), position);
+static void motorDataGlideCb(void *instrument, int32_t position) {
+  motorDataPlace(*static_cast<MotorDataInstrument *>(instrument), position);
 }
 // Show `target`: by a glide from wherever the instrument is, unless this is its first
 // reading or the caller is animating it already. Placing a reading drops any glide the
 // instrument had, which is what stops a replaced screen's glides reaching its successor.
-static void effortAim(EffortInstrument &instrument, int target, bool glide) {
+static void motorDataAim(MotorDataInstrument &instrument, int target, bool glide) {
   const uint32_t now = millis();
   if (!glide || !instrument.placed) {
-    lv_anim_del(&instrument, effortGlideCb);
+    lv_anim_del(&instrument, motorDataGlideCb);
     instrument.placed = true;
     instrument.target = target;
     instrument.changedAt = now;
-    effortPlace(instrument, target);
+    motorDataPlace(instrument, target);
     return;
   }
   if (target == instrument.target) return;  // the same reading again: the glide carries on
@@ -2396,38 +2396,38 @@ static void effortAim(EffortInstrument &instrument, int target, bool glide) {
   instrument.target = target;
   instrument.changedAt = now;
   if (target == instrument.position) {
-    lv_anim_del(&instrument, effortGlideCb);
+    lv_anim_del(&instrument, motorDataGlideCb);
     return;
   }
   lv_anim_t glideAnim;
   lv_anim_init(&glideAnim);
   lv_anim_set_var(&glideAnim, &instrument);
-  lv_anim_set_exec_cb(&glideAnim, effortGlideCb);
+  lv_anim_set_exec_cb(&glideAnim, motorDataGlideCb);
   lv_anim_set_values(&glideAnim, instrument.position, target);
-  lv_anim_set_time(&glideAnim, constrain(steady + steady / 4, kEffortGlideMinMs,
-                                         step <= kEffortSmallStep ? kEffortGlideSmallMaxMs : kEffortGlideBigMaxMs));
+  lv_anim_set_time(&glideAnim, constrain(steady + steady / 4, kMotorDataGlideMinMs,
+                                         step <= kMotorDataSmallStep ? kMotorDataGlideSmallMaxMs : kMotorDataGlideBigMaxMs));
   lv_anim_set_path_cb(&glideAnim, lv_anim_path_linear);
   lv_anim_start(&glideAnim);  // replaces a glide still under way
 }
 
-// The instruments belong to the active Motor Effort screen; null once it is gone.
-static lv_obj_t *effortScreen = nullptr;
-static void effortScreenDeleteCb(lv_event_t *event) {
+// The instruments belong to the active Motor Data screen; null once it is gone.
+static lv_obj_t *motorDataScreen = nullptr;
+static void motorDataScreenDeleteCb(lv_event_t *event) {
   // A replacement screen may already have been built before this outgoing one is
   // deleted, so forget only the screen that is actually going.
-  if (effortScreen != lv_event_get_target(event)) return;
-  for (int i = 0; i < 6; ++i) lv_anim_del(&effort[i], effortGlideCb);
-  effortScreen = nullptr;
+  if (motorDataScreen != lv_event_get_target(event)) return;
+  for (int i = 0; i < 6; ++i) lv_anim_del(&motorData[i], motorDataGlideCb);
+  motorDataScreen = nullptr;
 }
 // Instrument order throughout: phase A, speed, phase V, battery A, input power, duty.
-static const Item *const effortGauges[] = {&EFFORT_PHASE_AMPS_GAUGE, &EFFORT_SPEED_GAUGE,
-  &EFFORT_PHASE_VOLTS_GAUGE, &EFFORT_BATT_AMPS_GAUGE, &EFFORT_POWER_GAUGE, &EFFORT_DUTY_GAUGE};
-static const Item *const effortValues[] = {&EFFORT_PHASE_AMPS, &EFFORT_SPEED,
-  &EFFORT_PHASE_VOLTS, &EFFORT_BATT_AMPS, &EFFORT_POWER, &EFFORT_DUTY};
-static const TelemetryField effortFields[] = {TELEMETRY_FIELD_MOTOR_CURRENT, TELEMETRY_FIELD_SPEED,
+static const Item *const motorDataGauges[] = {&MOTOR_DATA_PHASE_AMPS_GAUGE, &MOTOR_DATA_SPEED_GAUGE,
+  &MOTOR_DATA_PHASE_VOLTS_GAUGE, &MOTOR_DATA_BATT_AMPS_GAUGE, &MOTOR_DATA_POWER_GAUGE, &MOTOR_DATA_DUTY_GAUGE};
+static const Item *const motorDataValues[] = {&MOTOR_DATA_PHASE_AMPS, &MOTOR_DATA_SPEED,
+  &MOTOR_DATA_PHASE_VOLTS, &MOTOR_DATA_BATT_AMPS, &MOTOR_DATA_POWER, &MOTOR_DATA_DUTY};
+static const TelemetryField motorDataFields[] = {TELEMETRY_FIELD_MOTOR_CURRENT, TELEMETRY_FIELD_SPEED,
   TELEMETRY_FIELD_PHASE_VOLTAGE, TELEMETRY_FIELD_CURRENT, TELEMETRY_FIELD_POWER, TELEMETRY_FIELD_DUTY};
 
-static int effortMaximum(int i) {
+static int motorDataMaximum(int i) {
   switch (i) {
     case 0: return (automaticGaugeRanges ? displayGaugeMaximum(RANGE_MOTOR_CURRENT) : max(1, (int)motorMaxAmps)) * 10;
     case 1: return speedGaugeMax();
@@ -2438,7 +2438,7 @@ static int effortMaximum(int i) {
     default: return 100;  // duty, in percent
   }
 }
-static int effortReading(int i, const DashboardValues &v) {
+static int motorDataReading(int i, const DashboardValues &v) {
   switch (i) {
     case 0: return (int)lroundf(v.motorCurrent * 10);
     case 1: return v.speedKmh;
@@ -2448,35 +2448,33 @@ static int effortReading(int i, const DashboardValues &v) {
     default: return (int)lroundf(fabsf(v.dutyCycle) * 100.0F);  // percent; the direction is dropped
   }
 }
-static void setEffortReading(int i, int value, bool available = true, bool glide = true) {
-  EffortInstrument &instrument = effort[i];
-  const float fraction = (float)abs(value) / max(1, effortMaximum(i));
-  effortAim(instrument, available ? (int)lroundf(constrain(fraction, 0.0F, 1.0F) * kEffortScale) : 0,
+static void setMotorDataReading(int i, int value, bool available = true, bool glide = true) {
+  MotorDataInstrument &instrument = motorData[i];
+  const float fraction = (float)abs(value) / max(1, motorDataMaximum(i));
+  motorDataAim(instrument, available ? (int)lroundf(constrain(fraction, 0.0F, 1.0F) * kMotorDataScale) : 0,
             glide && available);
-  if (available) lv_obj_clear_flag(instrument.needle.body, LV_OBJ_FLAG_HIDDEN);
-  else lv_obj_add_flag(instrument.needle.body, LV_OBJ_FLAG_HIDDEN);
-  if (available) lv_obj_clear_flag(instrument.needle.highlight, LV_OBJ_FLAG_HIDDEN);
-  else lv_obj_add_flag(instrument.needle.highlight, LV_OBJ_FLAG_HIDDEN);
+  setObjHidden(instrument.needle.body, !available);
+  setObjHidden(instrument.needle.highlight, !available);
   char text[24];
   if (!available) snprintf(text, sizeof(text), "--");
   else if (i == 1) formatSpeedValue(text, sizeof(text), value);
   else if (i == 4) formatPowerValue(text, sizeof(text), value);
   else if (i == 5) snprintf(text, sizeof(text), "%d", abs(value));
   else snprintf(text, sizeof(text), "%.1f", value / 10.0F);
-  setScaledValueText(instrument.value, *effortValues[i], text, layoutFontToLv(effortValues[i]->font));
+  setScaledValueText(instrument.value, *motorDataValues[i], text, layoutFontToLv(motorDataValues[i]->font));
   if (i == 4) {
     snprintf(text, sizeof(text), "%s", powerUnitLabel(value));
-    setFittedText(instrument.caption, EFFORT_POWER_LABEL, text, F1);
+    setFittedText(instrument.caption, MOTOR_DATA_POWER_LABEL, text, F1);
   }
 }
-template<int I> static void effortSweep(int value) { setEffortReading(I, value, true, false); }
-static const SweepFn effortSweeps[] = {effortSweep<0>, effortSweep<1>, effortSweep<2>,
-  effortSweep<3>, effortSweep<4>, effortSweep<5>};
+template<int I> static void motorDataSweep(int value) { setMotorDataReading(I, value, true, false); }
+static const SweepFn motorDataSweeps[] = {motorDataSweep<0>, motorDataSweep<1>, motorDataSweep<2>,
+  motorDataSweep<3>, motorDataSweep<4>, motorDataSweep<5>};
 
-static void updateMotorEffort(const DashboardValues &v) {
-  if (!effortScreen) return;
+static void updateMotorData(const DashboardValues &v) {
+  if (!motorDataScreen) return;
   const DashTexts t = fmtTexts(v);
-  for (int i = 0; i < 6; ++i) setEffortReading(i, effortReading(i, v), dashHas(effortFields[i]));
+  for (int i = 0; i < 6; ++i) setMotorDataReading(i, motorDataReading(i, v), dashHas(motorDataFields[i]));
   if (midDue) setLabelText(dw.uptime, t.uptime);
   if (slowDue) {
     setLabelText(dw.battPct, t.battPct);
@@ -2484,51 +2482,51 @@ static void updateMotorEffort(const DashboardValues &v) {
   }
   for (int i = 0; i < 4; ++i) {
     char text[32];
-    formatDashboardData(text, sizeof(text), dashboardDataDefault(MODE_MOTOR_EFFORT, i), v);
+    formatDashboardData(text, sizeof(text), dashboardDataDefault(MODE_MOTOR_DATA, i), v);
     if (strcmp(text, "-") == 0) snprintf(text, sizeof(text), "--");
     setLabelText(dw.dataValues[i], text);
   }
 }
 
-static void buildMotorEffort(lv_obj_t *scr, const DashboardValues &v) {
-  effortScreen = scr;
-  lv_obj_add_event_cb(scr, effortScreenDeleteCb, LV_EVENT_DELETE, nullptr);
+static void buildMotorData(lv_obj_t *scr, const DashboardValues &v) {
+  motorDataScreen = scr;
+  lv_obj_add_event_cb(scr, motorDataScreenDeleteCb, LV_EVENT_DELETE, nullptr);
   const DashTexts t = fmtTexts(v);
   // The top bar is the Dual Gauge and Cyber HUD one, with a plain white clock icon.
-  makeLayoutIcon(scr, EFFORT_CLOCK_ICON, CYD_ICON_UPTIME, whiteLv());
-  dw.uptime = makeTopTimeLabel(scr, EFFORT_TIME, t.uptime, whiteLv());
+  makeLayoutIcon(scr, MOTOR_DATA_CLOCK_ICON, CYD_ICON_UPTIME, whiteLv());
+  dw.uptime = makeTopTimeLabel(scr, MOTOR_DATA_TIME, t.uptime, whiteLv());
   // The vehicle name is plain white with the default accent, the chosen accent otherwise.
-  lv_obj_t *title = makeLabelFont(scr, EFFORT_OEM, "", accentTheme == ACCENT_DEFAULT ? whiteLv() : accentLv(),
-                                  layoutFontToLv(EFFORT_OEM.font));
-  setFittedText(title, EFFORT_OEM, dashOemName(), layoutFontToLv(EFFORT_OEM.font));
-  dw.battPct = makeTopBatteryLabel(scr, EFFORT_BATTERY, t.battPct, whiteLv());
-  dw.segBatt = makeSegBattery(scr, EFFORT_BATTERY_ICON, 5);
-  const Item *const captions[] = {&EFFORT_PHASE_AMPS_LABEL, &EFFORT_SPEED_LABEL,
-    &EFFORT_PHASE_VOLTS_LABEL, &EFFORT_BATT_AMPS_LABEL, &EFFORT_POWER_LABEL, &EFFORT_DUTY_LABEL};
+  lv_obj_t *title = makeLabelFont(scr, MOTOR_DATA_OEM, "", accentTheme == ACCENT_DEFAULT ? whiteLv() : accentLv(),
+                                  layoutFontToLv(MOTOR_DATA_OEM.font));
+  setFittedText(title, MOTOR_DATA_OEM, dashOemName(), layoutFontToLv(MOTOR_DATA_OEM.font));
+  dw.battPct = makeTopBatteryLabel(scr, MOTOR_DATA_BATTERY, t.battPct, whiteLv());
+  dw.segBatt = makeSegBattery(scr, MOTOR_DATA_BATTERY_ICON, 5);
+  const Item *const captions[] = {&MOTOR_DATA_PHASE_AMPS_LABEL, &MOTOR_DATA_SPEED_LABEL,
+    &MOTOR_DATA_PHASE_VOLTS_LABEL, &MOTOR_DATA_BATT_AMPS_LABEL, &MOTOR_DATA_POWER_LABEL, &MOTOR_DATA_DUTY_LABEL};
   const char *const names[] = {
     txt("PHASE A", "VAIHE A", "PHASE A", "PHASE A", "FASE A", "FASE A"), speedUnitLabel(),
     txt("PHASE V", "VAIHE V", "PHASE V", "PHASE V", "FASE V", "FASE V"),
     txt("BATT A", "AKKU A", "AKKU A", "BATT A", "BAT A", "BATT A"), "",
     txt("DUTY %", "PWM %", "PWM %", "PWM %", "PWM %", "PWM %")};
   // Phase A, speed, phase V, battery A, input power, duty.
-  const uint16_t stock[] = {cyd_ui::kEffortPhase565, cyd_ui::kEffortSpeed565, cyd_ui::kEffortVoltage565,
-    cyd_ui::kEffortCurrent565, cyd_ui::kEffortPower565, cyd_ui::kEffortDuty565};
-  const uint16_t lightStock[] = {cyd_ui::kEffortPhaseLight565, cyd_ui::kEffortSpeedLight565,
-    cyd_ui::kEffortVoltageLight565, cyd_ui::kEffortCurrentLight565, cyd_ui::kEffortPowerLight565,
-    cyd_ui::kEffortDutyLight565};
+  const uint16_t stock[] = {cyd_ui::kMotorDataPhase565, cyd_ui::kMotorDataSpeed565, cyd_ui::kMotorDataVoltage565,
+    cyd_ui::kMotorDataCurrent565, cyd_ui::kMotorDataPower565, cyd_ui::kMotorDataDuty565};
+  const uint16_t lightStock[] = {cyd_ui::kMotorDataPhaseLight565, cyd_ui::kMotorDataSpeedLight565,
+    cyd_ui::kMotorDataVoltageLight565, cyd_ui::kMotorDataCurrentLight565, cyd_ui::kMotorDataPowerLight565,
+    cyd_ui::kMotorDataDutyLight565};
   for (int i = 0; i < 6; ++i) {
-    EffortInstrument &instrument = effort[i];
-    const Item &g = *effortGauges[i];
+    MotorDataInstrument &instrument = motorData[i];
+    const Item &g = *motorDataGauges[i];
     const lv_color_t color = themeColor(dashboardLightModeActive() ? lightStock[i] : stock[i]);
     // The empty part of a ring is a dim ghost of the dial's full-brightness colour, in light
     // appearance too, where the lit blocks use the darker variant.
-    makeSegRing(instrument.ring, scr, g.cx, g.cy, g.r, i == 4 ? kEffortPowerThickness : segRingThickness(g.r), kEffortSweepDeg, color,
-                lv_color_mix(themeColor(stock[i]), dashBlack(), kEffortUnlitMix));
-    setSegRingFill(instrument.ring, lv_color_mix(color, dashBlack(), kEffortDiscMix),
-                    EFFORT_FOOTER_TOP.y);  // the footer bar stays clear of the discs
-    setSegRingMajors(instrument.ring, kEffortMajorExtraPx, kEffortMajorSteps);
+    makeSegRing(instrument.ring, scr, g.cx, g.cy, g.r, i == 4 ? kMotorDataPowerThickness : segRingThickness(g.r), kMotorDataSweepDeg, color,
+                lv_color_mix(themeColor(stock[i]), dashBlack(), kMotorDataUnlitMix));
+    setSegRingFill(instrument.ring, lv_color_mix(color, dashBlack(), kMotorDataDiscMix),
+                    MOTOR_DATA_FOOTER_TOP.y);  // the footer bar stays clear of the discs
+    setSegRingMajors(instrument.ring, kMotorDataMajorExtraPx, kMotorDataMajorSteps);
     instrument.needle = makeTickNeedle(scr, g.cx, g.cy, g.r - (i == 1 ? 16 : 12), g.r,
-        instrument.ring.startDeg, instrument.ring.extentDeg, kEffortScale, 4, 2);
+        instrument.ring.startDeg, instrument.ring.extentDeg, kMotorDataScale, 4, 2);
     instrument.position = 0;
     instrument.target = 0;
     instrument.changedAt = millis();
@@ -2537,32 +2535,32 @@ static void buildMotorEffort(lv_obj_t *scr, const DashboardValues &v) {
     const lv_color_t numberColor = lv_color_mix(whiteLv(), color, 225);
     // The number and its unit are the dial's color a long way toward white (toward black in light appearance, where
     // white is black), and the disc inside the ring a dark shade of it, like an unlit block but deeper.
-    instrument.value = makeLabel(scr, *effortValues[i], "", whiteLv());
+    instrument.value = makeLabel(scr, *motorDataValues[i], "", whiteLv());
     instrument.caption = makeLabel(scr, *captions[i], "", numberColor);
     setFittedText(instrument.caption, *captions[i], names[i], F1);
   }
-  makeLineBox(scr, EFFORT_FOOTER_TOP, dimLv());
-  const Item *const footerLabels[] = {&EFFORT_MOTOR_LABEL, &EFFORT_ESC_LABEL, &EFFORT_BATT_VOLTS_LABEL,
-    &EFFORT_TRIP_LABEL};
-  const Item *const footerValues[] = {&EFFORT_MOTOR, &EFFORT_ESC, &EFFORT_BATT_VOLTS, &EFFORT_TRIP};
+  makeLineBox(scr, MOTOR_DATA_FOOTER_TOP, dimLv());
+  const Item *const footerLabels[] = {&MOTOR_DATA_MOTOR_LABEL, &MOTOR_DATA_ESC_LABEL, &MOTOR_DATA_BATT_VOLTS_LABEL,
+    &MOTOR_DATA_TRIP_LABEL};
+  const Item *const footerValues[] = {&MOTOR_DATA_MOTOR, &MOTOR_DATA_ESC, &MOTOR_DATA_BATT_VOLTS, &MOTOR_DATA_TRIP};
   for (int i = 0; i < 4; ++i) {
-    const DashboardDataItem item = dashboardDataDefault(MODE_MOTOR_EFFORT, i);
+    const DashboardDataItem item = dashboardDataDefault(MODE_MOTOR_DATA, i);
     lv_obj_t *caption = makeLabel(scr, *footerLabels[i], "", labelLv());
     setFittedText(caption, *footerLabels[i], dashboardDataLabel(item), F1);
     lv_obj_t *value = makeLabel(scr, *footerValues[i], "", whiteLv());
     configureFittedLabel(value, *footerValues[i], "-999.9 °C", F2);
     registerDataSlot(i, caption, value);
   }
-  updateMotorEffort(v);
+  updateMotorData(v);
   setSegBatteryLevel(dw.segBatt, v.batteryPercent);
-  for (int i = 0; i < 6; ++i) if (dashHas(effortFields[i]))
-    sweepWith(effort[i].value, effortSweeps[i], abs(effortReading(i, v)), effortMaximum(i));
+  for (int i = 0; i < 6; ++i) if (dashHas(motorDataFields[i]))
+    sweepWith(motorData[i].value, motorDataSweeps[i], abs(motorDataReading(i, v)), motorDataMaximum(i));
 }
 
 #ifdef CYD_LVGL_PREVIEW
 // Where an instrument's ring and needle are, and where they are heading, in 4096ths of the scale.
-int previewMotorEffortPosition(int instrument) { return effort[instrument].position; }
-int previewMotorEffortTarget(int instrument) { return effort[instrument].target; }
+int previewMotorDataPosition(int instrument) { return motorData[instrument].position; }
+int previewMotorDataTarget(int instrument) { return motorData[instrument].target; }
 #endif
 
 // ── Pixel ────────────────────────────────────────────────────────────────────
@@ -2697,7 +2695,7 @@ static const lv_font_t *pixelFontForWidth(const char *text, int room) {
 // vertically. Both are the same square-pixel face as the rest of the theme.
 static void applyPixelSpeedFont(lv_obj_t *label, const char *value) {
   const lv_font_t *font = strlen(value) <= 2 ? &lv_font_pixel_112 : &lv_font_pixel_80;
-  lv_obj_set_style_text_font(label, font, 0);
+  setObjTextFont(label, font);
   lv_obj_set_pos(label, pixelCentredBoxX(PIXEL_SPEED_CX, PIXEL_SPEED_W, font),
                  PIXEL_SPEED_Y + (112 - lv_font_get_line_height(font)) / 2);
 }
@@ -2775,7 +2773,7 @@ static void setPixelTrailingValue(lv_obj_t *value, lv_obj_t *unit, int x, const 
   const int reserved = (unit && unitText[0]) ? pixelTextWidth(unitText, 2) + 6 : 0;
   const lv_font_t *font = pixelFontForWidth(text, room - reserved);
   const int scale = pixelFontScale(font);
-  lv_obj_set_style_text_font(value, font, 0);
+  setObjTextFont(value, font);
   setLabelText(value, text);
   if (!unit) return;
   setLabelText(unit, unitText);
@@ -2786,7 +2784,7 @@ static void setPixelTrailingValue(lv_obj_t *value, lv_obj_t *unit, int x, const 
 // A value with its unit parked on its own line underneath, for the narrow rail.
 static void setPixelStackedValue(lv_obj_t *value, lv_obj_t *unit, const char *text,
                                  const char *unitText, int room) {
-  lv_obj_set_style_text_font(value, pixelFontForWidth(text, room), 0);
+  setObjTextFont(value, pixelFontForWidth(text, room));
   setLabelText(value, text);
   if (unit) setLabelText(unit, unitText);
 }
@@ -2909,7 +2907,7 @@ static void updatePixelGauge(const DashboardValues &v) {
                         PIXEL_MID_W);
   if (slowDue) {
     setLabelText(dw.battPct, t.battPct);
-    lv_obj_set_style_text_color(dw.battPct, pixelBatteryColor(v.batteryPercent), 0);
+    setObjTextColor(dw.battPct, pixelBatteryColor(v.batteryPercent));
     setPixelBatteryLevel(v.batteryPercent);
     setPixelStackedValue(dw.trip, dw.tripUnit, t.trip, distanceUnitLabel(), PIXEL_RAIL_W);
     formatAvailableRange(text, sizeof(text), dashBatteryStats().rangeKm, false);
@@ -3067,7 +3065,7 @@ static void updateLargeTiles(const DashboardValues &v) {
     snprintf(text, sizeof(text), "%d", v.batteryPercent);
     setScaledValueText(dw.battPct, LARGE_TILES_BATTERY, text, layoutFontToLv(LARGE_TILES_BATTERY.font));
     setBatteryLevel(dw.batt, v.batteryPercent, palette.muted);
-    lv_obj_set_style_bg_color(dw.batt.fill, palette.ink, 0);
+    setObjBgColor(dw.batt.fill, palette.ink);
     setScaledValueText(dw.trip, LARGE_TILES_TRIP, t.trip, layoutFontToLv(LARGE_TILES_TRIP.font));
     setLabelText(dw.tripUnit, distanceUnitLabel());
     snprintf(text, sizeof(text), "%s", t.odo);
@@ -3161,7 +3159,7 @@ static void updateBigReadoutPowerBeam(int watts, lv_color_t driveColor, lv_color
   if (!dw.barPower) return;
   const int maximum = watts < 0 && automaticGaugeRanges ? displayGaugeMaximum(RANGE_REGEN) : max(100, powerBarMax());
   const int percent = constrain(watts * 100 / maximum, -100, 100);
-  lv_obj_set_style_bg_color(dw.barPower, watts < 0 ? regenColor : driveColor, LV_PART_INDICATOR);
+  setObjBgColor(dw.barPower, watts < 0 ? regenColor : driveColor, LV_PART_INDICATOR);
   lv_bar_set_value(dw.barPower, percent, LV_ANIM_OFF);
 }
 
@@ -4581,13 +4579,13 @@ static void buildEfficiency(lv_obj_t *scr, const DashboardValues &v) {
   char text[32];
   efficiencyAccentColor = accent;
 
-  // Match the compact shared ride-status bar used by Gauge and Motor Effort, leaving
+  // Match the compact shared ride-status bar used by Gauge and Motor Data, leaving
   // every pixel below it available to the instruments.
-  Item clockItem = EFFORT_CLOCK_ICON;
-  Item timeItem = EFFORT_TIME;
-  Item oemItem = EFFORT_OEM;
-  Item batteryTextItem = EFFORT_BATTERY;
-  Item batteryIconItem = EFFORT_BATTERY_ICON;
+  Item clockItem = MOTOR_DATA_CLOCK_ICON;
+  Item timeItem = MOTOR_DATA_TIME;
+  Item oemItem = MOTOR_DATA_OEM;
+  Item batteryTextItem = MOTOR_DATA_BATTERY;
+  Item batteryIconItem = MOTOR_DATA_BATTERY_ICON;
   clockItem.y -= 2;
   timeItem.y -= 2;
   oemItem.y -= 2;
@@ -4861,8 +4859,8 @@ void buildDashboardMode(lv_obj_t *scr, DashboardMode mode, const DashboardValues
     case MODE_PIXEL_GAUGE:
       buildPixelGauge(scr, values);
       break;
-    case MODE_MOTOR_EFFORT:
-      buildMotorEffort(scr, values);
+    case MODE_MOTOR_DATA:
+      buildMotorData(scr, values);
       break;
     case MODE_BARS:
       buildBars(scr, values);
@@ -4940,8 +4938,8 @@ void updateDashboardMode(DashboardMode mode, const DashboardValues &values, bool
     case MODE_PIXEL_GAUGE:
       updatePixelGauge(values);
       break;
-    case MODE_MOTOR_EFFORT:
-      updateMotorEffort(values);
+    case MODE_MOTOR_DATA:
+      updateMotorData(values);
       break;
     case MODE_BARS:
       updateBars(values);

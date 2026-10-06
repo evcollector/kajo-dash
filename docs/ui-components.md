@@ -35,6 +35,7 @@ than creating another local magic number.
 | Modal confirmation | `showConfirmationDialog(...)` | Standard dimmed scrim, dialog housing, explanation, Cancel, and explicit action. |
 | Transient notice | add a `StatusNotice` and call `showStatusNotice(...)` | Required for success, warning, status, and “already enabled” messages. Never build a separate toast. |
 | Dashboard graphics | helpers in `ui_common.h` or the layout editor | Dashboard accent/background settings must not recolor menu chrome. |
+| Dashboard value updates | `setLabelText(...)`, `setObjHidden(...)`, `setObjTextAlign(...)`, `setObjTextFont(...)`, `setObjTextColor(...)`, `setObjBgColor(...)` | Anything an `update*()` path runs on every tick must skip unchanged writes: LVGL 8 invalidates an object for every style write and every HIDDEN flag write, changed or not (`lv_obj_set_pos` and `lv_obj_set_size` already compare). `cyd_dashboard_redraw` fails a theme that repaints on unchanged values. |
 
 If an existing constructor is file-local, extend or move that constructor
 instead of reproducing its LVGL styles in a second place.
@@ -252,14 +253,14 @@ Replay overview curves smooth per-bucket means and round only after column
 interpolation. Do not overlay raw min/max strokes; cursor bubbles retain the
 original recorded values independently of this visual smoothing.
 
-## Motor Effort dashboard
+## Motor Data dashboard
 
-Motor Effort replaces Mono in dashboard slot 4. Six fixed instruments, each a
+Motor Data replaces Mono in dashboard slot 4. Six fixed instruments, each a
 segmented ring (`makeSegRing(...)` / `setSegRingValue(...)` in `ui_common.cpp`)
 with the shared outer needle (`makeTickNeedle(...)` / `setTickNeedleValue(...)`
 in `dashboards.cpp`). The stock colors follow the Bar Graph dashboard's one hue
 per quantity: speed cyan, phase voltage yellow and input power red, with an orange
-run for the currents (phase amps lightest, then battery amps) and duty between battery amps and input power. They come from `cyd_ui::kEffort*565` in
+run for the currents (phase amps lightest, then battery amps) and duty between battery amps and input power. They come from `cyd_ui::kMotorData*565` in
 `ui_style.h`, with darker variants for light appearance (Bar Graph itself goes
 black there); explicit dashboard accents override them. Each dial's number is pure white (black in light
 appearance) and its unit caption is the dial's color most of the way to white. Each
@@ -269,11 +270,11 @@ unlit block) out to the blocks' outer edge, so it shows under them
 beneath it, because the rings are built in order. The power caption is just the
 unit (W or kW). The blocks at each fifth of
 the ring are 3 px longer inward, as the Dual Gauge's major ticks are
-(`setSegRingMajors(...)`). The input power ring's blocks are 7 px deep (`kEffortPowerThickness`, `thickness` in `layout.json`) instead of the rule's 9, which leaves its number room. The four small dials are 42 px in radius. The top bar is the Dual
+(`setSegRingMajors(...)`). The input power ring's blocks are 7 px deep (`kMotorDataPowerThickness`, `thickness` in `layout.json`) instead of the rule's 9, which leaves its number room. The four small dials are 42 px in radius. The top bar is the Dual
 Gauge and Cyber HUD one (white clock icon, time and battery, and a vehicle
 name that is white with the default accent and the chosen accent otherwise) and the stock accent is the Dual Gauge green. The speed number uses the
 72 px face below 100 and steps to 48 px from 100 up; the footer is 34 px tall. Geometry and fitted text
-positions live in `tools/layout.json` under `motorEffort`. Speed is largest,
+positions live in `tools/layout.json` under `motorData`. Speed is largest,
 input power next, and the four side gauges are equally smaller. Phase A, speed
 and phase V sit over battery A, input power and duty.
 
@@ -299,12 +300,12 @@ whole-degree rounding, makes the speed blocks visibly wider.) A ring is one cust
 rather than one object per block, and a new value invalidates only the blocks
 that flip; `cyd_seg_ring` checks that against a full repaint. The layout editor's
 `segRing` shape is a port of the thickness and geometry rules, so change both
-together, and keep `sweepDeg` in `layout.json` equal to `kEffortSweepDeg`.
+together, and keep `sweepDeg` in `layout.json` equal to `kMotorDataSweepDeg`.
 
 Rings and needles glide between readings. The dashboard hears from the controller
 ten times a second and the speed in whole km/h, so a ring and needle moved straight
 to each reading would jump a step at a time. Each instrument keeps its position in
-4096ths of the scale, and `effortAim(...)` carries it to a new reading along a
+4096ths of the scale, and `motorDataAim(...)` carries it to a new reading along a
 straight `lv_anim` that lasts a quarter longer than the reading had been steady,
 so the next reading finds it still on its way: a steady acceleration is one
 continuous motion. A change of about one reading (5% of the scale or less) may take
@@ -314,11 +315,11 @@ reading that arrives mid-glide takes over from where the needle is. The price of
 the continuous motion is a needle that trails the true speed by about 1 km/h (a
 quarter to half a second); the numbers show the live reading at once. The first
 reading, an unavailable one and every step of the startup sweep are placed
-without gliding. `cyd_effort_glide` checks the timing, retargeting, reversal and
+without gliding. `cyd_motor_data_glide` checks the timing, retargeting, reversal and
 the picture of every frame.
 
 Only the four footer slots are customizable (motor temperature, ESC temperature,
-battery voltage and trip distance by default). A Motor Effort profile saved under an older
+battery voltage and trip distance by default). A Motor Data profile saved under an older
 revision (Mono's layout, the footer that defaulted to duty, or the three-slot footer) is reset when
 first loading this version. Missing readings show `--` and hide their pointers;
 negative power/current retain their sign in the readout and use magnitude in the
@@ -334,10 +335,10 @@ It is marked derived in telemetry. FarDriver has no duty/phase-voltage reading,
 so the PHASE V and DUTY dials stay unavailable. A user-facing explanation is
 deferred.
 
-The instruments' widgets belong to the active Motor Effort screen. A
+The instruments' widgets belong to the active Motor Data screen. A
 screen-owned delete callback clears the cached screen pointer so updates stop
 once it is gone, and a replacement screen built before the old one is deleted is
 not forgotten by it.
 
-Native states: `05_motor_effort`, `_rebuild`, `_missing`, `_high`, `_regen`, plus
-`13_sweep_motor_effort`; check Finnish, German and light appearance as well.
+Native states: `05_motor_data`, `_rebuild`, `_missing`, `_high`, `_regen`, plus
+`13_sweep_motor_data`; check Finnish, German and light appearance as well.

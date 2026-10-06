@@ -1663,10 +1663,10 @@
         }
       ]
     },
-    "motorEffort": {
-      "name": "05 Motor Effort",
-      "image": "../preview_output/lvgl/05_motor_effort.png",
-      "prefix": "EFFORT",
+    "motorData": {
+      "name": "05 Motor Data",
+      "image": "../preview_output/lvgl/05_motor_data.png",
+      "prefix": "MOTOR_DATA",
       "items": [
         {
           "id": "batteryIcon",
