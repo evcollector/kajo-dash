@@ -1,0 +1,5 @@
+# Must fail: expect-no-label sees a label that is on screen.
+boot dashboard
+tap 160 120 settle=500
+tap-label "SETTINGS" settle=600
+expect-no-label "THEME"

@@ -1,0 +1,4 @@
+# Must fail: tapping a label that is not on screen is an error, not a silent no-op.
+boot dashboard
+wait 200
+tap-label "A label nothing shows"

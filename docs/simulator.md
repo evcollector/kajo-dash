@@ -68,6 +68,7 @@ ctest --test-dir tools/lvgl_native_preview/build_simulator -C Release --output-o
 | `cyd_vehicle_fields` | vehicle configuration fields |
 | `cyd_vesc_protocol`, `cyd_vesc_sender`, `cyd_fardriver_sender` | wire protocols and the fake senders |
 | `cyd_preferences` | host persistence, including save/reload across runs |
+| `cyd_demo_scene_*`, `cyd_demo_recorder_*` | every committed demo-video chapter plays to the end, the recorder renders a scene identically twice, and it names the failures it must (see [demo-video.md](demo-video.md)) |
 
 `cyd_runtime_input` drives real LVGL event callbacks rather than jumping to a
 screen through preview setters. Preview setters remain only for external
@@ -76,6 +77,11 @@ controller fault, or an SD card being removed.
 
 **Browser** — `browser_simulator_main.cpp` builds the same runtime to WebAssembly
 for the companion app's embedded simulator.
+
+**Demo video** — `cyd_demo_recorder` plays a script of taps and drags against the real UI in
+simulated time and writes every frame; `tools/make_demo_video.py` turns that into the chapter
+videos. Nothing follows the wall clock, so a script renders identically each time. See
+[demo-video.md](demo-video.md).
 
 ## Host substitutions
 

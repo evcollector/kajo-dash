@@ -1,0 +1,35 @@
+# Every recorder command once. ctest runs it for success (cyd_demo_recorder_smoke) and twice for
+# an identical frame digest (cyd_demo_recorder_deterministic).
+title "Smoke test"
+subtitle "Every command once."
+
+logging on
+card ready
+demo 5
+boot dashboard
+
+caption "Hello" "A caption with a body, gone after 800 ms." for=800
+wait 400
+caption "Second" "Replaces the first."
+wait 200
+caption-off
+
+# Reveal the dashboard controls, then walk Settings > Theme and back out.
+tap 160 120 settle=500
+expect-label "SETTINGS"
+tap-label "SETTINGS" settle=600
+expect-label "THEME"
+expect-no-label "A label nothing shows"
+dump
+tap-label "THEME" settle=700
+drag 160 120 200 120 300 settle=300
+drag 200 120 160 120 300 ease=linear settle=300
+tap-label "BACK" settle=500
+tap-label "BACK" settle=600
+
+# A press that is held; the recovery gesture only arms after two seconds.
+hold 160 120 600 settle=400
+demo 30
+wait 200
+demo off
+still end

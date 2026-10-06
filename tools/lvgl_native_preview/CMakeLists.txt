@@ -69,6 +69,11 @@ add_executable(cyd_lvgl_preview preview_main.cpp ${HOST_SUPPORT_SOURCES} ${FIRMW
 set_target_properties(cyd_lvgl_preview PROPERTIES OUTPUT_NAME cyd_lvgl_renderer)
 configure_cyd_host_target(cyd_lvgl_preview)
 
+# The scene recorder behind the demo videos (docs/demo-video.md): the real UI, scripted touch
+# input in simulated time, raw frames out. It needs no SDL, so it builds wherever the renderer does.
+add_executable(cyd_demo_recorder demo_recorder.cpp ${HOST_SUPPORT_SOURCES} ${FIRMWARE_SOURCES})
+configure_cyd_host_target(cyd_demo_recorder)
+
 if(CYD_BUILD_WEB_SIMULATOR)
   if(NOT EMSCRIPTEN)
     message(FATAL_ERROR "CYD_BUILD_WEB_SIMULATOR requires the Emscripten toolchain")
@@ -190,6 +195,35 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
   add_executable(cyd_glide_test glide_test.cpp ${HOST_SUPPORT_SOURCES} ${FIRMWARE_SOURCES})
   configure_cyd_host_target(cyd_glide_test)
   add_test(NAME cyd_glide COMMAND cyd_glide_test)
+
+  # The demo recorder (docs/demo-video.md). Every committed chapter runs without encoding, so a
+  # label that moved or a flow that changed fails here instead of quietly breaking the videos.
+  # The scenes under demo_test_scenes pin the recorder itself, failures included: a missing label
+  # and a failed expectation must be named, a bad script must be refused before anything runs, and
+  # one scene must render identically twice.
+  file(GLOB CYD_DEMO_CHAPTERS CONFIGURE_DEPENDS "${PROJECT_ROOT}/tools/demo/scenes/*.scn")
+  foreach(chapter IN LISTS CYD_DEMO_CHAPTERS)
+    get_filename_component(chapter_name "${chapter}" NAME_WE)
+    add_test(NAME cyd_demo_scene_${chapter_name} COMMAND cyd_demo_recorder "${chapter}")
+  endforeach()
+  set(CYD_DEMO_TEST_SCENES "${CMAKE_CURRENT_LIST_DIR}/demo_test_scenes")
+  add_test(NAME cyd_demo_recorder_smoke COMMAND cyd_demo_recorder "${CYD_DEMO_TEST_SCENES}/smoke.scn")
+  add_test(
+    NAME cyd_demo_recorder_deterministic
+    COMMAND ${CMAKE_COMMAND}
+      -DRECORDER=$<TARGET_FILE:cyd_demo_recorder>
+      -DSCENE=${CYD_DEMO_TEST_SCENES}/smoke.scn
+      -P "${CMAKE_CURRENT_LIST_DIR}/demo_recorder_deterministic.cmake")
+  # A matching message passes the test whatever the exit code, so each of these proves the
+  # recorder failed for the stated reason rather than for any reason.
+  function(cyd_demo_expect_failure name message)
+    add_test(NAME cyd_demo_recorder_${name} COMMAND cyd_demo_recorder "${CYD_DEMO_TEST_SCENES}/${name}.scn")
+    set_tests_properties(cyd_demo_recorder_${name} PROPERTIES PASS_REGULAR_EXPRESSION "${message}")
+  endfunction()
+  cyd_demo_expect_failure(missing_label "no visible label")
+  cyd_demo_expect_failure(expectation_failed "is visible but should not be")
+  cyd_demo_expect_failure(unknown_command "unknown command")
+  cyd_demo_expect_failure(before_boot "comes before boot")
 
   # The vehicle field model builds no widgets of its own, so it is tested
   # against the settings logic and the host stubs rather than through the

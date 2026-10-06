@@ -1,0 +1,3 @@
+# Must fail: nothing can be tapped before the firmware has booted.
+tap 160 120
+boot dashboard

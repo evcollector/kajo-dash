@@ -11,6 +11,7 @@ is and how to install it, start with the [README](../README.md).
 - Python 3.11 or newer for the helper and release tools.
 - For the preview renderer and simulator: CMake, Visual Studio C++ Build Tools
   and Pillow (`pip install -r tools/requirements.txt`).
+- For the demo video, also [ffmpeg](https://ffmpeg.org/) in `PATH`.
 
 The firmware dependencies are downloaded automatically at their exact versions
 from `platformio.ini`.
@@ -118,6 +119,17 @@ For repeatable and automated runs:
 `--state-file=<path>`, `--performance=host|estimated-cyd`, `--perf-overlay` and
 `--fixed-timestep` are available. Screenshots are raw 320x240 PPM. Known
 boundaries are in [simulator.md](simulator.md).
+
+## Demo video
+
+The demo video is rendered from the simulator, one chapter per scene script in `tools/demo/scenes`:
+
+```powershell
+python tools\make_demo_video.py themes --gif
+```
+
+It needs `ffmpeg` in `PATH` as well as the preview requirements, writes to `dist/demo/`, and is
+described, with the scene language, in [demo-video.md](demo-video.md).
 
 ## Layout editor
 

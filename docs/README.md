@@ -36,6 +36,7 @@ These are binding. Code comments and `AGENTS.md` reference them by path.
 | [wiring.md](wiring.md) | Connecting the CYD to a controller: the VESC UART wiring diagram, power, pins to leave alone, and the CYD pin map. |
 | [development.md](development.md) | Building and flashing, the `kajo.bat` menu, preview renderer, simulator, layout editor, fonts, boot splash, tests, and building a signed release. |
 | [simulator.md](simulator.md) | Running the UI on Windows: interactive simulator, state captures, the ctest suite, what the host fakes do and do not cover, and how to debug a native crash. |
+| [demo-video.md](demo-video.md) | Rendering the demo video from the simulator: the scene scripts, how frames are timed, and how to add a chapter. |
 | [device-smoke-test.md](device-smoke-test.md) | The physical-hardware matrix to run before tagging a firmware checkpoint. The only source of authoritative performance and hardware claims. |
 | [test-senders.md](test-senders.md) | The fake VESC and FarDriver senders: flashing a spare CYD that impersonates a controller over Bluetooth. |
 

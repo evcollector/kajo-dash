@@ -1,0 +1,3 @@
+# Must fail before anything runs: the scene is checked in full at load time.
+boot dashboard
+flick 10 20
