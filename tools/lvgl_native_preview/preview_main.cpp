@@ -85,23 +85,24 @@ static void showGaugeRangeTransition(const fs::path &output, DashboardMode mode,
   getLiveDashboardValues(values);
   // A fast burst (60 km/h, 2 kW) pushes the scales up at once; then 15 minutes of gentle riding
   // age it out of the window and the scales ease back down. Capture partway through that.
+  // Time passes through advanceTime so LVGL's animations run: the needles glide to each reading.
   values.speedKmh = 60;
   values.watts = 2000;
-  uint32_t at = millis();
   for (int frame = 0; frame < 3; ++frame) {
-    previewSetMillis(at += 100);
+    cyd::preview::advanceTime(100, 50);
     updateDashboardMode(mode, values, true);
   }
   values.speedKmh = 12;
   values.watts = 400;
   for (int second = 0; second < 15 * 60 - 1; ++second) {
-    previewSetMillis(at += 1000);
+    cyd::preview::advanceTime(1000, 100);
     updateDashboardMode(mode, values, true);
   }
   for (int frame = 0; frame < 7; ++frame) {  // the window empties on the third; the rest is the ease
-    previewSetMillis(at += 250);
+    cyd::preview::advanceTime(250, 50);
     updateDashboardMode(mode, values, true);
   }
+  cyd::preview::advanceTime(300, 50);  // the needles settle on the last reading
   capture(output, name);
   setDemoPreview(false);
 }

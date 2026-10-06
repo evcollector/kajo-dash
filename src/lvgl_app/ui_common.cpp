@@ -763,6 +763,60 @@ void setSegRingColors(SegRingWidget &ring, lv_color_t lit, lv_color_t unlit) {
   if (ring.obj) lv_obj_invalidate(ring.obj);
 }
 
+// ── Glide ─────────────────────────────────────────────────────────────────────
+
+static const uint32_t kGlideMinMs = 100;
+static const uint32_t kGlideSmallMaxMs = 1000;  // a step of up to kGlideSmallStep
+static const uint32_t kGlideBigMaxMs = 300;     // anything bigger
+static const int kGlideSmallStep = kGlideScale / 20;  // 5% of the scale, about one reading of the speed
+
+static void glideExecCb(void *var, int32_t position) {
+  Glide *glide = static_cast<Glide *>(var);
+  glide->position = position;
+  glide->place(glide->context, position);
+}
+
+void glideInit(Glide &glide, void (*place)(void *context, int position), void *context) {
+  lv_anim_del(&glide, glideExecCb);
+  glide = {};
+  glide.place = place;
+  glide.context = context;
+}
+
+void glideStop(Glide &glide) {
+  lv_anim_del(&glide, glideExecCb);
+}
+
+void glideAim(Glide &glide, int target, bool animate) {
+  const uint32_t now = millis();
+  if (!animate || !glide.placed) {
+    lv_anim_del(&glide, glideExecCb);
+    glide.placed = true;
+    glide.target = target;
+    glide.changedAt = now;
+    glideExecCb(&glide, target);
+    return;
+  }
+  if (target == glide.target) return;  // the same reading again: the glide carries on
+  const uint32_t steady = now - glide.changedAt;
+  const int step = abs(target - glide.position);
+  glide.target = target;
+  glide.changedAt = now;
+  if (target == glide.position) {
+    lv_anim_del(&glide, glideExecCb);
+    return;
+  }
+  lv_anim_t anim;
+  lv_anim_init(&anim);
+  lv_anim_set_var(&anim, &glide);
+  lv_anim_set_exec_cb(&anim, glideExecCb);
+  lv_anim_set_values(&anim, glide.position, target);
+  lv_anim_set_time(&anim, constrain(steady + steady / 4, kGlideMinMs,
+                                    step <= kGlideSmallStep ? kGlideSmallMaxMs : kGlideBigMaxMs));
+  lv_anim_set_path_cb(&anim, lv_anim_path_linear);
+  lv_anim_start(&anim);  // replaces a glide still under way
+}
+
 void setBatteryLevel(BatteryWidget &widget, int percent, lv_color_t goodColor) {
   const int clamped = constrain(percent, 0, 100);
   if (clamped == widget.lastPercent) return;
@@ -860,11 +914,6 @@ lv_obj_t *makeBarFrame(lv_obj_t *parent, const cyd_layout::Item &frame, lv_color
   lv_obj_set_style_bg_color(bar, color, LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_INDICATOR);
   return bar;
-}
-
-void setBarValue(lv_obj_t *bar, int amount, int maxAmount) {
-  const int pct = map(constrain(amount, 0, maxAmount), 0, maxAmount, 0, 100);
-  lv_bar_set_value(bar, pct, LV_ANIM_OFF);
 }
 
 // ── Screens ───────────────────────────────────────────────────────────────────

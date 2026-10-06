@@ -1,8 +1,9 @@
-// Motor Data's ring and needle glide from reading to reading instead of jumping a
-// step at a time: the first reading is placed at once, a changed one is reached by a
-// straight-line glide a quarter longer than the reading had been steady (at least
-// 100 ms, at most 300 ms, or a second when the change is about one reading), and
-// every frame of that glide repaints correctly.
+// Every dashboard's needle, ring or bar that glides (Motor Data, Dual Gauge, Redline, Ride Console,
+// Minimal and Efficiency) moves from reading to reading instead of jumping a step at a time: the
+// first reading is placed at once, a changed one is reached by a straight-line glide a quarter
+// longer than the reading had been steady (at least 100 ms, at most 300 ms, or a second when the
+// change is about one reading), and every frame of that glide repaints correctly. The same
+// scenarios run on each theme's speed instrument.
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -18,19 +19,21 @@
 #include "host_runtime.h"
 #include "ui_common.h"
 
-int previewMotorDataPosition(int instrument);
-int previewMotorDataTarget(int instrument);
+int previewGlidePosition(int instrument);
+int previewGlideTarget(int instrument);
 
 namespace {
 
 using namespace cyd::preview;
 
 bool ok = true;
-const int kSpeed = 1;  // the speed instrument
-const int kMotorDataScalePositions = 4096;  // a full dial, in the units of previewMotorDataPosition
+// The theme under test, and the index of its speed glide (the order its theme adds them).
+DashboardMode gMode = MODE_MOTOR_DATA;
+int kSpeed = 1;
+const char *gTheme = "";
 
 void fail(const std::string &message) {
-  std::cerr << message << '\n';
+  std::cerr << gTheme << ": " << message << '\n';
   ok = false;
 }
 
@@ -69,9 +72,9 @@ lv_obj_t *freshDashboard(int speed, bool finishSweep = true) {
   lv_scr_load(screen);
   lv_obj_del(old);
   setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
-  buildDashboardMode(screen, MODE_MOTOR_DATA, readings(speed));
+  buildDashboardMode(screen, gMode, readings(speed));
   if (finishSweep) previewFinishStartupSweep();
-  updateDashboardMode(MODE_MOTOR_DATA, readings(speed), true);
+  updateDashboardMode(gMode, readings(speed), true);
   refreshNow();
   return screen;
 }
@@ -96,7 +99,7 @@ void watch(int duration, bool checkPictures = false) {
   for (int t = 0; t < duration; t += 10) {
     advanceTime(10);
     run.clock += 10;
-    run.samples.push_back({run.clock, previewMotorDataPosition(kSpeed)});
+    run.samples.push_back({run.clock, previewGlidePosition(kSpeed)});
     if (!checkPictures) continue;
     FrameMetrics before, after;
     latestFrameMetrics(before);
@@ -143,47 +146,46 @@ bool monotonic(const std::vector<int> &positions, bool rising) {
 
 }  // namespace
 
-int main() {
-  initRuntime();
-  previewPreferencesConfigure(nullptr, true);
-  loadAppSettings();
-  language = LANG_EN;
-  dashboardAppearanceMode = DASH_APPEARANCE_DARK;
-  dashboardMode = MODE_MOTOR_DATA;
-  // A fixed 60 km/h scale, so a reading's place on the dial does not depend on the learned range.
+void runTheme(const char *name, DashboardMode mode, int speedIndex, bool unavailableDropsAtOnce) {
+  gTheme = name;
+  gMode = mode;
+  kSpeed = speedIndex;
+  run = Run();
+  dashboardMode = mode;
+  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
   automaticGaugeRanges = false;
   topSpeedKmh = 60;
 
   // A. The first reading is placed where it belongs at once and nothing moves afterwards.
   freshDashboard(20);
-  const int placed = previewMotorDataPosition(kSpeed);
-  if (placed <= 0 || placed != previewMotorDataTarget(kSpeed)) fail("The first reading was not placed at once");
+  const int placed = previewGlidePosition(kSpeed);
+  if (placed <= 0 || placed != previewGlideTarget(kSpeed)) fail("The first reading was not placed at once");
   size_t mark = run.samples.size();
   watch(400);
   if (largestMove(positionsSince(mark)) != 0) fail("The needle moved with no new reading");
 
   // B. After a long steady spell a 1 km/h change, so small a step, is a straight glide of a second, in many steps.
   watch(1000);
-  updateDashboardMode(MODE_MOTOR_DATA, readings(21), true);
-  const int step = previewMotorDataTarget(kSpeed) - placed;
+  updateDashboardMode(gMode, readings(21), true);
+  const int step = previewGlideTarget(kSpeed) - placed;
   if (step < 40) fail("A 1 km/h change is under 40 of 4096 steps; the scale is too coarse");
   mark = run.samples.size();
   watch(1300, true);
   {
     const std::vector<int> glide = positionsSince(mark);
-    const int target = previewMotorDataTarget(kSpeed);
+    const int target = previewGlideTarget(kSpeed);
     const int reached = reachedAfter(mark, target);
     if (!monotonic(glide, true)) fail("The glide was not monotonic");
     if (std::set<int>(glide.begin(), glide.end()).size() < 20) fail("The glide had fewer than 20 distinct positions");
     if (largestMove(glide) > step / 15) fail("A glide frame moved more than a fifteenth of the step");
     if (reached < 900 || reached > 1100) fail("A one-reading change took " + std::to_string(reached) + " ms, not about 1000");
-    if (previewMotorDataPosition(kSpeed) != target) fail("The glide did not end on the target");
+    if (previewGlidePosition(kSpeed) != target) fail("The glide did not end on the target");
   }
 
   // C. A steady stream of 1 km/h steps, 100 ms apart, is one continuous motion that keeps up.
   mark = run.samples.size();
   for (int speed = 22; speed <= 33; ++speed) {
-    updateDashboardMode(MODE_MOTOR_DATA, readings(speed), true);
+    updateDashboardMode(gMode, readings(speed), true);
     watch(100, true);
   }
   {
@@ -197,7 +199,7 @@ int main() {
       }
     mark = run.samples.size();
     watch(300, true);
-    if (reachedAfter(mark, previewMotorDataTarget(kSpeed)) < 0 || reachedAfter(mark, previewMotorDataTarget(kSpeed)) > 200)
+    if (reachedAfter(mark, previewGlideTarget(kSpeed)) < 0 || reachedAfter(mark, previewGlideTarget(kSpeed)) > 200)
       fail("The needle did not catch up within 200 ms of the last reading");
   }
 
@@ -205,7 +207,7 @@ int main() {
   watch(1500);
   mark = run.samples.size();
   for (int speed = 34; speed <= 39; ++speed) {
-    updateDashboardMode(MODE_MOTOR_DATA, readings(speed), true);
+    updateDashboardMode(gMode, readings(speed), true);
     watch(600, true);
   }
   {
@@ -221,28 +223,28 @@ int main() {
 
   // D. A reading that arrives mid-glide takes over from where the needle is: no jump.
   watch(1000);
-  const int before = previewMotorDataPosition(kSpeed);
-  updateDashboardMode(MODE_MOTOR_DATA, readings(44), true);
+  const int before = previewGlidePosition(kSpeed);
+  updateDashboardMode(gMode, readings(44), true);
   mark = run.samples.size();
   watch(100, true);
-  updateDashboardMode(MODE_MOTOR_DATA, readings(49), true);
+  updateDashboardMode(gMode, readings(49), true);
   watch(600, true);
   {
     const std::vector<int> positions = positionsSince(mark);
     if (!monotonic(positions, true)) fail("Retargeting mid-glide made the needle go backwards");
     // The new reading is reached in about 125 ms, four or five frames: fast, but never in one.
-    if (largestMove(positions) > (previewMotorDataTarget(kSpeed) - before) / 3)
+    if (largestMove(positions) > (previewGlideTarget(kSpeed) - before) / 3)
       fail("Retargeting mid-glide made the needle jump");
-    if (positions.back() != previewMotorDataTarget(kSpeed)) fail("Retargeting mid-glide missed the new target");
+    if (positions.back() != previewGlideTarget(kSpeed)) fail("Retargeting mid-glide missed the new target");
   }
 
   // E. Turning round mid-glide goes back smoothly and never beyond where the needle had got to.
   watch(1000);
-  const int low = previewMotorDataPosition(kSpeed);
-  updateDashboardMode(MODE_MOTOR_DATA, readings(56), true);
+  const int low = previewGlidePosition(kSpeed);
+  updateDashboardMode(gMode, readings(56), true);
   watch(120, true);
-  const int turnedAt = previewMotorDataPosition(kSpeed);
-  updateDashboardMode(MODE_MOTOR_DATA, readings(49), true);
+  const int turnedAt = previewGlidePosition(kSpeed);
+  updateDashboardMode(gMode, readings(49), true);
   mark = run.samples.size();
   watch(500, true);
   {
@@ -256,58 +258,60 @@ int main() {
 
   // F. The same reading again does not restart or stretch the glide.
   watch(1000);
-  updateDashboardMode(MODE_MOTOR_DATA, readings(30), true);
+  updateDashboardMode(gMode, readings(30), true);
   mark = run.samples.size();
   for (int i = 0; i < 4; ++i) {
     watch(100);
-    updateDashboardMode(MODE_MOTOR_DATA, readings(30), true);
+    updateDashboardMode(gMode, readings(30), true);
   }
   watch(100);
   {
-    const int reached = reachedAfter(mark, previewMotorDataTarget(kSpeed));
+    const int reached = reachedAfter(mark, previewGlideTarget(kSpeed));
     if (reached < 240 || reached > 360) fail("Repeating a reading changed the glide's length to " + std::to_string(reached) + " ms");
   }
 
   // G. A reading the controller stops reporting is dropped at once; its return glides in.
+  if (unavailableDropsAtOnce) {
   setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL & ~static_cast<uint32_t>(TELEMETRY_FIELD_SPEED), TELEMETRY_FIELDS_ALL);
-  updateDashboardMode(MODE_MOTOR_DATA, readings(30), true);
-  if (previewMotorDataPosition(kSpeed) != 0) fail("An unavailable reading was not cleared at once");
+  updateDashboardMode(gMode, readings(30), true);
+  if (previewGlidePosition(kSpeed) != 0) fail("An unavailable reading was not cleared at once");
   setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
-  updateDashboardMode(MODE_MOTOR_DATA, readings(30), true);
-  if (previewMotorDataPosition(kSpeed) != 0) fail("A returning reading jumped instead of gliding");
+  updateDashboardMode(gMode, readings(30), true);
+  if (previewGlidePosition(kSpeed) != 0) fail("A returning reading jumped instead of gliding");
   watch(60);
-  if (previewMotorDataPosition(kSpeed) <= 0 || previewMotorDataPosition(kSpeed) >= previewMotorDataTarget(kSpeed))
+  if (previewGlidePosition(kSpeed) <= 0 || previewGlidePosition(kSpeed) >= previewGlideTarget(kSpeed))
     fail("A returning reading was not part-way after 60 ms");
   watch(500);
-  if (previewMotorDataPosition(kSpeed) != previewMotorDataTarget(kSpeed)) fail("A returning reading did not arrive");
+  if (previewGlidePosition(kSpeed) != previewGlideTarget(kSpeed)) fail("A returning reading did not arrive");
+  }
 
   // H. The startup sweep drives the instruments itself and ends on the live reading.
   freshDashboard(25, false);
   watch(2500);
-  if (previewMotorDataPosition(kSpeed) != previewMotorDataTarget(kSpeed) || previewMotorDataTarget(kSpeed) <= 0)
+  if (previewGlidePosition(kSpeed) != previewGlideTarget(kSpeed) || previewGlideTarget(kSpeed) <= 0)
     fail("The startup sweep did not end on the live reading");
 
   // I. A replacement screen built before the old one goes is placed at once and glides on its own.
-  updateDashboardMode(MODE_MOTOR_DATA, readings(31), true);
+  updateDashboardMode(gMode, readings(31), true);
   watch(40);  // a glide is under way on the old screen
   {
     lv_obj_t *old = lv_scr_act();
     lv_obj_t *screen = newScreen();
-    buildDashboardMode(screen, MODE_MOTOR_DATA, readings(18));
+    buildDashboardMode(screen, gMode, readings(18));
     lv_scr_load(screen);
     lv_obj_del(old);
     previewFinishStartupSweep();
-    updateDashboardMode(MODE_MOTOR_DATA, readings(18), true);
+    updateDashboardMode(gMode, readings(18), true);
     refreshNow();
-    if (previewMotorDataPosition(kSpeed) != previewMotorDataTarget(kSpeed)) fail("A replacement screen was not placed at once");
-    const int settled = previewMotorDataPosition(kSpeed);
+    if (previewGlidePosition(kSpeed) != previewGlideTarget(kSpeed)) fail("A replacement screen was not placed at once");
+    const int settled = previewGlidePosition(kSpeed);
     mark = run.samples.size();
     watch(400);
     if (positionsSince(mark).front() != settled || largestMove(positionsSince(mark)) != 0)
       fail("The old screen's glide reached the replacement");
-    updateDashboardMode(MODE_MOTOR_DATA, readings(19), true);
+    updateDashboardMode(gMode, readings(19), true);
     watch(1100);  // a one-reading step may take up to a second
-    if (previewMotorDataPosition(kSpeed) != previewMotorDataTarget(kSpeed) || previewMotorDataTarget(kSpeed) <= settled)
+    if (previewGlidePosition(kSpeed) != previewGlideTarget(kSpeed) || previewGlideTarget(kSpeed) <= settled)
       fail("The replacement screen did not glide to a new reading");
   }
 
@@ -319,26 +323,26 @@ int main() {
   resetAutomaticGaugeRanges();
   freshDashboard(20);
   for (int speed = 20; speed <= 29; ++speed) {
-    updateDashboardMode(MODE_MOTOR_DATA, readings(speed), true);
+    updateDashboardMode(gMode, readings(speed), true);
     watch(100);
   }
   mark = run.samples.size();
   for (int speed = 30; speed <= 36; ++speed) {
-    updateDashboardMode(MODE_MOTOR_DATA, readings(speed), true);
+    updateDashboardMode(gMode, readings(speed), true);
     watch(100);
   }
   {
     const std::vector<int> climb = positionsSince(mark);
     // Skip the first reading at the old ceiling, which is still settling into the end of the dial.
     for (size_t i = 20; i < climb.size(); ++i)
-      if (climb[i] != kMotorDataScalePositions) { fail("The ring left the end of the dial while the speed pushed the scale"); break; }
+      if (climb[i] != kGlideScale) { fail("The ring left the end of the dial while the speed pushed the scale"); break; }
   }
-  for (int i = 0; i < 3; ++i) { updateDashboardMode(MODE_MOTOR_DATA, readings(36), true); watch(100); }
-  updateDashboardMode(MODE_MOTOR_DATA, readings(20), true);
+  for (int i = 0; i < 3; ++i) { updateDashboardMode(gMode, readings(36), true); watch(100); }
+  updateDashboardMode(gMode, readings(20), true);
   watch(1200);
   {
-    const int settled = previewMotorDataPosition(kSpeed);  // 20 of a 36 km/h scale
-    if (settled < kMotorDataScalePositions * 50 / 100 || settled > kMotorDataScalePositions * 62 / 100)
+    const int settled = previewGlidePosition(kSpeed);  // 20 of a 36 km/h scale
+    if (settled < kGlideScale * 50 / 100 || settled > kGlideScale * 62 / 100)
       fail("The scale did not stay at the peak: the ring settled at " + std::to_string(settled));
   }
   automaticGaugeRanges = false;
@@ -346,13 +350,31 @@ int main() {
 
   // Every frame of every glide above repainted like a full redraw, bar the odd antialiased pixel at the
   // edge of a repainted rectangle, and none was expensive.
-  std::cout << "frames compared: " << run.differingPixels << " differing pixels, worst " << run.worstDelta
+  std::cout << gTheme << ": frames compared: " << run.differingPixels << " differing pixels, worst " << run.worstDelta
             << "/255; most pixels in a frame " << run.worstFramePixels << "\n";
   if (run.worstDelta > 24 || run.differingPixels > 64)
     fail("Glide frames drifted from full repaints: " + std::to_string(run.differingPixels) + " pixels, by up to " +
          std::to_string(run.worstDelta) + "/255");
   if (run.worstFramePixels >= 320 * 240) fail("A glide frame repainted the whole screen");
 
-  std::cout << (ok ? "motor data glide ok\n" : "motor data glide FAILED\n");
+}
+
+int main() {
+  initRuntime();
+  previewPreferencesConfigure(nullptr, true);
+  loadAppSettings();
+  language = LANG_EN;
+  dashboardAppearanceMode = DASH_APPEARANCE_DARK;
+  // A fixed 60 km/h scale, so a reading's place on the dial does not depend on the learned range.
+
+  // Each theme's speed instrument is the glide at the index its theme adds it.
+  runTheme("Motor Data", MODE_MOTOR_DATA, 1, true);
+  runTheme("Dual Gauge", MODE_GAUGE, 0, false);
+  runTheme("Redline", MODE_REDLINE, 0, false);
+  runTheme("Ride Console", MODE_BIG_READOUT, 0, false);
+  runTheme("Minimal", MODE_MINIMAL, 0, false);
+  runTheme("Efficiency", MODE_EFFICIENCY, 0, false);
+
+  std::cout << (ok ? "glide ok\n" : "glide FAILED\n");
   return ok ? 0 : 1;
 }

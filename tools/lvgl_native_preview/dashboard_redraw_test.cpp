@@ -11,6 +11,35 @@
 
 // Exercise incremental damage against a full redraw of the same live objects.
 // Pixel/flush counts describe SPI workload, not measured ESP32 frame time.
+
+// What one 100 ms tick put on the display: the update, then LVGL's timers in 10 ms slices, so the
+// needles, rings and bars that glide between readings move too. Counts add up over the tick's frames.
+struct TickMetrics {
+  bool changed = false;
+  uint32_t pixels = 0;
+  uint32_t flushes = 0;
+  uint32_t largestFrame = 0;
+};
+
+static TickMetrics runTick(DashboardMode mode, const DashboardValues &values) {
+  using namespace cyd::preview;
+  TickMetrics tick;
+  updateDashboardMode(mode, values, true);
+  for (int slice = 0; slice < 10; ++slice) {
+    FrameMetrics before, after;
+    latestFrameMetrics(before);
+    advanceTime(10);
+    lv_refr_now(display());  // an animation step may have invalidated since the refresh timer last ran
+    latestFrameMetrics(after);
+    if (before.frameNumber == after.frameNumber) continue;
+    tick.changed = true;
+    tick.pixels += after.flushedPixels;
+    tick.flushes += after.flushCount;
+    tick.largestFrame = max(tick.largestFrame, after.flushedPixels);
+  }
+  return tick;
+}
+
 int main(int argc, char **argv) {
   using namespace cyd::preview;
   initRuntime();
@@ -46,19 +75,15 @@ int main(int argc, char **argv) {
             values.speedKmh = step == 100 ? 999 : step == 101 ? 0 : 25;
             values.watts = step == 100 ? 100000 : step == 101 ? 0 : 1000;
           }
-          FrameMetrics before, after;
-          latestFrameMetrics(before);
-          updateDashboardMode(mode, values, true);
           // capturePpm/refreshNow intentionally invalidate the entire screen.
           // Service only accumulated damage when measuring a live update.
-          lv_refr_now(display());
-          latestFrameMetrics(after);
-          const bool changed = before.frameNumber != after.frameNumber;
-          if (mode == MODE_GAUGE && changed && after.flushedPixels >= 320 * 240) {
+          const TickMetrics tick = runTick(mode, values);
+          const bool changed = tick.changed;
+          if (mode == MODE_GAUGE && changed && tick.largestFrame >= 320 * 240) {
             std::cerr << "Dual Gauge update fell back to a full-screen repaint\n";
             ok = false;
           }
-          if (mode == MODE_HUD && step == 1 && after.flushedPixels >= 320 * 108) {
+          if (mode == MODE_HUD && step == 1 && tick.largestFrame >= 320 * 108) {
             std::cerr << "Small HUD update repainted at least the entire meter housing\n";
             ok = false;
           }
@@ -81,8 +106,8 @@ int main(int argc, char **argv) {
           uint64_t hash = 14695981039346656037ULL;
           for (auto pixel : incremental) { hash ^= pixel.full; hash *= 1099511628211ULL; }
           std::cout << static_cast<int>(mode) << ',' << light << ',' << static_cast<int>(lang)
-                    << ',' << step << ',' << (changed ? after.flushedPixels : 0)
-                    << ',' << (changed ? after.flushCount : 0) << ',' << hash << '\n';
+                    << ',' << step << ',' << (changed ? tick.pixels : 0)
+                    << ',' << (changed ? tick.flushes : 0) << ',' << hash << '\n';
           if (argc > 1 && lang == LANG_EN && step == 7)
             capturePpm(std::filesystem::path(argv[1]) /
                        (std::to_string(mode) + (light ? "_light.ppm" : "_dark.ppm")));
@@ -107,12 +132,10 @@ int main(int argc, char **argv) {
             }
           }
         }
-        FrameMetrics idleBefore, idleAfter;
-        latestFrameMetrics(idleBefore);
-        updateDashboardMode(mode, values, true);
-        lv_refr_now(display());
-        latestFrameMetrics(idleAfter);
-        if (idleBefore.frameNumber != idleAfter.frameNumber) {
+        // Not idle yet: a glide under way (a one-reading step takes up to a second), and the 160 ms
+        // damping of the meters that follow the live value, both go on while the readings repeat.
+        for (int settle = 0; settle < 20; ++settle) runTick(mode, values);
+        if (runTick(mode, values).changed) {
           std::cerr << "Unchanged dashboard values caused a repaint: mode=" << mode << '\n';
           ok = false;
         }

@@ -195,6 +195,40 @@ void setSegRingFill(SegRingWidget &ring, lv_color_t fill, int bottomY);
 // further in than the rest. Call once, right after makeSegRing.
 void setSegRingMajors(SegRingWidget &ring, int extraPx, int steps);
 
+// A needle, ring or bar that eases to each new reading instead of jumping to it.
+//
+// The dashboard hears from the controller ten times a second, and the speed in whole km/h, so an
+// instrument moved straight to each reading would jump a step at a time. A glide carries it, along
+// a straight line, from wherever it is to the new position, taking a little longer than the reading
+// had been steady, so the next reading finds it still on its way: a steady acceleration is one
+// continuous motion. A change of about one reading (5% of the scale or less) may take up to a
+// second, so a gentle ramp crawls where it would otherwise move and stop between readings; the
+// price is an instrument that trails the true value by about 1 km/h (a quarter to half a second),
+// where a big change takes 0.3 s at most and keeps up. The digits should show the live reading.
+// The first reading, and anything the caller places without gliding, is placed at once.
+//
+// A position is a fraction of the instrument's scale in kGlideScale ths, finer than a pixel of
+// travel, so a glide has many steps where a 1 km/h change has one, and so that a scale that changes
+// under the instrument is just a new target. A bar that runs both ways uses negative positions.
+constexpr int kGlideScale = 4096;
+struct Glide {
+  void (*place)(void *context, int position);  // draws the instrument at `position`
+  void *context;
+  int position;        // where it is drawn
+  int target;          // where it is heading
+  uint32_t changedAt;  // millis() when the target last changed
+  bool placed;         // false until the first reading
+};
+// `glide` is the caller's storage and the animation keeps a pointer to it, so it must outlive its
+// screen (a static, like the other dashboard widgets).
+void glideInit(Glide &glide, void (*place)(void *context, int position), void *context);
+// Show `target`: by a glide from wherever the instrument is, unless this is its first reading or
+// `animate` is false (a startup sweep, or a reading that is not available). Placing a reading
+// drops any glide under way, which is what stops a replaced screen's glides reaching its successor.
+void glideAim(Glide &glide, int target, bool animate = true);
+// Drops a glide under way; the instrument stays where it is.
+void glideStop(Glide &glide);
+
 // Segmented arc gauge (drawGaugeScale/updateGaugeArc): 260deg sweep from 140deg
 struct ArcGauge {
   lv_obj_t *arc;
@@ -210,7 +244,6 @@ void setArcValue(ArcGauge &gauge, int value);
 
 // Horizontal bar row (drawLayoutBarRow): outlined bar with fill
 lv_obj_t *makeBarFrame(lv_obj_t *parent, const cyd_layout::Item &frame, lv_color_t color);
-void setBarValue(lv_obj_t *bar, int amount, int maxAmount);
 
 // Screen container with black background, no scroll/padding
 lv_obj_t *makeScreen();

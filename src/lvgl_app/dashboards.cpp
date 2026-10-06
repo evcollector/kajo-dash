@@ -985,6 +985,49 @@ static void sweepPowerWith(lv_obj_t *identity, SweepFn fn, const DashboardValues
   if (dashHas(TELEMETRY_FIELD_POWER)) sweepWith(identity, fn, v.watts, powerBarMax(), delayMs);
 }
 
+// ── Glides ────────────────────────────────────────────────────────────────────
+// The needles, rings and bars of the dashboard on screen that glide between readings, in the
+// order their theme adds them (see Glide in ui_common.h). They belong to that one screen: a
+// new screen drops its predecessor's, and so does deleting the screen, because an animation
+// that outlived its widgets would draw into freed objects.
+static constexpr int kMaxGlides = 6;
+static Glide glides[kMaxGlides];
+static int glideCount = 0;
+static lv_obj_t *glideScreen = nullptr;
+
+static void glideScreenDeleteCb(lv_event_t *event) {
+  // A replacement screen may already have been built before this outgoing one is
+  // deleted, so forget only the screen that is actually going.
+  if (glideScreen != lv_event_get_target(event)) return;
+  for (int i = 0; i < glideCount; ++i) glideStop(glides[i]);
+  glideCount = 0;
+  glideScreen = nullptr;
+}
+
+static void glideBegin(lv_obj_t *scr) {
+  for (int i = 0; i < glideCount; ++i) glideStop(glides[i]);
+  glideCount = 0;
+  glideScreen = scr;
+  lv_obj_add_event_cb(scr, glideScreenDeleteCb, LV_EVENT_DELETE, nullptr);
+}
+
+static Glide &glideAdd(void (*place)(void *context, int position), void *context) {
+  Glide &glide = glides[glideCount < kMaxGlides ? glideCount++ : kMaxGlides - 1];
+  glideInit(glide, place, context);
+  return glide;
+}
+
+// A reading as a position on a scale of 0..maximum; below zero is zero.
+static int glidePosition(int value, int maximum) {
+  return (int)lroundf(constrain((float)value / max(1, maximum), 0.0F, 1.0F) * kGlideScale);
+}
+
+#ifdef CYD_LVGL_PREVIEW
+// Where an instrument is, and where it is heading, in kGlideScale ths; `index` is the order its theme adds them.
+int previewGlidePosition(int index) { return glides[index].position; }
+int previewGlideTarget(int index) { return glides[index].target; }
+#endif
+
 // ── HUD (Cyber HUD) ───────────────────────────────────────────────────────────
 
 // Point storage for decorative lv_lines. The points must outlive the objects,
@@ -1733,12 +1776,22 @@ static void updateHud(const DashboardValues &v) {
 
 // ── Dual Gauge ────────────────────────────────────────────────────────────────
 
+// The lit ticks and the needle of a dial are one glide: glides[0] is the speed's, glides[1] the power's.
+static void gaugeSpeedPlace(void *, int position) {
+  setTickDialValue(dw.speedDial, position);
+  setTickNeedleValue(dw.speedNeedle, position);
+}
+
+static void gaugePowerPlace(void *, int position) {
+  setTickDialValue(dw.powerDial, position);
+  setTickNeedleValue(dw.powerNeedle, position);
+}
+
 static void gaugeSpeedSweep(int value) {
   char text[16];
   formatSpeedValue(text, sizeof(text), value);
   setScaledValueText(dw.speed, GAUGE_SPEED, text, layoutFontToLv(GAUGE_SPEED.font));
-  setTickDialValue(dw.speedDial, value);
-  setTickNeedleValue(dw.speedNeedle, value);
+  glideAim(glides[0], glidePosition(value, speedGaugeMax()), false);
 }
 
 static void gaugePowerSweep(int value) {
@@ -1746,8 +1799,7 @@ static void gaugePowerSweep(int value) {
   formatPowerValue(text, sizeof(text), value);
   setScaledValueText(dw.power, GAUGE_POWER, text, layoutFontToLv(GAUGE_POWER.font));
   setLabelText(dw.powerUnit, powerUnitLabel(value));
-  setTickDialValue(dw.powerDial, value);
-  setTickNeedleValue(dw.powerNeedle, value);
+  glideAim(glides[1], glidePosition(value, powerBarMax()), false);
 }
 
 static void buildGauge(lv_obj_t *scr, const DashboardValues &v) {
@@ -1767,11 +1819,11 @@ static void buildGauge(lv_obj_t *scr, const DashboardValues &v) {
   // Redline-style lit-tick dials on the full circular 140deg/260deg sweep:
   // dense thin ticks (white majors, dark minors), lit ticks glow accent
   dw.speedDial = makeTickDial(scr, 0, GAUGE_SPEED_GAUGE.cx, GAUGE_SPEED_GAUGE.cy, GAUGE_SPEED_GAUGE.r, 41, 5,
-                              140.0F, 260.0F, 12, 7, speedGaugeMax(), 3, 2, gaugeSpeedPts);
+                              140.0F, 260.0F, 12, 7, kGlideScale, 3, 2, gaugeSpeedPts);
   // shorter ticks than the speed ring: the wider number inside needs the clear
   // radius more than the ring needs the extra tick length
   dw.powerDial = makeTickDial(scr, 41, GAUGE_POWER_GAUGE.cx, GAUGE_POWER_GAUGE.cy, GAUGE_POWER_GAUGE.r, 41, 5,
-                              140.0F, 260.0F, 8, 5, powerBarMax(), 3, 2, gaugePowerPts);
+                              140.0F, 260.0F, 8, 5, kGlideScale, 3, 2, gaugePowerPts);
   // The unlit half of a ring is scale, not data. Built white, the majors read
   // as loudly as the lit accent and the eye has to hunt for the value, so both
   // tiers are mixed well down towards the face — present enough to show where
@@ -1788,9 +1840,9 @@ static void buildGauge(lv_obj_t *scr, const DashboardValues &v) {
   }
   // Keep the tip at the gauge ring while shortening the radial span by 20%.
   dw.speedNeedle = makeTickNeedle(scr, GAUGE_SPEED_GAUGE.cx, GAUGE_SPEED_GAUGE.cy, 44,
-                                  GAUGE_SPEED_GAUGE.r, 140, 260, speedGaugeMax(), 5, 2);
+                                  GAUGE_SPEED_GAUGE.r, 140, 260, kGlideScale, 5, 2);
   dw.powerNeedle = makeTickNeedle(scr, GAUGE_POWER_GAUGE.cx, GAUGE_POWER_GAUGE.cy, 38,
-                                  GAUGE_POWER_GAUGE.r, 140, 260, powerBarMax(), 4, 2);
+                                  GAUGE_POWER_GAUGE.r, 140, 260, kGlideScale, 4, 2);
 
   lv_obj_t *voltsIcon = makeLayoutIcon(scr, GAUGE_VOLTS_ICON, CYD_ICON_VOLTAGE, accent);
   dw.volts = makeLabel(scr, GAUGE_VOLTS, t.voltage, whiteLv());
@@ -1848,10 +1900,10 @@ static void buildGauge(lv_obj_t *scr, const DashboardValues &v) {
   placeUnitAfterValue(dw.trip, dw.tripUnit, GAUGE_TRIP_EXTRA2, 3);
   placeUnitAfterValue(dw.odo, dw.odoUnit, GAUGE_ODO_EXTRA2, 3);
   placeUnitAfterValue(dw.avg, dw.avgUnit, GAUGE_AVG_EXTRA2, 3);
-  setTickDialValue(dw.speedDial, displaySpeedValue());
-  setTickDialValue(dw.powerDial, displayPowerValue());
-  setTickNeedleValue(dw.speedNeedle, displaySpeedValue());
-  setTickNeedleValue(dw.powerNeedle, displayPowerValue());
+  glideAdd(gaugeSpeedPlace, nullptr);
+  glideAdd(gaugePowerPlace, nullptr);
+  glideAim(glides[0], glidePosition(v.speedKmh, speedGaugeMax()), false);
+  glideAim(glides[1], glidePosition(v.watts, powerBarMax()), false);
   setSegBatteryLevel(dw.segBatt, v.batteryPercent);
   sweepSpeedWith(dw.speed, gaugeSpeedSweep, v);
   sweepPowerWith(dw.power, gaugePowerSweep, v);
@@ -1860,10 +1912,8 @@ static void buildGauge(lv_obj_t *scr, const DashboardValues &v) {
 static void updateGauge(const DashboardValues &v) {
   DashTexts t = fmtTexts(v);
   setScaledValueText(dw.speed, GAUGE_SPEED, t.speed, layoutFontToLv(GAUGE_SPEED.font));
-  setTickDialValue(dw.speedDial, displaySpeedValue());
-  setTickDialValue(dw.powerDial, displayPowerValue());
-  setTickNeedleValue(dw.speedNeedle, displaySpeedValue());
-  setTickNeedleValue(dw.powerNeedle, displayPowerValue());
+  glideAim(glides[0], glidePosition(v.speedKmh, speedGaugeMax()));
+  glideAim(glides[1], glidePosition(v.watts, powerBarMax()));
   setScaledValueText(dw.power, GAUGE_POWER, t.power, layoutFontToLv(GAUGE_POWER.font));
   setLabelText(dw.powerUnit, powerUnitLabel(v.watts));
   if (elecDue) {
@@ -2333,92 +2383,30 @@ static void updateBars(const DashboardValues &v) {
 // dial) with the shared outer needle. Only footer slots may be reassigned, so a
 // gauge never changes its meaning.
 //
-// Rings and needles glide. The dashboard hears from the controller ten times a
-// second and the speed in whole km/h, so a ring and needle moved straight to each
-// reading would jump a step at a time. Instead each new reading carries them, in a
-// straight line, from wherever they are to the new position, taking a little longer
-// than the reading had been steady, so that the next one finds them still on their
-// way: a steady acceleration is one continuous motion. A reading that changes by
-// about one step may take up to a second, so a gentle ramp crawls where it would
-// otherwise move and stop between readings; the price is a needle that trails the
-// true speed by about 1 km/h (a quarter to half a second), where a big change takes
-// 0.3 s at most and keeps up. The numbers show the live reading at once. The first
-// reading, and every step of the startup sweep, is placed without gliding.
+// Rings and needles glide (see Glide in ui_common.h): each new reading carries them, in a
+// straight line, from wherever they are to the new position, so a steady acceleration is one
+// continuous motion instead of a step a reading. The numbers show the live reading at once.
+// The first reading, and every step of the startup sweep, is placed without gliding.
 constexpr int kMotorDataUnlitMix = 52;    // of 255 toward the full-brightness color, over the ground
 constexpr int kMotorDataDiscMix = 14;     // of 255 toward the dial's color, over the dashboard ground (well below the 38 of an unlit block)
 constexpr int kMotorDataMajorExtraPx = 3;  // the longer blocks, reaching inward, as the dual gauge's major ticks
 constexpr int kMotorDataMajorSteps = 5;    // at every fifth of the dial
 constexpr int kMotorDataPowerThickness = 7;  // the input power ring's blocks are shorter, leaving its number room
 constexpr int kMotorDataSweepDeg = 240;  // the most a ring may span, centred on 12 o'clock
-// A position is a fraction of the scale in 4096ths: finer than a pixel of needle
-// travel, so a glide has many steps where a 1 km/h change has one.
-constexpr int kMotorDataScale = 4096;
-constexpr uint32_t kMotorDataGlideMinMs = 100;
-constexpr uint32_t kMotorDataGlideSmallMaxMs = 1000;    // a step of up to kMotorDataSmallStep
-constexpr uint32_t kMotorDataGlideBigMaxMs = 300;       // anything bigger
-constexpr int kMotorDataSmallStep = kMotorDataScale / 20;  // 5% of the scale, about one reading of the speed
 struct MotorDataInstrument {
   SegRingWidget ring;
   TickNeedle needle;
   lv_obj_t *value;
   lv_obj_t *caption;
-  int position;        // where the ring and needle are
-  int target;          // where they are heading
-  uint32_t changedAt;  // millis() when the target last changed
-  bool placed;         // false until the first reading
 };
 static MotorDataInstrument motorData[6];
 
-static void motorDataPlace(MotorDataInstrument &instrument, int position) {
-  instrument.position = position;
-  setSegRingValue(instrument.ring, position, kMotorDataScale);
+static void motorDataPlace(void *context, int position) {
+  MotorDataInstrument &instrument = *static_cast<MotorDataInstrument *>(context);
+  setSegRingValue(instrument.ring, position, kGlideScale);
   setTickNeedleValue(instrument.needle, position);
 }
-static void motorDataGlideCb(void *instrument, int32_t position) {
-  motorDataPlace(*static_cast<MotorDataInstrument *>(instrument), position);
-}
-// Show `target`: by a glide from wherever the instrument is, unless this is its first
-// reading or the caller is animating it already. Placing a reading drops any glide the
-// instrument had, which is what stops a replaced screen's glides reaching its successor.
-static void motorDataAim(MotorDataInstrument &instrument, int target, bool glide) {
-  const uint32_t now = millis();
-  if (!glide || !instrument.placed) {
-    lv_anim_del(&instrument, motorDataGlideCb);
-    instrument.placed = true;
-    instrument.target = target;
-    instrument.changedAt = now;
-    motorDataPlace(instrument, target);
-    return;
-  }
-  if (target == instrument.target) return;  // the same reading again: the glide carries on
-  const uint32_t steady = now - instrument.changedAt;
-  const int step = abs(target - instrument.position);
-  instrument.target = target;
-  instrument.changedAt = now;
-  if (target == instrument.position) {
-    lv_anim_del(&instrument, motorDataGlideCb);
-    return;
-  }
-  lv_anim_t glideAnim;
-  lv_anim_init(&glideAnim);
-  lv_anim_set_var(&glideAnim, &instrument);
-  lv_anim_set_exec_cb(&glideAnim, motorDataGlideCb);
-  lv_anim_set_values(&glideAnim, instrument.position, target);
-  lv_anim_set_time(&glideAnim, constrain(steady + steady / 4, kMotorDataGlideMinMs,
-                                         step <= kMotorDataSmallStep ? kMotorDataGlideSmallMaxMs : kMotorDataGlideBigMaxMs));
-  lv_anim_set_path_cb(&glideAnim, lv_anim_path_linear);
-  lv_anim_start(&glideAnim);  // replaces a glide still under way
-}
 
-// The instruments belong to the active Motor Data screen; null once it is gone.
-static lv_obj_t *motorDataScreen = nullptr;
-static void motorDataScreenDeleteCb(lv_event_t *event) {
-  // A replacement screen may already have been built before this outgoing one is
-  // deleted, so forget only the screen that is actually going.
-  if (motorDataScreen != lv_event_get_target(event)) return;
-  for (int i = 0; i < 6; ++i) lv_anim_del(&motorData[i], motorDataGlideCb);
-  motorDataScreen = nullptr;
-}
 // Instrument order throughout: phase A, speed, phase V, battery A, input power, duty.
 static const Item *const motorDataGauges[] = {&MOTOR_DATA_PHASE_AMPS_GAUGE, &MOTOR_DATA_SPEED_GAUGE,
   &MOTOR_DATA_PHASE_VOLTS_GAUGE, &MOTOR_DATA_BATT_AMPS_GAUGE, &MOTOR_DATA_POWER_GAUGE, &MOTOR_DATA_DUTY_GAUGE};
@@ -2451,8 +2439,8 @@ static int motorDataReading(int i, const DashboardValues &v) {
 static void setMotorDataReading(int i, int value, bool available = true, bool glide = true) {
   MotorDataInstrument &instrument = motorData[i];
   const float fraction = (float)abs(value) / max(1, motorDataMaximum(i));
-  motorDataAim(instrument, available ? (int)lroundf(constrain(fraction, 0.0F, 1.0F) * kMotorDataScale) : 0,
-            glide && available);
+  glideAim(glides[i], available ? (int)lroundf(constrain(fraction, 0.0F, 1.0F) * kGlideScale) : 0,
+           glide && available);
   setObjHidden(instrument.needle.body, !available);
   setObjHidden(instrument.needle.highlight, !available);
   char text[24];
@@ -2472,7 +2460,7 @@ static const SweepFn motorDataSweeps[] = {motorDataSweep<0>, motorDataSweep<1>, 
   motorDataSweep<3>, motorDataSweep<4>, motorDataSweep<5>};
 
 static void updateMotorData(const DashboardValues &v) {
-  if (!motorDataScreen) return;
+  if (!glideScreen) return;
   const DashTexts t = fmtTexts(v);
   for (int i = 0; i < 6; ++i) setMotorDataReading(i, motorDataReading(i, v), dashHas(motorDataFields[i]));
   if (midDue) setLabelText(dw.uptime, t.uptime);
@@ -2489,8 +2477,6 @@ static void updateMotorData(const DashboardValues &v) {
 }
 
 static void buildMotorData(lv_obj_t *scr, const DashboardValues &v) {
-  motorDataScreen = scr;
-  lv_obj_add_event_cb(scr, motorDataScreenDeleteCb, LV_EVENT_DELETE, nullptr);
   const DashTexts t = fmtTexts(v);
   // The top bar is the Dual Gauge and Cyber HUD one, with a plain white clock icon.
   makeLayoutIcon(scr, MOTOR_DATA_CLOCK_ICON, CYD_ICON_UPTIME, whiteLv());
@@ -2526,11 +2512,8 @@ static void buildMotorData(lv_obj_t *scr, const DashboardValues &v) {
                     MOTOR_DATA_FOOTER_TOP.y);  // the footer bar stays clear of the discs
     setSegRingMajors(instrument.ring, kMotorDataMajorExtraPx, kMotorDataMajorSteps);
     instrument.needle = makeTickNeedle(scr, g.cx, g.cy, g.r - (i == 1 ? 16 : 12), g.r,
-        instrument.ring.startDeg, instrument.ring.extentDeg, kMotorDataScale, 4, 2);
-    instrument.position = 0;
-    instrument.target = 0;
-    instrument.changedAt = millis();
-    instrument.placed = false;
+        instrument.ring.startDeg, instrument.ring.extentDeg, kGlideScale, 4, 2);
+    glideAdd(motorDataPlace, &instrument);
     lv_obj_set_style_line_color(instrument.needle.body, color, 0);
     const lv_color_t numberColor = lv_color_mix(whiteLv(), color, 225);
     // The number and its unit are the dial's color a long way toward white (toward black in light appearance, where
@@ -2556,12 +2539,6 @@ static void buildMotorData(lv_obj_t *scr, const DashboardValues &v) {
   for (int i = 0; i < 6; ++i) if (dashHas(motorDataFields[i]))
     sweepWith(motorData[i].value, motorDataSweeps[i], abs(motorDataReading(i, v)), motorDataMaximum(i));
 }
-
-#ifdef CYD_LVGL_PREVIEW
-// Where an instrument's ring and needle are, and where they are heading, in 4096ths of the scale.
-int previewMotorDataPosition(int instrument) { return motorData[instrument].position; }
-int previewMotorDataTarget(int instrument) { return motorData[instrument].target; }
-#endif
 
 // ── Pixel ────────────────────────────────────────────────────────────────────
 // A deliberately spare instrument face: one oversized speed readout owns the
@@ -3155,19 +3132,40 @@ static lv_obj_t *makeBig2Bar(lv_obj_t *scr, int x, int y, int w, int h) {
   return bar;
 }
 
-static void updateBigReadoutPowerBeam(int watts, lv_color_t driveColor, lv_color_t regenColor) {
-  if (!dw.barPower) return;
+// The speed bar is glides[0], the power beam glides[1]. The beam runs both ways, so its position
+// is signed and it wears the colour of the side it is on: crossing zero changes it as the beam does.
+static lv_color_t bigReadoutDriveColor;
+static lv_color_t bigReadoutRegenColor;
+
+// A glide frame that moves a bar less than a pixel changes nothing, and LVGL repaints the whole bar for it.
+static int bigReadoutSpeedPixels;
+static int bigReadoutBeamPixels;
+
+static void bigReadoutSpeedPlace(void *, int position) {
+  const int pixels = position * (BIG2_SPEED_R - BIG2_SPEED_L) / kGlideScale;
+  if (pixels == bigReadoutSpeedPixels) return;
+  bigReadoutSpeedPixels = pixels;
+  lv_bar_set_value(dw.barSpeed, position, LV_ANIM_OFF);
+}
+
+static void bigReadoutPowerPlace(void *, int position) {
+  const int pixels = position * ((BIG2_POWER_R - BIG2_POWER_L) / 2) / kGlideScale;
+  if (pixels == bigReadoutBeamPixels) return;
+  bigReadoutBeamPixels = pixels;
+  setObjBgColor(dw.barPower, position < 0 ? bigReadoutRegenColor : bigReadoutDriveColor, LV_PART_INDICATOR);
+  lv_bar_set_value(dw.barPower, position, LV_ANIM_OFF);
+}
+
+static int bigReadoutBeamPosition(int watts) {
   const int maximum = watts < 0 && automaticGaugeRanges ? displayGaugeMaximum(RANGE_REGEN) : max(100, powerBarMax());
-  const int percent = constrain(watts * 100 / maximum, -100, 100);
-  setObjBgColor(dw.barPower, watts < 0 ? regenColor : driveColor, LV_PART_INDICATOR);
-  lv_bar_set_value(dw.barPower, percent, LV_ANIM_OFF);
+  return (int)lroundf(constrain((float)watts / maximum, -1.0F, 1.0F) * kGlideScale);
 }
 
 static void bigReadoutSpeedSweep(int value) {
   char text[16];
   formatSpeedValue(text, sizeof(text), value);
   setLabelText(dw.speed, text);
-  setBarValue(dw.barSpeed, value, speedGaugeMax());
+  glideAim(glides[0], glidePosition(value, speedGaugeMax()), false);
 }
 
 static void bigReadoutPowerSweep(int value) {
@@ -3175,8 +3173,7 @@ static void bigReadoutPowerSweep(int value) {
   formatPowerValue(text, sizeof(text), value);
   setLabelText(dw.power, text);
   setLabelText(dw.powerUnit, powerUnitLabel(value));
-  const lv_color_t accent = accentLv();
-  updateBigReadoutPowerBeam(value, accent, seriesContrastLv(accent));
+  glideAim(glides[1], bigReadoutBeamPosition(value), false);
 }
 
 static void buildBigReadout(lv_obj_t *scr, const DashboardValues &v) {
@@ -3216,12 +3213,14 @@ static void buildBigReadout(lv_obj_t *scr, const DashboardValues &v) {
   configureFittedLabel(dw.speed, BIG2_SPEED, speedFitTemplate(), layoutFontToLv(BIG2_SPEED.font));
   setLabelText(dw.speed, t.speed);
   dw.barSpeed = makeBig2Bar(scr, BIG2_SPEED_L, 136, BIG2_SPEED_R - BIG2_SPEED_L, 5);
-  lv_bar_set_range(dw.barSpeed, 0, 100);  // setBarValue scales into percent
+  lv_bar_set_range(dw.barSpeed, 0, kGlideScale);
   lv_obj_set_style_bg_color(dw.barSpeed, accent, LV_PART_INDICATOR);
   // The bar shows a proportion, so both sides stay in km/h. Driving it with
   // converted speed against a km/h scale made it under-read in every
   // non-metric unit, and read as permanently empty in Mach.
-  setBarValue(dw.barSpeed, displaySpeedValue(), speedGaugeMax());
+  bigReadoutSpeedPixels = -1;
+  glideAdd(bigReadoutSpeedPlace, nullptr);
+  glideAim(glides[0], glidePosition(v.speedKmh, speedGaugeMax()), false);
 
   makeIcon(scr, BIG2_POWER_L, BIG2_CAPTION_Y - 2, CYD_ICON_POWER, accent);
   makeLabelAt(scr, BIG2_POWER_L + 22, BIG2_CAPTION_Y, metricPowerLabelShort(), accent, F1, 0);
@@ -3232,11 +3231,15 @@ static void buildBigReadout(lv_obj_t *scr, const DashboardValues &v) {
   // line straight through the fill, which always starts from that same point.
   makeVLine(scr, BIG2_POWER_CX, 105, 3, muted);
   dw.barPower = makeBig2Bar(scr, BIG2_POWER_L, 110, BIG2_POWER_R - BIG2_POWER_L, 10);
-  lv_bar_set_range(dw.barPower, -100, 100);
+  lv_bar_set_range(dw.barPower, -kGlideScale, kGlideScale);
   lv_bar_set_mode(dw.barPower, LV_BAR_MODE_SYMMETRICAL);
   makeLabelAt(scr, BIG2_POWER_L, 128, "REGEN", muted, F1, 0);
   makeLabelAt(scr, BIG2_POWER_R, 128, "DRIVE", muted, F1, 2);
-  updateBigReadoutPowerBeam(displayPowerValue(), accent, regen);
+  bigReadoutDriveColor = accent;
+  bigReadoutRegenColor = regen;
+  bigReadoutBeamPixels = INT_MIN;
+  glideAdd(bigReadoutPowerPlace, nullptr);
+  glideAim(glides[1], bigReadoutBeamPosition(v.watts), false);
 
   // Secondary strip: one surface, three rules, four columns.
   makeBig2Surface(scr, BIG2_MARGIN, BIG2_STRIP_Y, BIG2_WIDTH, BIG2_STRIP_H);
@@ -3272,15 +3275,13 @@ static void buildBigReadout(lv_obj_t *scr, const DashboardValues &v) {
 
 static void updateBigReadout(const DashboardValues &v) {
   DashTexts t = fmtTexts(v);
-  const lv_color_t accent = accentLv();
-  const lv_color_t regen = seriesContrastLv(accent);
   char value[32];
   setLabelText(dw.speed, t.speed);
-  setBarValue(dw.barSpeed, displaySpeedValue(), speedGaugeMax());
+  glideAim(glides[0], glidePosition(v.speedKmh, speedGaugeMax()));
   formatPowerValue(value, sizeof(value), v.watts);
   setLabelText(dw.power, value);
   setLabelText(dw.powerUnit, powerUnitLabel(v.watts));
-  updateBigReadoutPowerBeam(displayPowerValue(), accent, regen);
+  glideAim(glides[1], bigReadoutBeamPosition(v.watts));
   if (elecDue) {
     setLabelText(dw.volts, t.voltageWithUnit);
     setLabelText(dw.amps, t.currentWithUnit);
@@ -3343,12 +3344,16 @@ static bool setRedlineStableTightText(lv_obj_t *label, const Item &item, const c
 }
 
 // The lit ticks, the needle and the digits sweep as one instrument.
+static void redlineSpeedPlace(void *, int position) {
+  setTickDialValue(dw.speedDial, position);
+  setTickNeedleValue(dw.speedNeedle, position);
+}
+
 static void redlineSpeedSweep(int value) {
   char text[16];
   formatSpeedValue(text, sizeof(text), value);
   setTightCenteredLabelText(dw.speed, REDLINE_SPEED, text);
-  setTickDialValue(dw.speedDial, value);
-  setTickNeedleValue(dw.speedNeedle, value);
+  glideAim(glides[0], glidePosition(value, speedGaugeMax()), false);
 }
 
 static void buildRedline(lv_obj_t *scr, const DashboardValues &v) {
@@ -3382,9 +3387,9 @@ static void buildRedline(lv_obj_t *scr, const DashboardValues &v) {
   // objects instead of one lv_meter — a meter would be a screen-sized widget
   // fully redrawn whenever anything on top of it changes
   dw.speedDial = makeTickDial(scr, 0, REDLINE_SPEED_GAUGE.cx, REDLINE_SPEED_GAUGE.cy, REDLINE_SPEED_GAUGE.r, 51,
-                              10, 218.0F, 104.0F, 19, 11, speedGaugeMax(), 3, 2, redlinePts);
+                              10, 218.0F, 104.0F, 19, 11, kGlideScale, 3, 2, redlinePts);
   dw.speedNeedle = makeTickNeedle(scr, REDLINE_SPEED_GAUGE.cx, REDLINE_SPEED_GAUGE.cy, 132,
-                                  REDLINE_SPEED_GAUGE.r, 218, 104, speedGaugeMax(), 6, 3);
+                                  REDLINE_SPEED_GAUGE.r, 218, 104, kGlideScale, 6, 3);
 
   const Item *scaleItems[6] = {&REDLINE_S0, &REDLINE_S20, &REDLINE_S40, &REDLINE_S60, &REDLINE_S80, &REDLINE_S100};
   for (int i = 0; i < 6; i++) {
@@ -3449,8 +3454,8 @@ static void buildRedline(lv_obj_t *scr, const DashboardValues &v) {
   setTightLabelText(dw.odo, REDLINE_ODO, t.odo);
   setTightLabelText(dw.odoUnit, REDLINE_ODO_EXTRA1, distanceUnitLabel());
   updateRedlineUnitPositions();
-  setTickDialValue(dw.speedDial, displaySpeedValue());
-  setTickNeedleValue(dw.speedNeedle, displaySpeedValue());
+  glideAdd(redlineSpeedPlace, nullptr);
+  glideAim(glides[0], glidePosition(v.speedKmh, speedGaugeMax()), false);
   sweepSpeedWith(dw.speed, redlineSpeedSweep, v);
 }
 
@@ -3460,8 +3465,7 @@ static void updateRedline(const DashboardValues &v) {
 
   // full rate: only the speed digits and the dial's arc bar
   setRedlineStableTightText(dw.speed, REDLINE_SPEED, t.speed, true, 8);
-  setTickDialValue(dw.speedDial, displaySpeedValue());
-  setTickNeedleValue(dw.speedNeedle, displaySpeedValue());
+  glideAim(glides[0], glidePosition(v.speedKmh, speedGaugeMax()));
 
   // watts at full rate; volts/amps on the 200 ms tier; temp on the 500 ms
   // tier — the side stats sit inside the dial area, so theirs are the
@@ -3828,12 +3832,39 @@ static const int MINIMAL_RING_BG_SEGMENTS = 12;
 static const int MINIMAL_RING_TICK_INTERVALS = SPEED_SCALE_INTERVALS * 5;
 static const int MINIMAL_RING_START = 140;
 static const int MINIMAL_RING_SWEEP = 260;
+static const int MINIMAL_RING_RADIUS = 104;
 static lv_obj_t *minimalSpeedRingObj = NULL;
-static lv_timer_t *minimalSpeedRingTimer = NULL;
-static int minimalSpeedRingValueX100 = 0;
-static int minimalSpeedRingTargetX100 = 0;
-static int minimalSpeedRingStepX100 = 0;
-static uint8_t minimalSpeedRingFramesLeft = 0;
+static int minimalSpeedRingShown = 0;  // where the ring and needle were last drawn, in kGlideScale ths
+
+// Minimal and Efficiency draw the same kind of ring: arcs of a horseshoe, ticks and a needle. A point
+// at `angle` degrees and `radius` from the ring's centre, the box that holds a stretch of ring between
+// two angles, and whether a draw callback's clip reaches that box.
+static lv_point_t ringPoint(const lv_point_t &center, int angle, int radius) {
+  lv_point_t point;
+  point.x = center.x + ((lv_trigo_sin(angle + 90) * radius) >> LV_TRIGO_SHIFT);
+  point.y = center.y + ((lv_trigo_sin(angle) * radius) >> LV_TRIGO_SHIFT);
+  return point;
+}
+
+// Includes the inner needle tip and the outer ring, with raster/round-cap margin.
+// Angles are integral in the renderer; walking the same angles is conservative.
+static lv_area_t ringSweepBounds(const lv_point_t &center, int radius, int start, int end) {
+  lv_area_t area = {32767, 32767, -32768, -32768};
+  for (int angle = start; angle <= end; ++angle) {
+    for (int r : {radius * 62 / 104, radius}) {
+      const lv_point_t p = ringPoint(center, angle, r);
+      area.x1 = min(area.x1, p.x); area.x2 = max(area.x2, p.x);
+      area.y1 = min(area.y1, p.y); area.y2 = max(area.y2, p.y);
+    }
+  }
+  area.x1 -= 4; area.y1 -= 4; area.x2 += 4; area.y2 += 4;
+  return area;
+}
+
+static bool ringClipTouches(lv_draw_ctx_t *ctx, const lv_area_t &area) {
+  const lv_area_t &clip = *ctx->clip_area;
+  return area.x1 <= clip.x2 && area.x2 >= clip.x1 && area.y1 <= clip.y2 && area.y2 >= clip.y1;
+}
 
 static lv_point_t minimalDialPoint(int angle, int radius) {
   while (angle >= 360) angle -= 360;
@@ -3920,10 +3951,9 @@ static void drawMinimalArcSegment(lv_draw_ctx_t *ctx, lv_draw_arc_dsc_t *dsc, co
 static void minimalSpeedRingDrawCb(lv_event_t *e) {
   lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
   const lv_point_t center = {160, MINIMAL_DIAL_CENTER_Y};
-  const int dialMax = max(1, speedGaugeMax());
-  const int activeValueX100 = constrain(minimalSpeedRingValueX100, 0, dialMax * 100);
-  const int activePercent = activeValueX100 / dialMax;
-  const int activeAngle = MINIMAL_RING_START + activeValueX100 * MINIMAL_RING_SWEEP / (dialMax * 100);
+  const int position = constrain(minimalSpeedRingShown, 0, kGlideScale);
+  const int activePercent = position * 100 / kGlideScale;
+  const int activeAngle = MINIMAL_RING_START + position * MINIMAL_RING_SWEEP / kGlideScale;
   lv_draw_arc_dsc_t dsc;
   lv_draw_arc_dsc_init(&dsc);
   dsc.opa = LV_OPA_COVER;
@@ -3936,7 +3966,9 @@ static void minimalSpeedRingDrawCb(lv_event_t *e) {
     dsc.width = 10;
     const int start = MINIMAL_RING_START + i * MINIMAL_RING_SWEEP / MINIMAL_RING_BG_SEGMENTS;
     const int end = MINIMAL_RING_START + (i + 1) * MINIMAL_RING_SWEEP / MINIMAL_RING_BG_SEGMENTS + 1;
-    drawMinimalArcSegment(ctx, &dsc, &center, 104, start, end);
+    // A repaint rarely reaches most of the ring, and an arc costs the same wherever the clip is.
+    if (!ringClipTouches(ctx, ringSweepBounds(center, MINIMAL_RING_RADIUS, start, end))) continue;
+    drawMinimalArcSegment(ctx, &dsc, &center, MINIMAL_RING_RADIUS, start, end);
   }
 
   // Then overlay the live colour up to the exact same angle used by the
@@ -3950,8 +3982,9 @@ static void minimalSpeedRingDrawCb(lv_event_t *e) {
     const int nominalEnd = MINIMAL_RING_START + (i + 1) * MINIMAL_RING_SWEEP / MINIMAL_RING_SEGMENTS;
     const int end = min(nominalEnd, activeAngle);
     const int percent = (i * 100 + 50) / MINIMAL_RING_SEGMENTS;
+    if (!ringClipTouches(ctx, ringSweepBounds(center, MINIMAL_RING_RADIUS, start, end + 1))) continue;
     dsc.color = minimalSpeedGradientColor(percent, true);
-    drawMinimalArcSegment(ctx, &dsc, &center, 104, start, end < activeAngle ? end + 1 : end);
+    drawMinimalArcSegment(ctx, &dsc, &center, MINIMAL_RING_RADIUS, start, end < activeAngle ? end + 1 : end);
   }
 
   // Five minor divisions per numbered interval keep the same visual density
@@ -3965,8 +3998,7 @@ static void minimalSpeedRingDrawCb(lv_event_t *e) {
     const int percent = tickIndex * 100 / MINIMAL_RING_TICK_INTERVALS;
     const int angle = MINIMAL_RING_START + tickIndex * MINIMAL_RING_SWEEP / MINIMAL_RING_TICK_INTERVALS;
     const bool major = (tickIndex % 5) == 0;
-    const int tickValueX100 = dialMax * 100 * tickIndex / MINIMAL_RING_TICK_INTERVALS;
-    const bool active = tickValueX100 <= activeValueX100;
+    const bool active = tickIndex * kGlideScale <= position * MINIMAL_RING_TICK_INTERVALS;
     tick.color = minimalSpeedGradientColor(percent, active);
     tick.width = major ? 2 : 1;
     lv_point_t inner = minimalDialPoint(angle, major ? 80 : 86);
@@ -3991,42 +4023,46 @@ static void minimalSpeedRingDrawCb(lv_event_t *e) {
   lv_draw_line(ctx, &needle, &needleInner, &needleOuter);
 }
 
-static void setMinimalSpeedRingValue(int speed) {
-  const int target = constrain(speed, 0, speedGaugeMax()) * 100;
-  if (target == minimalSpeedRingTargetX100) return;
-  minimalSpeedRingTargetX100 = target;
-  minimalSpeedRingStepX100 = (target - minimalSpeedRingValueX100) / 2;
-  minimalSpeedRingFramesLeft = 2;
-}
+// The glide's place callback. Only what lies between the old and the new needle changes (the lit arc and
+// ticks, and the needle, whose colour follows the percentage), so only that stretch of ring is repainted.
+static int minimalRingAngle(int position) { return MINIMAL_RING_START + position * MINIMAL_RING_SWEEP / kGlideScale; }
+static int minimalRingTicksLit(int position) { return position * MINIMAL_RING_TICK_INTERVALS / kGlideScale; }
 
-static void minimalSpeedRingTimerCb(lv_timer_t *) {
-  if (!minimalSpeedRingObj || minimalSpeedRingFramesLeft == 0) return;
-  if (minimalSpeedRingFramesLeft == 1) {
-    minimalSpeedRingValueX100 = minimalSpeedRingTargetX100;
-  } else {
-    minimalSpeedRingValueX100 += minimalSpeedRingStepX100;
-  }
-  minimalSpeedRingFramesLeft--;
-  lv_obj_invalidate(minimalSpeedRingObj);
+static void minimalSpeedPlace(void *, int position) {
+  position = constrain(position, 0, kGlideScale);
+  const int old = minimalSpeedRingShown;
+  if (position == old) return;
+  minimalSpeedRingShown = position;
+  if (!minimalSpeedRingObj) return;
+  const int oldAngle = minimalRingAngle(old);
+  const int newAngle = minimalRingAngle(position);
+  if (oldAngle == newAngle && old * 100 / kGlideScale == position * 100 / kGlideScale &&
+      minimalRingTicksLit(old) == minimalRingTicksLit(position))
+    return;
+  const lv_point_t center = {160, MINIMAL_DIAL_CENTER_Y};
+  // A tick lights when the needle reaches it, which can be a hair before the whole degree changes.
+  const lv_area_t damage = ringSweepBounds(center, MINIMAL_RING_RADIUS, min(oldAngle, newAngle) - 1,
+                                           max(oldAngle, newAngle) + 2);
+  lv_obj_invalidate_area(minimalSpeedRingObj, &damage);
 }
 
 static void minimalSpeedRingDeleteCb(lv_event_t *) {
-  if (minimalSpeedRingTimer) {
-    lv_timer_del(minimalSpeedRingTimer);
-    minimalSpeedRingTimer = NULL;
-  }
   minimalSpeedRingObj = NULL;
-  minimalSpeedRingFramesLeft = 0;
 }
 
 static lv_obj_t *makeMinimalCornerMetric(lv_obj_t *scr, int x, int y, bool right, CydIconId icon,
                                          const char *caption, const char *value, lv_color_t accent,
                                          lv_obj_t **captionOut, lv_obj_t **iconOut) {
   const int width = 62;
+  // The widest caption in any language ("AUTONOMÍA", 59 px) must fit its box: LVGL draws the part of a
+  // glyph that overhangs a label in a full repaint but not in a partial one, so a caption that
+  // overhangs changes shape whenever something beside it is redrawn. The right-hand one keeps its
+  // right edge, so the box grows to the left.
+  const int captionWidth = 60;
   lv_obj_t *iconObj = makeIcon(scr, right ? x + width - 16 : x, y, icon, accent);
   if (iconOut) *iconOut = iconObj;
-  lv_obj_t *captionLabel = makeLabelAt(scr, right ? x : x + 20, y + 1, caption, labelLv(), F1, 0);
-  lv_obj_set_width(captionLabel, width - 20);
+  lv_obj_t *captionLabel = makeLabelAt(scr, right ? x + width - 20 - captionWidth : x + 20, y + 1, caption, labelLv(), F1, 0);
+  lv_obj_set_width(captionLabel, captionWidth);
   lv_obj_set_style_text_align(captionLabel, right ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT, 0);
   lv_label_set_long_mode(captionLabel, LV_LABEL_LONG_CLIP);
   if (captionOut) *captionOut = captionLabel;
@@ -4042,11 +4078,7 @@ static void minimalSpeedSweep(int value) {
   char text[16];
   formatSpeedValue(text, sizeof(text), value);
   setScaledValueText(dw.speed, MINIMAL_CENTER_SPEED, text, &lv_font_speed96);
-  // Drive the ring directly: its own two-frame easing would lag the digits.
-  minimalSpeedRingValueX100 = constrain(value, 0, speedGaugeMax()) * 100;
-  minimalSpeedRingTargetX100 = minimalSpeedRingValueX100;
-  minimalSpeedRingFramesLeft = 0;
-  if (minimalSpeedRingObj) lv_obj_invalidate(minimalSpeedRingObj);
+  glideAim(glides[0], glidePosition(value, speedGaugeMax()), false);
 }
 
 static void buildMinimal(lv_obj_t *scr, const DashboardValues &v) {
@@ -4060,10 +4092,7 @@ static void buildMinimal(lv_obj_t *scr, const DashboardValues &v) {
 
   // A single custom-drawn horseshoe keeps the gradient smooth without the
   // heap cost of dozens of separate LVGL arc widgets.
-  minimalSpeedRingValueX100 = constrain(v.speedKmh, 0, speedGaugeMax()) * 100;
-  minimalSpeedRingTargetX100 = minimalSpeedRingValueX100;
-  minimalSpeedRingStepX100 = 0;
-  minimalSpeedRingFramesLeft = 0;
+  minimalSpeedRingShown = glidePosition(v.speedKmh, speedGaugeMax());
   minimalSpeedRingObj = lv_obj_create(scr);
   lv_obj_remove_style_all(minimalSpeedRingObj);
   lv_obj_clear_flag(minimalSpeedRingObj, (lv_obj_flag_t)(LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE));
@@ -4071,7 +4100,8 @@ static void buildMinimal(lv_obj_t *scr, const DashboardValues &v) {
   lv_obj_set_size(minimalSpeedRingObj, 220, 220);
   lv_obj_add_event_cb(minimalSpeedRingObj, minimalSpeedRingDrawCb, LV_EVENT_DRAW_MAIN, NULL);
   lv_obj_add_event_cb(minimalSpeedRingObj, minimalSpeedRingDeleteCb, LV_EVENT_DELETE, NULL);
-  minimalSpeedRingTimer = lv_timer_create(minimalSpeedRingTimerCb, 50, NULL);
+  glideAdd(minimalSpeedPlace, NULL);
+  glideAim(glides[0], minimalSpeedRingShown, false);
 
   // Sparse proportional labels retain the analog-dial character while the
   // large central number remains the primary way to read exact speed.
@@ -4129,7 +4159,7 @@ static void updateMinimal(const DashboardValues &v) {
   char text[24];
   formatSpeedValue(text, sizeof(text), v.speedKmh);
   setScaledValueText(dw.speed, MINIMAL_CENTER_SPEED, text, &lv_font_speed96);
-  setMinimalSpeedRingValue(v.speedKmh);
+  glideAim(glides[0], glidePosition(v.speedKmh, speedGaugeMax()));
   formatPowerWithUnit(text, sizeof(text), v.watts);
   setLabelText(dw.power, text);
   if (slowDue) {
@@ -4171,7 +4201,7 @@ static constexpr int EFFICIENCY_PLOT_H = 34;
 static lv_obj_t *efficiencyDialObj = NULL;
 static lv_obj_t *efficiencyGraphObj = NULL;
 static lv_color_t efficiencyAccentColor;
-static int efficiencyDialSpeed = 0;
+static int efficiencyDialSpeed = 0;  // where the speed dial is drawn, in kGlideScale ths
 // Live consumption, lightly damped — not the ride average, which is already
 // printed inside this dial and again in the RIDE AVG tile below it.
 static int efficiencyDialRateX10 = 0;
@@ -4198,13 +4228,6 @@ struct EfficiencyDialGeometry {
   lv_color_t activeColors[EFFICIENCY_DIAL_SEGMENTS];
 };
 static EfficiencyDialGeometry efficiencyDialGeometry[2];
-
-static lv_point_t efficiencyDialPoint(const lv_point_t &center, int angle, int radius) {
-  lv_point_t point;
-  point.x = center.x + ((lv_trigo_sin(angle + 90) * radius) >> LV_TRIGO_SHIFT);
-  point.y = center.y + ((lv_trigo_sin(angle) * radius) >> LV_TRIGO_SHIFT);
-  return point;
-}
 
 static lv_color_t efficiencyScaleColor(int percent) {
   percent = constrain(percent, 0, 100);
@@ -4234,42 +4257,22 @@ static lv_color_t efficiencyDialColor(bool consumption, int percent, bool active
                      : minimalSpeedGradientColor(percent, active);
 }
 
-// Include the inner needle tip and the outer ring, with raster/round-cap margin.
-// Angles are integral in the renderer; walking the same angles is conservative.
-static lv_area_t efficiencySweepBounds(const lv_point_t &center, int radius, int start, int end) {
-  lv_area_t area = {32767, 32767, -32768, -32768};
-  for (int angle = start; angle <= end; ++angle) {
-    for (int r : {radius * 62 / 104, radius}) {
-      const lv_point_t p = efficiencyDialPoint(center, angle, r);
-      area.x1 = min(area.x1, p.x); area.x2 = max(area.x2, p.x);
-      area.y1 = min(area.y1, p.y); area.y2 = max(area.y2, p.y);
-    }
-  }
-  area.x1 -= 4; area.y1 -= 4; area.x2 += 4; area.y2 += 4;
-  return area;
-}
-
-static bool efficiencyClipIntersects(lv_draw_ctx_t *ctx, const lv_area_t &area) {
-  const lv_area_t &clip = *ctx->clip_area;
-  return area.x1 <= clip.x2 && area.x2 >= clip.x1 && area.y1 <= clip.y2 && area.y2 >= clip.y1;
-}
-
 static void prepareEfficiencyDialGeometry() {
   for (int dial = 0; dial < 2; ++dial) {
     auto &g = efficiencyDialGeometry[dial];
     g.center = dial ? lv_point_t{245, 99} : lv_point_t{94, 97};
     g.radius = dial ? 50 : 67;
-    g.bounds = efficiencySweepBounds(g.center, g.radius, EFFICIENCY_DIAL_START, EFFICIENCY_DIAL_START + EFFICIENCY_DIAL_SWEEP + 1);
+    g.bounds = ringSweepBounds(g.center, g.radius, EFFICIENCY_DIAL_START, EFFICIENCY_DIAL_START + EFFICIENCY_DIAL_SWEEP + 1);
     for (int i = 0; i < EFFICIENCY_DIAL_BG_SEGMENTS; ++i) {
       const int start = EFFICIENCY_DIAL_START + i * EFFICIENCY_DIAL_SWEEP / EFFICIENCY_DIAL_BG_SEGMENTS;
       const int end = EFFICIENCY_DIAL_START + (i + 1) * EFFICIENCY_DIAL_SWEEP / EFFICIENCY_DIAL_BG_SEGMENTS + 1;
-      g.background[i] = efficiencySweepBounds(g.center, g.radius, start, end);
+      g.background[i] = ringSweepBounds(g.center, g.radius, start, end);
       g.backgroundColors[i] = efficiencyDialColor(dial != 0, (i * 100 + 50) / EFFICIENCY_DIAL_BG_SEGMENTS, false);
     }
     for (int i = 0; i < EFFICIENCY_DIAL_SEGMENTS; ++i) {
       const int start = EFFICIENCY_DIAL_START + i * EFFICIENCY_DIAL_SWEEP / EFFICIENCY_DIAL_SEGMENTS;
       const int end = EFFICIENCY_DIAL_START + (i + 1) * EFFICIENCY_DIAL_SWEEP / EFFICIENCY_DIAL_SEGMENTS + 1;
-      g.active[i] = efficiencySweepBounds(g.center, g.radius, start, end);
+      g.active[i] = ringSweepBounds(g.center, g.radius, start, end);
       g.activeColors[i] = efficiencyDialColor(dial != 0, (i * 100 + 50) / EFFICIENCY_DIAL_SEGMENTS, true);
     }
   }
@@ -4283,13 +4286,13 @@ static void invalidateEfficiencyDialChange(int dial, int oldValue, int newValue,
   // Needle color also depends on percent, even when its angle is unchanged.
   if (oldAngle == newAngle && oldValue * 100 / maximum == newValue * 100 / maximum) return;
   const auto &g = efficiencyDialGeometry[dial];
-  const lv_area_t damage = efficiencySweepBounds(g.center, g.radius, min(oldAngle, newAngle), max(oldAngle, newAngle) + 1);
+  const lv_area_t damage = ringSweepBounds(g.center, g.radius, min(oldAngle, newAngle), max(oldAngle, newAngle) + 1);
   if (efficiencyDialObj) lv_obj_invalidate_area(efficiencyDialObj, &damage);
 }
 
 static void drawEfficiencyMinimalDial(lv_draw_ctx_t *ctx, int dial, int value, int maximum) {
   const auto &geometry = efficiencyDialGeometry[dial];
-  if (!efficiencyClipIntersects(ctx, geometry.bounds)) return;
+  if (!ringClipTouches(ctx, geometry.bounds)) return;
   const lv_point_t &center = geometry.center;
   const int radius = geometry.radius;
   const bool consumption = dial != 0;
@@ -4304,7 +4307,7 @@ static void drawEfficiencyMinimalDial(lv_draw_ctx_t *ctx, int dial, int value, i
   // Preserve Gauge's physical stroke widths even on the smaller dials.
   arc.width = 10;
   for (int i = 0; i < EFFICIENCY_DIAL_BG_SEGMENTS; i++) {
-    if (!efficiencyClipIntersects(ctx, geometry.background[i])) continue;
+    if (!ringClipTouches(ctx, geometry.background[i])) continue;
     arc.color = geometry.backgroundColors[i];
     const int start = EFFICIENCY_DIAL_START + i * EFFICIENCY_DIAL_SWEEP / EFFICIENCY_DIAL_BG_SEGMENTS;
     const int end = EFFICIENCY_DIAL_START + (i + 1) * EFFICIENCY_DIAL_SWEEP / EFFICIENCY_DIAL_BG_SEGMENTS + 1;
@@ -4317,14 +4320,14 @@ static void drawEfficiencyMinimalDial(lv_draw_ctx_t *ctx, int dial, int value, i
     if (start >= activeAngle) break;
     const int nominalEnd = EFFICIENCY_DIAL_START + (i + 1) * EFFICIENCY_DIAL_SWEEP / EFFICIENCY_DIAL_SEGMENTS;
     const int end = min(nominalEnd, activeAngle);
-    if (!efficiencyClipIntersects(ctx, geometry.active[i])) continue;
+    if (!ringClipTouches(ctx, geometry.active[i])) continue;
     arc.color = geometry.activeColors[i];
     drawMinimalArcSegment(ctx, &arc, &center, radius, start, end < activeAngle ? end + 1 : end);
   }
 
   const int percent = value * 100 / maximum;
-  lv_point_t inner = efficiencyDialPoint(center, activeAngle, radius * 62 / 104);
-  lv_point_t outer = efficiencyDialPoint(center, activeAngle, radius);
+  lv_point_t inner = ringPoint(center, activeAngle, radius * 62 / 104);
+  lv_point_t outer = ringPoint(center, activeAngle, radius);
   lv_draw_line_dsc_t needle;
   lv_draw_line_dsc_init(&needle);
   needle.color = efficiencyDialColor(consumption, percent, true);
@@ -4339,7 +4342,7 @@ static void drawEfficiencyMinimalDial(lv_draw_ctx_t *ctx, int dial, int value, i
 
 static void efficiencyDialDrawCb(lv_event_t *e) {
   lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
-  drawEfficiencyMinimalDial(ctx, 0, efficiencyDialSpeed, speedGaugeMax());
+  drawEfficiencyMinimalDial(ctx, 0, efficiencyDialSpeed, kGlideScale);
   drawEfficiencyMinimalDial(ctx, 1, efficiencyDialRateX10, efficiencyDialScaleX10);
 }
 
@@ -4401,7 +4404,7 @@ static void efficiencyGraphDrawCb(lv_event_t *e) {
   lv_draw_ctx_t *ctx = lv_event_get_draw_ctx(e);
   const lv_area_t plot = {EFFICIENCY_PLOT_X0 - 1, EFFICIENCY_PLOT_BASE - EFFICIENCY_PLOT_H,
                           EFFICIENCY_PLOT_X0 + EFFICIENCY_PLOT_W - 1, EFFICIENCY_PLOT_BASE};
-  if (!efficiencyClipIntersects(ctx, plot)) return;
+  if (!ringClipTouches(ctx, plot)) return;
   const auto &clip = *ctx->clip_area;
   lv_draw_line_dsc_t grid;
   lv_draw_line_dsc_init(&grid);
@@ -4558,12 +4561,16 @@ static lv_obj_t *makeEfficiencyFooterMetric(lv_obj_t *scr, int centerX, const ch
   return valueLabel;
 }
 
+static void efficiencySpeedPlace(void *, int position) {
+  invalidateEfficiencyDialChange(0, efficiencyDialSpeed, position, kGlideScale);
+  efficiencyDialSpeed = position;
+}
+
 static void efficiencySpeedSweep(int value) {
   char text[16];
   formatSpeedValue(text, sizeof(text), value);
   setLabelText(dw.speed, text);
-  invalidateEfficiencyDialChange(0, efficiencyDialSpeed, value, speedGaugeMax());
-  efficiencyDialSpeed = value;
+  glideAim(glides[0], glidePosition(value, speedGaugeMax()), false);
 }
 
 static void efficiencyRateSweep(int value) {
@@ -4600,7 +4607,9 @@ static void buildEfficiency(lv_obj_t *scr, const DashboardValues &v) {
   setSegBatteryLevel(dw.segBatt, v.batteryPercent);
 
   const float displayedRate = stats.tripWhPerKm > 0.0F ? stats.tripWhPerKm : stats.lifetimeWhPerKm;
-  efficiencyDialSpeed = v.speedKmh;
+  efficiencyDialSpeed = glidePosition(v.speedKmh, speedGaugeMax());
+  glideAdd(efficiencySpeedPlace, nullptr);
+  glideAim(glides[0], efficiencyDialSpeed, false);
   efficiencyDialScaleX10 = automaticGaugeRanges ? displayGaugeMaximum(RANGE_EFFICIENCY) * 10 : efficiencyBaselineScaleX10(stats);
   efficiencyDialRateX10 = currentEfficiencyX10(v, stats);
   efficiencyFilteredRateX10 = efficiencyDialRateX10;
@@ -4689,11 +4698,7 @@ static void updateEfficiency(const DashboardValues &v) {
   char text[32];
   formatSpeedValue(text, sizeof(text), v.speedKmh);
   setLabelText(dw.speed, text);
-  const int dialSpeed = displaySpeedValue();
-  if (efficiencyDialSpeed != dialSpeed) {
-    invalidateEfficiencyDialChange(0, efficiencyDialSpeed, dialSpeed, speedGaugeMax());
-    efficiencyDialSpeed = dialSpeed;
-  }
+  glideAim(glides[0], glidePosition(v.speedKmh, speedGaugeMax()));
 
   const BatteryStats stats = dashBatteryStats();
   const uint32_t now = millis();
@@ -4828,6 +4833,7 @@ void buildDashboardMode(lv_obj_t *scr, DashboardMode mode, const DashboardValues
   resetVisualGaugeRanges();
   resetVisualGaugeValues(values);
   lastRangeSpeed = lastRangePower = lastRangeEfficiency = -1;
+  glideBegin(scr);
   sweepSlotCount = 0;     // orphan sweep anims die with their old screen
   sweepEndMs = 0;
   elecTierLastMs = 0;     // first post-build update refreshes every tier
@@ -4889,9 +4895,6 @@ static void refreshGaugeRanges(DashboardMode mode) {
   const int speed = speedGaugeMax(), power = powerBarMax();
   const bool changed = lastRangeSpeed != speed || lastRangePower != power;
   lastRangeSpeed = speed; lastRangePower = power;
-  dw.speedDial.maxValue = speed; dw.powerDial.maxValue = power;
-  if (dw.speedNeedle.maxValue != speed) { dw.speedNeedle.maxValue = speed; dw.speedNeedle.lastValue = -1; }
-  if (dw.powerNeedle.maxValue != power) { dw.powerNeedle.maxValue = power; dw.powerNeedle.lastValue = -1; }
   const int efficiency = automaticGaugeRanges ? displayGaugeMaximum(RANGE_EFFICIENCY) * 10 : efficiencyDialScaleX10;
   const bool efficiencyChanged = lastRangeEfficiency != efficiency;
   lastRangeEfficiency = efficiency;
@@ -4900,7 +4903,6 @@ static void refreshGaugeRanges(DashboardMode mode) {
   for (int i=0; i<6; ++i) if (dw.scaleLabels[i]) {
     char text[12]; formatSpeedScaleMark(i, text, sizeof(text)); setLabelText(dw.scaleLabels[i], text);
   }
-  if (mode == MODE_MINIMAL && minimalSpeedRingObj) lv_obj_invalidate(minimalSpeedRingObj);
   if (mode == MODE_EFFICIENCY && efficiencyDialObj) lv_obj_invalidate(efficiencyDialObj);
   if (mode == MODE_TRACE) fillTraceChart();
 }

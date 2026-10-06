@@ -301,3 +301,64 @@ and a full repaint under three quarters of one, whereas an arc costs more to dra
 than a line (a full Motor Data repaint is about 1.2 ms against 0.3 to 0.7 for the
 other themes). Do it if free heap on the device turns out to be short; the figures above
 come from the host and say nothing about the chip.
+
+
+## Gliding needles on the dial themes (2026-10-06)
+
+Motor Data's needles and rings had been gliding from reading to reading since it was
+added; Dual Gauge, Redline, Ride Console, Minimal and Efficiency's speed dial now do
+too, through one shared `Glide` (see Gliding instruments in `ui-components.md`). Before,
+those five stepped: the speed arrives in whole km/h, ten times a second, and each step
+moved the needle by a whole reading (almost 9 degrees on the default 30 km/h Dual
+Gauge scale), after the 160 ms damping that the block meters still use. Now each
+reading is a straight glide of a quarter longer than the last one held, so a steady
+acceleration is one continuous motion and a gentle ramp crawls instead of moving and
+stopping. Cyber HUD, Bar Graph and Simple are block meters and stay as they were.
+
+Mean pixels flushed and flushes per 100 ms tick on the native display, the same
+scripted 30 s ride as above (updating the way the firmware does):
+
+| Theme | Ride px before | Ride px after | Flushes before | Flushes after | Frames a tick after |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Dual Gauge | 11,647 | 13,575 | 2.3 | 3.9 | 2.1 |
+| Redline | 7,976 | 10,044 | 2.1 | 3.4 | 2.1 |
+| Ride Console | 17,458 | 19,265 | 3.8 | 4.4 | 1.8 |
+| Minimal | 22,470 | 11,670 | 3.0 | 2.5 | 1.9 |
+| Efficiency | 4,881 | 6,146 | 0.9 | 1.9 | 1.4 |
+
+Moving more often costs between a tenth and a quarter more pixels on the four that
+gained, and no frame is anywhere near a full repaint (the largest
+glide frame is 17,500 pixels, Redline's long needle). Each instrument's `place`
+callback repaints only what moved: Ride Console's bars ignore a frame that moves them
+less than a pixel (that took its figure from 23,300 to 19,300), and the tick dials and
+needles already skipped an unchanged lit count or endpoint. Minimal got cheaper
+because its ring used to invalidate its whole 220 x 220 box on every change, twice a
+reading (its own two-frame easing); it now invalidates the stretch between the old and
+new needle and skips the arcs a repaint cannot reach, the way Efficiency's dial
+already did, and the glide replaced the easing.
+
+The glides drop the 160 ms damping for the instruments that use them: aiming at the
+damped value would smooth it a second time and add lag. The price is the glide's own:
+the instrument trails the true speed by about 1 km/h. Block meters keep the damping.
+
+`cyd_glide` runs the Motor Data scenarios on all six themes (first reading placed at
+once, a one-reading step as one straight second-long glide, a steady stream and a gentle
+ramp that never stand still, retargeting and turning round mid-glide, a repeated
+reading, the startup sweep, a replaced screen, a scale pushed by the speed) and
+compares every frame's picture with a full repaint: zero differing pixels on the five
+new ones. With the glide taken out of Dual Gauge it fails six scenarios, and with
+Minimal's ring never invalidated it fails on 45,000 pixels. `cyd_dashboard_redraw` now
+lets the clock run, 10 ms at a time, during each tick, so it sees the glides it
+used to skip, and it settles the readings before its idle check.
+
+Two things this turned up. The Redline range-transition preview moved the clock with
+`previewSetMillis`, which never runs an animation, so its needle stayed where it
+started: it now uses `advanceTime`. And Minimal's corner captions were narrower than the
+word in four languages (Finnish `KANTAMA`, French `AUTONOMIE`, Spanish and Italian
+`AUTONOMIA`, German `STRECKE` overhang by up to 17 px): LVGL draws the overhang of a
+clipped label in a full repaint but not in a partial one, so a caption changed shape
+whenever something beside it redrew, and Minimal's old whole-ring repaint had been
+hiding it. The captions are now 60 px wide, enough for all of them.
+
+These are native display-transfer figures. Whether the extra frames cost the chip
+anything noticeable is for the `LVGL perf` serial report on the bike.
