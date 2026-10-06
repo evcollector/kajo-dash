@@ -571,7 +571,6 @@ int main(int argc, char **argv) {
       {"22_modes_vesc", SUBMENU_SPEED, 0, CONTROLLER_ID_VESC_UART},
       {"22_modes_fardriver", SUBMENU_SPEED, 0, CONTROLLER_ID_FARDRIVER_BLE},
       {"23_mode_labels", SUBMENU_SPEED, 1, CONTROLLER_ID_FARDRIVER_BLE},
-      {"27_pack_setup", SUBMENU_BATTERY, 1, CONTROLLER_ID_FARDRIVER_BLE},
     };
     for (const auto &state : vehiclePreviews) {
       if (!selected(state.name)) continue;
@@ -840,6 +839,23 @@ int main(int argc, char **argv) {
     }
 
     if (selected("27_battery_submenu")) { showSubmenu(output, SUBMENU_BATTERY, 0, false, "27_battery_submenu"); if (stopAfterSelected()) return 0; }
+    if (selected("27_battery_lifepo4")) {
+      setBatteryChemistry(BATTERY_LIFEPO4);
+      showSubmenu(output, SUBMENU_BATTERY, 0, false, "27_battery_lifepo4");
+      setBatteryChemistry(BATTERY_LIION);
+      if (stopAfterSelected()) return 0;
+    }
+    if (selected("27_battery_cells")) {
+      showSubmenu(output, SUBMENU_BATTERY_CELLS, 0, false, "27_battery_cells");
+      if (stopAfterSelected()) return 0;
+    }
+    if (selected("27_battery_cells_edited")) {
+      setBatteryChemistry(BATTERY_LIFEPO4);
+      batteryCellMaxMv = 3350;
+      showSubmenu(output, SUBMENU_BATTERY_CELLS, 0, false, "27_battery_cells_edited");
+      setBatteryChemistry(BATTERY_LIION);
+      if (stopAfterSelected()) return 0;
+    }
 
     if (selected("28_first_boot_config")) {
       uiPreviewSetConfigStep(0); uiShow(SCREEN_CONFIG); capture(output, "28_first_boot_config");

@@ -16,24 +16,24 @@ struct FirmwareChangelogEntry {
 
 static const FirmwareChangelogEntry kFirmwareChangelog[] = {
     {
-        "2026-09-12",
-        "Phase current in ride logs",
-        "Rides now record motor phase current, and replay can chart it. VESC only for now.",
+        "2026-10-06",
+        "Battery chemistry",
+        "Battery Configuration is one page, with Li-ion, LiPo, LiFePO4 and editable cell volts.",
     },
     {
-        "2026-09-12",
-        "Ride replay",
-        "Recorded rides replay on the display, with up to four charts, a summary and delete.",
+        "2026-10-06",
+        "Theme previews at real time",
+        "Theme previews run at 1x; fast demo rides still train gauge ranges between updates.",
     },
     {
-        "2026-09-08",
-        "KAJO rename",
-        "The project, firmware and companion app are now KAJO, KAJO-Dash and KAJO Companion.",
+        "2026-10-06",
+        "Smoother dashboard updates",
+        "Needles glide, unchanged values skip redraws, and overlay slides pause dashboard updates.",
     },
     {
-        "2026-09-07",
-        "FarDriver discovery freeze",
-        "Confirming a FarDriver controller froze the display. Incoming packets rebuilt the screen.",
+        "2026-10-06",
+        "Automatic gauge ranges",
+        "Gauge scales learn peaks, shrink after quieter riding, and keep separate link state.",
     },
 };
 

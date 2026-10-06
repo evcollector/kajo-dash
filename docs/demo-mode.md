@@ -12,8 +12,9 @@ launches and stops of 1.2 to 2.2 m/s², about 30 km/h out of 7 to 14, with short
 cruises between. Power peaks near 2.4 kW on a launch and regenerates about 0.9 kW on a
 hard stop, and the bike never fully stops after the first launch. Its average speed is
 about 23 km/h. A complete ride is approximately 80 simulated minutes / 30 km (about
-160 real seconds at 30×). At empty, speed and power become zero and trip time freezes;
-use Restart Ride for another run.
+160 real seconds at 30×). When the pack empties, the running demo automatically
+starts a new ride with a full battery and reset trip counters. Restart Ride can
+also start a new ride manually without changing the selected speed.
 
 `app_logic.cpp` holds a short interpolated road profile and analytically integrates
 speed, net power and regeneration across repeated road sections. Trip counters

@@ -207,7 +207,18 @@ layout editor's visual reference in the same change.
 Connection owns controller selection, pairing, UART baud, CAN target and link
 diagnostics. Configuration groups Power & Current, Ride Modes, Calibration and
 Gauge Ranges. Vehicle Info contains identity and continuous rated power. Battery
-has statistics on page one and local pack setup on page two.
+Configuration is a single page: a row of three tappable pack settings (chemistry,
+series count, capacity) above the nine read-only battery figures, all in 43 px
+tiles. The chemistry tile opens Cell Voltages, where Li-ion, LiPo and LiFePO4 are
+selectable tiles (the chosen one filled, `makeMenuButton(..., active)`) over three
+numeric tiles for cell minimum, nominal and maximum volts. Choosing a chemistry
+loads its default voltages; choosing the current one again restores them. Minimum
+and maximum are the resting volts that read 0% and 100%, not charger limits, and
+they stretch the chemistry's curve between them; nominal volts only turn Ah into
+Wh. The window keeps at least 0.3 V and the nominal voltage stays inside it. Any
+change to chemistry or voltages restarts the charge estimate and the measured
+capacity, because both were derived from the old curve. Back returns to Battery
+Configuration. The series and capacity tiles open the keypad directly.
 
 Ride Modes uses the backend's `reportsRideMode` capability: FarDriver has a
 reported-gear page and a second page of display-only aliases. VESC explains that
@@ -223,7 +234,8 @@ connect the existing gauge-scale globals to controller configuration writes.
 
 Native states `19_controller_config_*`, `20_connection_*`, `20_power_*`,
 `21_calibration`, `21_gauge_ranges`, `22_modes_*`, `23_mode_labels` and
-`27_pack_setup` cover these sections. Custom gear labels are capped at 12 bytes;
+`27_battery_submenu`, `27_battery_lifepo4`, `27_battery_cells` and
+`27_battery_cells_edited` cover these sections. Custom gear labels are capped at 12 bytes;
 empty labels use translated defaults and unknown gear codes display a dash.
 
 ## Ride replay charts
@@ -281,9 +293,11 @@ value invalidates those areas, never the whole chart (see
 phase current include zero and extend below it when the ride contains negative
 values. Power adds `(regen)` to the signed callout.
 
-Replay overview curves smooth per-bucket means and round only after column
-interpolation. Do not overlay raw min/max strokes; cursor bubbles retain the
-original recorded values independently of this visual smoothing.
+Replay overview columns use each bucket's minimum for both the trace and fill
+edge, with the same time-to-bucket mapping as the cursor. Do not average or
+smooth the buckets, interpolate between their centres, or overlay min/max
+strokes. Cursor bubbles retain the original recorded samples. See
+[ride replay](ride-replay.md#repainting) for the rendering and repainting rules.
 
 ## Motor Data dashboard
 

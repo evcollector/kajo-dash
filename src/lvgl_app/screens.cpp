@@ -200,7 +200,6 @@ static lv_obj_t *resetProgressBar = NULL;
 static lv_obj_t *resetProgressLabel = NULL;
 static const uint8_t VEHICLE_FIELDS_PER_PAGE = 9;  // 3x3 grid, main-menu style
 
-static uint8_t batteryPage = 0;
 static lv_obj_t *rideModeReadout = NULL;
 static const uint8_t kVehicleProfileFields[] = {
     VEHICLE_FIELD_OEM, VEHICLE_FIELD_NAME, VEHICLE_FIELD_MOTOR,
@@ -213,7 +212,6 @@ static constexpr int kConnectionBluetoothOption = VEHICLE_FIELD_COUNT + 12;
 static const uint8_t kCalibrationFields[] = {VEHICLE_FIELD_WHEEL_MM, VEHICLE_FIELD_MOTOR_POLE_PAIRS, VEHICLE_FIELD_DRIVE_RATIO};
 static const uint8_t kGaugeFields[] = {SPEED_FIELD_BASE + SPEED_FIELD_TOP_SPEED, VEHICLE_FIELD_PEAK_KW,
                                      VEHICLE_FIELD_BATTERY_MAX_A, VEHICLE_FIELD_MOTOR_MAX_A};
-static const uint8_t kPackFields[] = {VEHICLE_FIELD_BATTERY_S, VEHICLE_FIELD_BATTERY_AH};
 static const uint8_t kModeLabelFields[] = {VEHICLE_FIELD_MODE_LABEL_1, VEHICLE_FIELD_MODE_LABEL_2, VEHICLE_FIELD_MODE_LABEL_3};
 
 // Some controller fields only mean something for one backend or one link. They
@@ -2052,7 +2050,6 @@ static void menuAction(int id) {
       return;
     case BTN_MENU_BATTERY:
       submenuType = SUBMENU_BATTERY;
-      batteryPage = 0;
       break;
     case BTN_MENU_RESET:
       submenuType = SUBMENU_RESET;
@@ -2874,9 +2871,10 @@ static void showMenu() {
         false, BTN_MENU_VESC);
     lv_obj_t *batteryCard = makeMenuButton(
         scr, kTwoColRightX, 135, kTwoColRightW, 89,
-        txt("BATTERY INFO", "AKKUTIEDOT", "AKKU-INFO", "INFO BATTERIE", "INFO BATERÍA", "INFO BATTERIA"),
-        txt("Energy and health", "Energia ja kunto", "Energie und Zustand", "Énergie et santé", "Energía y salud",
-            "Energia e salute"),
+        txt("BATTERY CONFIGURATION", "AKUN ASETUKSET", "AKKU-KONFIGURATION", "CONFIG. BATTERIE",
+            "CONFIG. BATERÍA", "CONFIG. BATTERIA"),
+        txt("Pack setup and health", "Akkupaketti ja kunto", "Akku-Setup und Zustand", "Réglage et santé",
+            "Ajustes y salud", "Setup e salute"),
         false, BTN_MENU_BATTERY);
     for (lv_obj_t *card : {connectionCard, configCard, vehicleCard, batteryCard}) {
       lv_obj_t *cardTitle = lv_obj_get_child(card, 0);
@@ -3632,7 +3630,7 @@ static uint8_t submenuItemCount() {
     case SUBMENU_CONTROLLER_CONFIG:
       return 1;
     case SUBMENU_BATTERY:
-      return 2;
+      return 1;
     case SUBMENU_SPEED:
       return controllerCapabilities().reportsRideMode ? 2 : 1;
     case SUBMENU_DISPLAY:
@@ -3650,6 +3648,10 @@ static uint8_t submenuItemCount() {
   }
 }
 
+// Option ids of the three chemistry tiles on the cell voltage page, well clear
+// of the VehicleField and SpeedField ids that share BTN_OPTION_BASE.
+static constexpr int kCellChemistryOptionBase = 60;
+
 static uint8_t submenuItemIndex() {
   switch (submenuType) {
     case SUBMENU_DASH_UI:
@@ -3666,7 +3668,7 @@ static uint8_t submenuItemIndex() {
     case SUBMENU_CONTROLLER_CONFIG:
       return 1;
     case SUBMENU_BATTERY:
-      return batteryPage + 1;
+      return 1;
     case SUBMENU_SPEED:
       return speedPage + 1;
     case SUBMENU_DISPLAY:
@@ -3715,8 +3717,11 @@ static const char *submenuCurrentName() {
       return txt("Recent firmware changes", "Viimeisimmät muutokset", "Letzte Firmware-Änderungen",
                  "Derniers changements", "Cambios recientes", "Modifiche recenti");
     case SUBMENU_BATTERY:
-      return txt("Energy and health", "Energia ja kunto", "Energie und Zustand", "Énergie et santé",
-                 "Energía y salud", "Energia e salute");
+      return txt("Pack setup and health", "Akkupaketti ja kunto", "Akku-Setup und Zustand", "Réglage et santé",
+                 "Ajustes y salud", "Setup e salute");
+    case SUBMENU_BATTERY_CELLS:
+      return txt("Chemistry and cell volts", "Kemia ja kennojännitteet", "Chemie und Zellspannung",
+                 "Chimie et tension cellule", "Química y voltaje celda", "Chimica e tensione cella");
     case SUBMENU_CONFIGURATOR:
       return txt("New User Setup", "Käyttöönotto", "Ersteinrichtung", "Config. initiale", "Config. inicial", "Config. iniziale");
     case SUBMENU_RESET:
@@ -3750,8 +3755,6 @@ static void submenuPrevious() {
     if (speedPage > 0) speedPage--;
   } else if (submenuType == SUBMENU_DISPLAY) {
     if (displayPage > 0) displayPage--;
-  } else if (submenuType == SUBMENU_BATTERY) {
-    if (batteryPage > 0) batteryPage--;
   } else if (submenuType == SUBMENU_PIN) {
     cyclePinOption();
   }
@@ -3774,8 +3777,6 @@ static void submenuNext() {
     if (displayPage + 1 < displayPageCount()) displayPage++;
   } else if (submenuType == SUBMENU_PANEL_COLORS) {
     if (panelPage + 1 < kPanelPageCount) panelPage++;
-  } else if (submenuType == SUBMENU_BATTERY) {
-    if (batteryPage < 1) batteryPage++;
   } else if (submenuType == SUBMENU_PIN) {
     cyclePinOption();
   }
@@ -4133,8 +4134,8 @@ static void submenuAction(int id) {
         cancelResetCountdown();
         resetConfirmMode = -1;
       }
-      if (submenuType == SUBMENU_BATTERY && batteryPage > 0) {
-        batteryPage--; queueRebuild(SCREEN_SUBMENU); return;
+      if (submenuType == SUBMENU_BATTERY_CELLS) {
+        submenuType = SUBMENU_BATTERY; queueRebuild(SCREEN_SUBMENU); return;
       }
       if (submenuType == SUBMENU_SPEED && speedPage > 0) {
         speedPage--; queueRebuild(SCREEN_SUBMENU); return;
@@ -4328,9 +4329,25 @@ static void submenuAction(int id) {
     case SUBMENU_VESC:
     case SUBMENU_SPEED_CALIBRATION:
     case SUBMENU_GAUGE_RANGES:
+    case SUBMENU_BATTERY_CELLS:
+      if (option >= kCellChemistryOptionBase && option < kCellChemistryOptionBase + BATTERY_CHEMISTRY_COUNT) {
+        setBatteryChemistry(option - kCellChemistryOptionBase);
+        queueRebuild(SCREEN_SUBMENU);
+        return;
+      }
+      if (option < VEHICLE_FIELD_CELL_MIN_V || option > VEHICLE_FIELD_CELL_MAX_V) return;
+      vehicleTextField = option; textInputContext = INPUT_VEHICLE_FIELD;
+      queueRebuild(SCREEN_TEXT_INPUT); return;
     case SUBMENU_BATTERY:
     case SUBMENU_SPEED:
-      if (submenuType == SUBMENU_BATTERY && batteryPage != 1) return;
+      if (submenuType == SUBMENU_BATTERY) {
+        if (option == VEHICLE_FIELD_BATTERY_CHEMISTRY) {
+          submenuType = SUBMENU_BATTERY_CELLS;
+          queueRebuild(SCREEN_SUBMENU);
+          return;
+        }
+        if (option != VEHICLE_FIELD_BATTERY_S && option != VEHICLE_FIELD_BATTERY_AH) return;
+      }
       if (submenuType == SUBMENU_SPEED && (!controllerCapabilities().reportsRideMode || speedPage != 1 ||
           option < VEHICLE_FIELD_MODE_LABEL_1 || option > VEHICLE_FIELD_MODE_LABEL_3)) return;
       if (vehicleFieldIsText(option) || vehicleFieldIsNumeric(option)) {
@@ -5432,7 +5449,7 @@ static const char *vehicleSectionTitle(SubmenuType type) {
     case SUBMENU_SPEED: return txt("RIDE MODES", "AJOTILAT", "FAHRMODI", "MODES", "MODOS", "MODALITÀ");
     case SUBMENU_SPEED_CALIBRATION: return txt("CALIBRATION", "KALIBROINTI", "KALIBRIERUNG", "ÉTALONNAGE", "CALIBRACIÓN", "CALIBRAZIONE");
     case SUBMENU_GAUGE_RANGES: return txt("GAUGE RANGES", "MITTARIASTEIKOT", "ANZEIGESKALEN", "ÉCHELLES", "ESCALAS", "SCALE");
-    default: return txt("PACK SETUP", "AKUN ASETUKSET", "AKKU-EINSTELL.", "RÉGLAGES BATTERIE", "AJUSTES BATERÍA", "IMPOSTAZIONI BATTERIA");
+    default: return txt("SETTING", "ASETUS", "EINSTELL.", "RÉGLAGE", "AJUSTE", "IMPOSTAZ.");
   }
 }
 
@@ -5485,7 +5502,12 @@ static void showSubmenu() {
   else if (submenuType == SUBMENU_AUTO_RETURN)
     title = txt("AUTO RETURN", "AUTOMAATTIPALUU", "AUTO-RÜCKKEHR", "RETOUR AUTO", "RETORNO AUTO", "RITORNO AUTO");
   else if (submenuType == SUBMENU_RESET) title = txt("RESET", "NOLLAA", "RESET", "RESET", "REINICIAR", "RESET");
-  else if (submenuType == SUBMENU_BATTERY) title = metricBatteryLabel();
+  else if (submenuType == SUBMENU_BATTERY)
+    title = txt("BATTERY CONFIG", "AKUN ASETUKSET", "AKKU-KONFIG.", "CONFIG. BATTERIE", "CONFIG. BATERÍA",
+                "CONFIG. BATTERIA");
+  else if (submenuType == SUBMENU_BATTERY_CELLS)
+    title = txt("CELL VOLTAGES", "KENNOJÄNNITTEET", "ZELLSPANNUNG", "TENSION CELLULE", "VOLTAJE CELDA",
+                "TENSIONE CELLA");
   else if (submenuType == SUBMENU_CONTROLLER_TYPE)
     title = txt("CONTROLLER SETUP", "OHJAIMEN MÄÄRITYS", "CONTROLLER-SETUP", "CONFIG. CONTRÔLEUR",
                 "CONFIG. CONTROLADOR", "CONFIG. CONTROLLER");
@@ -5626,11 +5648,6 @@ static void showSubmenu() {
         lv_obj_set_width(note, kMenuContentW - 16); lv_obj_set_height(note, LV_SIZE_CONTENT); lv_label_set_long_mode(note, LV_LABEL_LONG_WRAP);
       } else makeVehicleFields(scr, kModeLabelFields, sizeof(kModeLabelFields));
     } else makeVehicleExplanation(scr, txt("VESC does not report an active profile in standard telemetry. Configure profiles in VESC Tool. Mode display is unavailable until a profile integration is connected.", "VESC ei ilmoita aktiivista profiilia perustiedoissa. Määritä profiilit VESC Toolissa. Tilan näyttö vaatii profiili-integraation.", "VESC meldet kein aktives Profil in Standard-Telemetrie. Profile in VESC Tool einstellen. Die Anzeige benötigt eine Profilintegration.", "VESC ne transmet pas le profil actif. Configurez les profils dans VESC Tool. Affichage indisponible sans intégration.", "VESC no informa del perfil activo. Configure perfiles en VESC Tool. Se requiere integración para mostrarlos.", "VESC non comunica il profilo attivo. Configura i profili in VESC Tool. La visualizzazione richiede un'integrazione."));
-    loadScreen(scr); return;
-  }
-  if (submenuType == SUBMENU_BATTERY && batteryPage == 1) {
-    makeMenuTopBar(scr, vehicleSectionTitle(SUBMENU_PACK_SETUP), 2, 2, true);
-    makeVehicleFields(scr, kPackFields, sizeof(kPackFields));
     loadScreen(scr); return;
   }
 
@@ -5797,8 +5814,6 @@ static void showSubmenu() {
 
   if (submenuType == SUBMENU_LOGGING)
     makeMenuTopBar(scr, title, 1, 1, false, true);
-  else if (submenuType == SUBMENU_BATTERY)
-    makeMenuTopBar(scr, title, 1, 2, true);
   else if (submenuType == SUBMENU_PANEL_COLORS)
     makeMenuTopBar(scr, title, panelPage + 1, kPanelPageCount, true);
   else if (submenuType != SUBMENU_DISPLAY)
@@ -6193,9 +6208,10 @@ static void showSubmenu() {
                        "Explorar viajes", "Esplora viaggi"),
                    false, BTN_EXPLORE_RIDE_LOGS);
   } else if (submenuType == SUBMENU_BATTERY) {
-    // Read-only 3x3 grid in the vehicle-page style. Every figure is measured
-    // from the controller's counters, so anything not yet known shows "-"
-    // rather than a plausible-looking zero.
+    // One compact page: the three pack settings on top (tiles you can tap) and
+    // the nine read-only figures under them. Every figure is measured from the
+    // controller's counters, so anything not yet known shows "-" rather than a
+    // plausible-looking zero.
     const BatteryStats stats = getBatteryStats();
     char charge[16], range[16], rideRate[20], lifeRate[20], energy[16], regen[16], cycles[16], resistance[16],
         capacity[20];
@@ -6236,13 +6252,67 @@ static void showSubmenu() {
         txt("REGEN", "PALAUTUS", "REKUP.", "RÉGÉN.", "REGEN.", "RECUPERO"),
         txt("CYCLES", "SYKLIT", "ZYKLEN", "CYCLES", "CICLOS", "CICLI"),
         txt("PACK R", "SISÄINEN R", "INNENWID.", "RÉSIST.", "RESIST.", "RESIST."),
-        txt("CAPACITY", "KAPASITEETTI", "KAPAZITÄT", "CAPACITÉ", "CAPACIDAD", "CAPACITÀ")};
+        // "CAPACITY" is the configured figure in the setting tile above; this
+        // one is what the pack has actually delivered on a deep discharge.
+        txt("LEARNED CAP.", "OPITTU KAP.", "GEMESS. KAP.", "CAP. MESURÉE", "CAP. MEDIDA", "CAP. MISURATA")};
     const char *values[9] = {charge, range, rideRate, lifeRate, energy, regen, cycles, resistance, capacity};
+    constexpr int kBatteryTileH = 43;
+    constexpr int kBatteryRowPitch = kBatteryTileH + cyd_ui::kControlGap;
+    constexpr int kBatteryTop = 48;
+    constexpr uint8_t kBatterySettings[3] = {VEHICLE_FIELD_BATTERY_CHEMISTRY, VEHICLE_FIELD_BATTERY_S,
+                                             VEHICLE_FIELD_BATTERY_AH};
+    for (int i = 0; i < 3; i++) {
+      char value[32];
+      vehicleFieldValue(kBatterySettings[i], value, sizeof(value));
+      const int x = i == 0 ? kMenuEdgeX : (i == 1 ? kThreeColX1 : kThreeColX2);
+      makeMenuButton(scr, x, kBatteryTop, kThreeColW, kBatteryTileH, vehicleFieldTitle(kBatterySettings[i]), value,
+                     false, BTN_OPTION_BASE + kBatterySettings[i]);
+    }
     for (int i = 0; i < 9; i++) {
       const int col = i % 3;
       const int x = col == 0 ? kMenuEdgeX : (col == 1 ? kThreeColX1 : kThreeColX2);
-      makeMenuButton(scr, x, 48 + (i / 3) * 62, kThreeColW, 58, titles[i], values[i], false, 0);
+      makeMenuButton(scr, x, kBatteryTop + (1 + i / 3) * kBatteryRowPitch, kThreeColW, kBatteryTileH, titles[i],
+                     values[i], false, 0);
     }
+  } else if (submenuType == SUBMENU_BATTERY_CELLS) {
+    // Choosing a chemistry loads its default cell voltages; the three tiles
+    // below it then adjust them. The chosen chemistry is the filled tile.
+    for (int i = 0; i < BATTERY_CHEMISTRY_COUNT; i++) {
+      char window[24];
+      snprintf(window, sizeof(window), "%.2f-%.2f V",
+               batteryChemistryDefaultMv(i, BATTERY_CELL_MIN) / 1000.0F,
+               batteryChemistryDefaultMv(i, BATTERY_CELL_MAX) / 1000.0F);
+      const int x = i == 0 ? kMenuEdgeX : (i == 1 ? kThreeColX1 : kThreeColX2);
+      makeMenuButton(scr, x, 48, kThreeColW, 54, batteryChemistryName(i), window, i == batteryChemistry,
+                     BTN_OPTION_BASE + kCellChemistryOptionBase + i);
+    }
+    constexpr uint8_t kCellVoltages[3] = {VEHICLE_FIELD_CELL_MIN_V, VEHICLE_FIELD_CELL_NOMINAL_V,
+                                          VEHICLE_FIELD_CELL_MAX_V};
+    for (int i = 0; i < 3; i++) {
+      char value[32];
+      vehicleFieldValue(kCellVoltages[i], value, sizeof(value));
+      const int x = i == 0 ? kMenuEdgeX : (i == 1 ? kThreeColX1 : kThreeColX2);
+      makeMenuButton(scr, x, 107, kThreeColW, 54, vehicleFieldTitle(kCellVoltages[i]), value, false,
+                     BTN_OPTION_BASE + kCellVoltages[i]);
+    }
+    lv_obj_t *note = makeLabelAt(
+        scr, kMenuEdgeX + 4, 170,
+        txt("Min and max are the resting volts that read 0% and 100%, not charger limits. Tap a chemistry to load "
+            "its defaults; tap it again to restore them after editing.",
+            "Min ja max ovat lepojännitteet, joilla näytetään 0 % ja 100 %, eivät laturin rajoja. Valitse kemia "
+            "ladataksesi oletukset; valitse uudelleen palauttaaksesi ne muokkauksen jälkeen.",
+            "Min und max sind die Ruhespannungen für 0 % und 100 %, keine Ladegrenzen. Chemie antippen lädt die "
+            "Standardwerte; erneut antippen stellt sie nach dem Ändern wieder her.",
+            "Min et max sont les tensions au repos pour 0 % et 100 %, pas les limites du chargeur. Touchez une "
+            "chimie pour charger ses valeurs par défaut ; touchez-la à nouveau pour les restaurer.",
+            "Mín y máx son los voltios en reposo para 0 % y 100 %, no límites del cargador. Toque una química para "
+            "cargar sus valores; vuelva a tocarla para restaurarlos tras editar.",
+            "Min e max sono i volt a riposo per 0% e 100%, non i limiti del caricabatterie. Tocca una chimica per "
+            "caricare i valori predefiniti; toccala di nuovo per ripristinarli."),
+        cyd_ui::secondaryText(), &lv_font_rajdhani_12, 0);
+    lv_obj_set_width(note, kMenuContentW - 8);
+    lv_obj_set_height(note, LV_SIZE_CONTENT);
+    lv_label_set_long_mode(note, LV_LABEL_LONG_WRAP);
   } else if (submenuType == SUBMENU_PIN) {
     makeMenuButton(scr, 36, 68, 248, 44, txt("SKIP PIN", "EI PIN", "PIN AUS", "SANS PIN", "SIN PIN", "NO PIN"),
                    txt("No lock", "Ei lukitusta", "Keine Sperre", "Pas de verrou", "Sin bloqueo", "Nessun blocco"),
@@ -7693,7 +7763,6 @@ void uiPreviewSetSubmenu(SubmenuType type, uint8_t page, bool customSpeed) {
   submenuType = type;
   vehiclePage = page;
   speedPage = page;
-  batteryPage = page % 2;
   displayPage = page % displayPageCount();
   panelPage = page % kPanelPageCount;
   speedSetupMode = customSpeed ? SPEED_SETUP_CUSTOM : SPEED_SETUP_PRESET;

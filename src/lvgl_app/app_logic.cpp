@@ -28,6 +28,10 @@ char motorName[24] = "Motor";
 char controllerName[24] = "VESC";
 char vehicleBuildId[24] = "";
 uint8_t batterySeriesCount = 20;
+uint8_t batteryChemistry = BATTERY_LIION;
+uint16_t batteryCellMinMv = 3200;
+uint16_t batteryCellNominalMv = 3600;
+uint16_t batteryCellMaxMv = 4180;
 uint16_t batteryCapacityDeciAh = 200;
 uint16_t batteryMaxAmps = 100;
 uint16_t motorMaxAmps = 150;
@@ -892,26 +896,73 @@ static bool batteryHistoryChanged(bool meaningfulOnly) {
          fabsf(batteryStats.learnedCapacityAh - persistedBatteryHistory.learnedCapacityAh) >= 0.05F;
 }
 
-// Generic Li-ion open-circuit curve, 0..100 % in 10 % steps. The old linear
-// ramp from 3.2 V to 4.2 V read far too low through the middle of the pack's
-// range, where the real curve barely moves.
-static const float kOcvCurve[11] = {3.20F, 3.45F, 3.55F, 3.62F, 3.68F,  3.74F,
-                                    3.80F, 3.88F, 3.96F, 4.06F, 4.18F};
+// Open-circuit curves, 0..100 % in 10 % steps, per cell. They are generic: a
+// real cell shifts with its make, age and temperature, so the figures are good
+// for a charge estimate and not for a measurement.
+//
+// Li-ion: the old linear ramp from 3.2 V to 4.2 V read far too low through the
+// middle of the pack's range, where the real curve barely moves.
+// LiPo sits a little higher through the middle and tops out at 4.2 V.
+// LiFePO4 is almost flat between 10 % and 90 %, so a voltage reading alone says
+// little there; the coulomb count from the last resting reading does the work
+// and the curve only anchors it near empty and full.
+struct ChemistryProfile {
+  const char *name;
+  uint16_t minMv;      // default resting cell voltage that reads 0 %
+  uint16_t nominalMv;  // default nominal cell voltage, behind the Wh figures
+  uint16_t maxMv;      // default resting cell voltage that reads 100 %
+  float ocv[11];       // curve shape between minMv and maxMv
+};
+
+static const ChemistryProfile kChemistries[BATTERY_CHEMISTRY_COUNT] = {
+    {"Li-ion", 3200, 3600, 4180, {3.20F, 3.45F, 3.55F, 3.62F, 3.68F, 3.74F, 3.80F, 3.88F, 3.96F, 4.06F, 4.18F}},
+    {"LiPo", 3270, 3700, 4200, {3.27F, 3.69F, 3.73F, 3.77F, 3.80F, 3.84F, 3.87F, 3.95F, 4.02F, 4.11F, 4.20F}},
+    {"LiFePO4", 2900, 3200, 3650, {2.90F, 3.10F, 3.20F, 3.22F, 3.25F, 3.26F, 3.27F, 3.30F, 3.32F, 3.35F, 3.65F}},
+};
+
+static const ChemistryProfile &chemistryProfile(uint8_t chemistry) {
+  return kChemistries[chemistry < BATTERY_CHEMISTRY_COUNT ? chemistry : BATTERY_LIION];
+}
+
+const char *batteryChemistryName(uint8_t chemistry) {
+  return chemistryProfile(chemistry).name;
+}
+
+uint16_t batteryChemistryDefaultMv(uint8_t chemistry, BatteryCellVoltage which) {
+  const ChemistryProfile &profile = chemistryProfile(chemistry);
+  return which == BATTERY_CELL_MIN ? profile.minMv : (which == BATTERY_CELL_NOMINAL ? profile.nominalMv : profile.maxMv);
+}
+
+// The rider's min and max stretch the chemistry's curve: the curve keeps its
+// shape and its ends move to the chosen window, so 0 % and 100 % mean the
+// voltages the rider set.
+static float cellCurveVolts(int point) {
+  const ChemistryProfile &profile = chemistryProfile(batteryChemistry);
+  const float defaultSpan = profile.ocv[10] - profile.ocv[0];
+  const float shape = defaultSpan > 0.0F ? (profile.ocv[point] - profile.ocv[0]) / defaultSpan : point / 10.0F;
+  return batteryCellMinMv / 1000.0F + shape * (batteryCellMaxMv - batteryCellMinMv) / 1000.0F;
+}
+
+float batteryCellFullVolts() {
+  return batteryCellMaxMv / 1000.0F;
+}
 
 static float packCapacityAh() {
   return batteryCapacityDeciAh / 10.0F;
 }
 
 static float packCapacityWh() {
-  return packCapacityAh() * batterySeriesCount * 3.6F;  // 3.6 V nominal per cell
+  return packCapacityAh() * batterySeriesCount * (batteryCellNominalMv / 1000.0F);
 }
 
 static float socFromCellVoltage(float cellVoltage) {
-  if (cellVoltage <= kOcvCurve[0]) return 0.0F;
+  if (cellVoltage <= cellCurveVolts(0)) return 0.0F;
   for (int i = 1; i < 11; i++) {
-    if (cellVoltage < kOcvCurve[i]) {
-      const float span = kOcvCurve[i] - kOcvCurve[i - 1];
-      const float within = span > 0.0F ? (cellVoltage - kOcvCurve[i - 1]) / span : 0.0F;
+    const float upper = cellCurveVolts(i);
+    if (cellVoltage < upper) {
+      const float lower = cellCurveVolts(i - 1);
+      const float span = upper - lower;
+      const float within = span > 0.0F ? (cellVoltage - lower) / span : 0.0F;
       return (i - 1 + within) * 10.0F;
     }
   }
@@ -1084,6 +1135,44 @@ void resetBatteryStats() {
   batteryStatsLoaded = true;
 }
 
+// The charge estimate and the measured capacity both came from the old curve,
+// so the next resting reading seeds them again.
+void batteryRestartChargeEstimate() {
+  BatteryLock lock;
+  socSeedPercent = -1.0F;
+  socAhSinceSeed = 0.0F;
+  capacityStartSoc = -1.0F;
+  capacityAhUsed = 0.0F;
+  batteryStats.socPercent = -1;
+  batteryStats.rangeKm = -1;
+  batteryStats.learnedCapacityAh = 0.0F;
+  batteryStats.learnedSamples = 0;
+}
+
+void setBatteryChemistry(uint8_t chemistry) {
+  if (chemistry >= BATTERY_CHEMISTRY_COUNT) chemistry = BATTERY_LIION;
+  batteryChemistry = chemistry;
+  batteryCellMinMv = batteryChemistryDefaultMv(chemistry, BATTERY_CELL_MIN);
+  batteryCellNominalMv = batteryChemistryDefaultMv(chemistry, BATTERY_CELL_NOMINAL);
+  batteryCellMaxMv = batteryChemistryDefaultMv(chemistry, BATTERY_CELL_MAX);
+  batteryRestartChargeEstimate();
+  saveVehicleProfile();
+}
+
+// Keeps the three voltages in order after any one of them was edited: the
+// window needs some width to hold a curve, and the nominal voltage lies in it.
+void batteryNormalizeCellVoltages(BatteryCellVoltage edited) {
+  constexpr int kMinWindowMv = 300;
+  constexpr int kNominalMarginMv = 50;
+  if (edited == BATTERY_CELL_MIN && batteryCellMinMv + kMinWindowMv > batteryCellMaxMv)
+    batteryCellMinMv = batteryCellMaxMv - kMinWindowMv;
+  if (edited == BATTERY_CELL_MAX && batteryCellMaxMv < batteryCellMinMv + kMinWindowMv)
+    batteryCellMaxMv = batteryCellMinMv + kMinWindowMv;
+  batteryCellNominalMv = constrain((int)batteryCellNominalMv, batteryCellMinMv + kNominalMarginMv,
+                                   batteryCellMaxMv - kNominalMarginMv);
+  batteryRestartChargeEstimate();
+}
+
 int batterySocFromVoltage(float packVoltage) {
   if (batterySeriesCount == 0) return 0;
   return (int)constrain((int)lroundf(socFromCellVoltage(packVoltage / batterySeriesCount)), 0, 100);
@@ -1192,6 +1281,10 @@ struct AppSettingsSnapshot {
   char build[sizeof(vehicleBuildId)];
   char modeLabels[3][13];
   uint8_t batterySeriesCount;
+  uint8_t batteryChemistry;
+  uint16_t batteryCellMinMv;
+  uint16_t batteryCellNominalMv;
+  uint16_t batteryCellMaxMv;
   uint16_t batteryCapacityDeciAh;
   uint16_t batteryMaxAmps;
   uint16_t motorMaxAmps;
@@ -1255,6 +1348,10 @@ static AppSettingsSnapshot currentAppSettingsSnapshot() {
   snprintf(snapshot.build, sizeof(snapshot.build), "%s", vehicleBuildId);
   memcpy(snapshot.modeLabels, rideModeLabels, sizeof(rideModeLabels));
   snapshot.batterySeriesCount = batterySeriesCount;
+  snapshot.batteryChemistry = batteryChemistry;
+  snapshot.batteryCellMinMv = batteryCellMinMv;
+  snapshot.batteryCellNominalMv = batteryCellNominalMv;
+  snapshot.batteryCellMaxMv = batteryCellMaxMv;
   snapshot.batteryCapacityDeciAh = batteryCapacityDeciAh;
   snapshot.batteryMaxAmps = batteryMaxAmps;
   snapshot.motorMaxAmps = motorMaxAmps;
@@ -1330,6 +1427,10 @@ void saveAppSettings() {
       preferences.putString(key, current.modeLabels[i]);
   }
   PUT_CHANGED(batterySeriesCount, putUChar("battS", current.batterySeriesCount));
+  PUT_CHANGED(batteryChemistry, putUChar("battChem", current.batteryChemistry));
+  PUT_CHANGED(batteryCellMinMv, putUShort("cellMinMv", current.batteryCellMinMv));
+  PUT_CHANGED(batteryCellNominalMv, putUShort("cellNomMv", current.batteryCellNominalMv));
+  PUT_CHANGED(batteryCellMaxMv, putUShort("cellMaxMv", current.batteryCellMaxMv));
   PUT_CHANGED(batteryCapacityDeciAh, putUShort("battAh10", current.batteryCapacityDeciAh));
   PUT_CHANGED(batteryMaxAmps, putUShort("battMaxA", current.batteryMaxAmps));
   PUT_CHANGED(motorMaxAmps, putUShort("motorMaxA", current.motorMaxAmps));
@@ -1440,6 +1541,10 @@ static void setDefaultAppSettings() {
   motorName[sizeof(motorName) - 1] = '\0';
   controllerName[sizeof(controllerName) - 1] = '\0';
   batterySeriesCount = 20;
+  batteryChemistry = BATTERY_LIION;
+  batteryCellMinMv = batteryChemistryDefaultMv(BATTERY_LIION, BATTERY_CELL_MIN);
+  batteryCellNominalMv = batteryChemistryDefaultMv(BATTERY_LIION, BATTERY_CELL_NOMINAL);
+  batteryCellMaxMv = batteryChemistryDefaultMv(BATTERY_LIION, BATTERY_CELL_MAX);
   batteryCapacityDeciAh = 200;
   batteryMaxAmps = 100;
   motorMaxAmps = 150;
@@ -1571,6 +1676,17 @@ void loadAppSettings() {
   preferences.getString("ctrl", controllerName).toCharArray(controllerName, sizeof(controllerName));
   preferences.getString("build", vehicleBuildId).toCharArray(vehicleBuildId, sizeof(vehicleBuildId));
   batterySeriesCount = constrain(preferences.getUChar("battS", batterySeriesCount), 4, 32);
+  batteryChemistry = preferences.getUChar("battChem", batteryChemistry);
+  if (batteryChemistry >= BATTERY_CHEMISTRY_COUNT) batteryChemistry = BATTERY_LIION;
+  batteryCellMinMv = constrain(preferences.getUShort("cellMinMv", batteryChemistryDefaultMv(batteryChemistry, BATTERY_CELL_MIN)), 2000, 4000);
+  batteryCellMaxMv = constrain(preferences.getUShort("cellMaxMv", batteryChemistryDefaultMv(batteryChemistry, BATTERY_CELL_MAX)), 3000, 4500);
+  batteryCellNominalMv = constrain(preferences.getUShort("cellNomMv", batteryChemistryDefaultMv(batteryChemistry, BATTERY_CELL_NOMINAL)), 2500, 4300);
+  // A stored window that lost its order falls back to the chemistry's own.
+  if (batteryCellMaxMv < batteryCellMinMv + 300) {
+    batteryCellMinMv = batteryChemistryDefaultMv(batteryChemistry, BATTERY_CELL_MIN);
+    batteryCellMaxMv = batteryChemistryDefaultMv(batteryChemistry, BATTERY_CELL_MAX);
+  }
+  batteryCellNominalMv = constrain((int)batteryCellNominalMv, batteryCellMinMv + 50, batteryCellMaxMv - 50);
   batteryCapacityDeciAh = constrain(preferences.getUShort("battAh10", batteryCapacityDeciAh), 10, 999);
   batteryMaxAmps = constrain(preferences.getUShort("battMaxA", batteryMaxAmps), 1, 500);
   motorMaxAmps = constrain(preferences.getUShort("motorMaxA", motorMaxAmps), 1, 500);

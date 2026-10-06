@@ -16,7 +16,8 @@ bool vehicleFieldIsNumeric(int field) {
     return true;
   }
   return (field >= VEHICLE_FIELD_BATTERY_S && field <= VEHICLE_FIELD_WHEEL_MM) ||
-         (field >= VEHICLE_FIELD_VESC_BAUD && field <= VEHICLE_FIELD_DRIVE_RATIO);
+         (field >= VEHICLE_FIELD_VESC_BAUD && field <= VEHICLE_FIELD_DRIVE_RATIO) ||
+         (field >= VEHICLE_FIELD_CELL_MIN_V && field <= VEHICLE_FIELD_CELL_MAX_V);
 }
 
 const char *vehicleFieldTitle(int field) {
@@ -54,6 +55,15 @@ const char *vehicleFieldTitle(int field) {
       return txt("Build ID", "Koontitunnus", "Build-ID", "ID version", "ID compilación", "ID build");
     case VEHICLE_FIELD_BATTERY_S:
       return txt("Battery Series", "Kennomäärä", "Zellzahl", "Cellules batterie", "Celdas batería", "Celle batteria");
+    case VEHICLE_FIELD_BATTERY_CHEMISTRY:
+      return txt("Chemistry", "Kemia", "Zellchemie", "Chimie", "Química", "Chimica");
+    case VEHICLE_FIELD_CELL_MIN_V:
+      return txt("Cell Min", "Kennon min", "Zelle min.", "Cellule min", "Celda mín.", "Cella min");
+    case VEHICLE_FIELD_CELL_NOMINAL_V:
+      return txt("Cell Nominal", "Kennon nimellis", "Zelle nominal", "Cellule nominale", "Celda nominal",
+                 "Cella nominale");
+    case VEHICLE_FIELD_CELL_MAX_V:
+      return txt("Cell Max", "Kennon max", "Zelle max.", "Cellule max", "Celda máx.", "Cella max");
     case VEHICLE_FIELD_BATTERY_AH:
       return txt("Battery Capacity", "Akun kapasiteetti", "Batteriekapazität", "Capacité batterie", "Capacidad batería", "Capacità batteria");
     case VEHICLE_FIELD_BATTERY_MAX_A:
@@ -147,6 +157,18 @@ const char *vehicleFieldInputHint(int field) {
     case VEHICLE_FIELD_BATTERY_S:
       return txt("Series cell count, 4-32 S", "Sarjaan kytketyt kennot, 4-32 S", "Zellen in Reihe, 4-32 S",
                  "Cellules en série, 4-32 S", "Celdas en serie, 4-32 S", "Celle in serie, 4-32 S");
+    case VEHICLE_FIELD_CELL_MIN_V:
+      return txt("Resting volts per cell that read 0%, 2.0-4.0", "Lepojännite per kenno, jolla 0 %, 2.0-4.0",
+                 "Ruhespannung je Zelle für 0 %, 2.0-4.0", "Tension au repos par cellule pour 0 %, 2.0-4.0",
+                 "Voltios en reposo por celda para 0 %, 2.0-4.0", "Volt a riposo per cella per 0%, 2.0-4.0");
+    case VEHICLE_FIELD_CELL_NOMINAL_V:
+      return txt("Nominal volts per cell, used for Wh, 2.5-4.3", "Nimellisjännite per kenno (Wh), 2.5-4.3",
+                 "Nennspannung je Zelle für Wh, 2.5-4.3", "Tension nominale par cellule (Wh), 2.5-4.3",
+                 "Voltios nominales por celda (Wh), 2.5-4.3", "Volt nominali per cella (Wh), 2.5-4.3");
+    case VEHICLE_FIELD_CELL_MAX_V:
+      return txt("Resting volts per cell that read 100%, 3.0-4.5", "Lepojännite per kenno, jolla 100 %, 3.0-4.5",
+                 "Ruhespannung je Zelle für 100 %, 3.0-4.5", "Tension au repos par cellule pour 100 %, 3.0-4.5",
+                 "Voltios en reposo por celda para 100 %, 3.0-4.5", "Volt a riposo per cella per 100%, 3.0-4.5");
     case VEHICLE_FIELD_BATTERY_AH:
       return txt("Usable battery capacity in Ah", "Käytettävä akun kapasiteetti (Ah)", "Nutzbare Akkukapazität in Ah",
                  "Capacité utile de la batterie en Ah", "Capacidad útil de la batería en Ah",
@@ -301,6 +323,18 @@ void vehicleFieldValue(int field, char *buffer, size_t size) {
     case VEHICLE_FIELD_BATTERY_S:
       snprintf(buffer, size, "%uS", batterySeriesCount);
       return;
+    case VEHICLE_FIELD_BATTERY_CHEMISTRY:
+      snprintf(buffer, size, "%s", batteryChemistryName(batteryChemistry));
+      return;
+    case VEHICLE_FIELD_CELL_MIN_V:
+      snprintf(buffer, size, "%u.%02u V", batteryCellMinMv / 1000, batteryCellMinMv % 1000 / 10);
+      return;
+    case VEHICLE_FIELD_CELL_NOMINAL_V:
+      snprintf(buffer, size, "%u.%02u V", batteryCellNominalMv / 1000, batteryCellNominalMv % 1000 / 10);
+      return;
+    case VEHICLE_FIELD_CELL_MAX_V:
+      snprintf(buffer, size, "%u.%02u V", batteryCellMaxMv / 1000, batteryCellMaxMv % 1000 / 10);
+      return;
     case VEHICLE_FIELD_BATTERY_AH:
       snprintf(buffer, size, "%u.%u Ah", batteryCapacityDeciAh / 10, batteryCapacityDeciAh % 10);
       return;
@@ -370,6 +404,15 @@ void vehicleFieldEditText(int field, char *buffer, size_t size) {
       return;
     case VEHICLE_FIELD_BATTERY_AH:
       snprintf(buffer, size, "%u.%u", batteryCapacityDeciAh / 10, batteryCapacityDeciAh % 10);
+      return;
+    case VEHICLE_FIELD_CELL_MIN_V:
+      snprintf(buffer, size, "%u.%02u", batteryCellMinMv / 1000, batteryCellMinMv % 1000 / 10);
+      return;
+    case VEHICLE_FIELD_CELL_NOMINAL_V:
+      snprintf(buffer, size, "%u.%02u", batteryCellNominalMv / 1000, batteryCellNominalMv % 1000 / 10);
+      return;
+    case VEHICLE_FIELD_CELL_MAX_V:
+      snprintf(buffer, size, "%u.%02u", batteryCellMaxMv / 1000, batteryCellMaxMv % 1000 / 10);
       return;
     case VEHICLE_FIELD_BATTERY_MAX_A:
       snprintf(buffer, size, "%u", batteryMaxAmps);
@@ -450,6 +493,18 @@ void saveVehicleInputValue(int field, const char *text) {
         break;
       case VEHICLE_FIELD_BATTERY_AH:
         batteryCapacityDeciAh = parseDeciValue(text, 10, 999);
+        break;
+      case VEHICLE_FIELD_CELL_MIN_V:
+        batteryCellMinMv = constrain((int)lroundf(atof(text) * 100.0F) * 10, 2000, 4000);
+        batteryNormalizeCellVoltages(BATTERY_CELL_MIN);
+        break;
+      case VEHICLE_FIELD_CELL_NOMINAL_V:
+        batteryCellNominalMv = constrain((int)lroundf(atof(text) * 100.0F) * 10, 2500, 4300);
+        batteryNormalizeCellVoltages(BATTERY_CELL_NOMINAL);
+        break;
+      case VEHICLE_FIELD_CELL_MAX_V:
+        batteryCellMaxMv = constrain((int)lroundf(atof(text) * 100.0F) * 10, 3000, 4500);
+        batteryNormalizeCellVoltages(BATTERY_CELL_MAX);
         break;
       case VEHICLE_FIELD_BATTERY_MAX_A:
         batteryMaxAmps = constrain(atoi(text), 1, 500);

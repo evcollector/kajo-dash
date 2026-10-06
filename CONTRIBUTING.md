@@ -63,5 +63,8 @@ in-app licence list.
 
 ## Safety
 
-This project displays telemetry and does not control the vehicle. Please do not
-propose changes to that boundary.
+The current firmware displays and records telemetry without changing controller
+settings or controlling the vehicle. Controller profiles and settings adjustment
+are planned. Contributions to that support must follow the confirmed/pending
+settings, explicit application, and read-back requirements in
+[`docs/ui-components.md`](docs/ui-components.md#vehicle-configuration).

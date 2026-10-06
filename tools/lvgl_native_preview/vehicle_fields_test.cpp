@@ -10,6 +10,7 @@
 // rider ("Series cell count, 4-32 S", "UART speed, 9600-921600 baud"). If a
 // range moves, the hint text has to move with it.
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -294,6 +295,80 @@ void testFieldMetadata() {
   }
 }
 
+// -- Battery chemistry --------------------------------------------------------
+// The chemistry picks the open-circuit curve, so the same resting voltage has to
+// read very differently on a LiFePO4 pack than on a Li-ion one.
+
+void testBatteryChemistry() {
+  batterySeriesCount = 10;
+  setBatteryChemistry(BATTERY_LIION);
+  expectValue(VEHICLE_FIELD_BATTERY_CHEMISTRY, "Li-ion", "chemistry tile shows Li-ion");
+  expectValue(VEHICLE_FIELD_CELL_MIN_V, "3.20 V", "Li-ion default minimum");
+  expectValue(VEHICLE_FIELD_CELL_NOMINAL_V, "3.60 V", "Li-ion default nominal");
+  expectValue(VEHICLE_FIELD_CELL_MAX_V, "4.18 V", "Li-ion default maximum");
+  expect(batterySocFromVoltage(10 * 3.80F) == 60, "Li-ion 3.80 V per cell is 60%");
+  expect(batterySocFromVoltage(10 * 4.30F) == 100, "Li-ion above the curve clamps to 100%");
+  expect(batterySocFromVoltage(10 * 3.00F) == 0, "Li-ion below the curve clamps to 0%");
+  expect(fabsf(batteryCellFullVolts() - 4.18F) < 0.001F, "Li-ion full cell voltage keeps the old 4.18 V scale");
+
+  setBatteryChemistry(BATTERY_LIFEPO4);
+  expectValue(VEHICLE_FIELD_BATTERY_CHEMISTRY, "LiFePO4", "chemistry tile shows LiFePO4");
+  expectValue(VEHICLE_FIELD_CELL_NOMINAL_V, "3.20 V", "LiFePO4 default nominal");
+  expectValue(VEHICLE_FIELD_CELL_MAX_V, "3.65 V", "LiFePO4 default maximum");
+  expect(batterySocFromVoltage(10 * 3.65F) == 100, "LiFePO4 default maximum reads 100%");
+  expect(batterySocFromVoltage(10 * 3.60F) < 100, "LiFePO4 3.60 V per cell is below full charge");
+  expect(batterySocFromVoltage(10 * 3.80F) == 100, "3.80 V per cell is a full LiFePO4 cell");
+  expect(batterySocFromVoltage(10 * 3.26F) == 50, "LiFePO4 3.26 V per cell is half full");
+  expect(batterySocFromVoltage(10 * 2.80F) == 0, "LiFePO4 below the curve is empty");
+  expect(fabsf(batteryCellFullVolts() - 3.65F) < 0.001F, "LiFePO4 full cell voltage");
+
+  // Editing the window stretches the curve: 100 % is now the rider's maximum.
+  saveVehicleInputValue(VEHICLE_FIELD_CELL_MAX_V, "3.30");
+  expect(batteryCellMaxMv == 3300, "typed maximum stored in millivolts");
+  expect(batterySocFromVoltage(10 * 3.30F) == 100, "a pack at the rider's maximum reads 100%");
+  expect(batterySocFromVoltage(10 * 3.40F) == 100, "above the rider's maximum stays 100%");
+  expect(batterySocFromVoltage(10 * 3.10F) < 100, "below the rider's maximum is not full");
+
+  // The window keeps its order and the nominal voltage stays inside it.
+  saveVehicleInputValue(VEHICLE_FIELD_CELL_MIN_V, "3.25");
+  expect(batteryCellMaxMv - batteryCellMinMv >= 300, "minimum pushed past the maximum keeps a window");
+  expect(batteryCellNominalMv > batteryCellMinMv && batteryCellNominalMv < batteryCellMaxMv,
+         "nominal stays between minimum and maximum");
+  saveVehicleInputValue(VEHICLE_FIELD_CELL_MIN_V, "0.5");
+  expect(batteryCellMinMv == 2000, "minimum clamps at 2.00 V");
+  saveVehicleInputValue(VEHICLE_FIELD_CELL_MAX_V, "9");
+  expect(batteryCellMaxMv == 4500, "maximum clamps at 4.50 V");
+  saveVehicleInputValue(VEHICLE_FIELD_CELL_NOMINAL_V, "3.333");
+  expect(batteryCellNominalMv == 3330, "nominal keeps its tenth of a volt of precision");
+  expectEditText(VEHICLE_FIELD_CELL_NOMINAL_V, "3.33", "nominal edit text");
+
+  // Choosing the same chemistry again restores its defaults.
+  setBatteryChemistry(BATTERY_LIFEPO4);
+  expect(batteryCellMinMv == 2900 && batteryCellNominalMv == 3200 && batteryCellMaxMv == 3650,
+         "reselecting a chemistry restores its default voltages");
+
+  // Chemistry and voltages are stored with the vehicle profile.
+  setBatteryChemistry(BATTERY_LIPO);
+  saveVehicleInputValue(VEHICLE_FIELD_CELL_MAX_V, "4.10");
+  batteryChemistry = BATTERY_LIION;
+  batteryCellMaxMv = 4180;
+  loadAppSettings();
+  expect(batteryChemistry == BATTERY_LIPO, "chemistry did not survive a settings reload");
+  expect(batteryCellMaxMv == 4100, "tweaked maximum did not survive a settings reload");
+
+  // An unknown chemistry, or a stored window that lost its order, falls back.
+  batteryChemistry = 200;
+  batteryCellMinMv = 4000;
+  batteryCellMaxMv = 3000;
+  saveVehicleProfile();
+  loadAppSettings();
+  expect(batteryChemistry == BATTERY_LIION, "an unknown stored chemistry should fall back to Li-ion");
+  expect(batteryCellMaxMv - batteryCellMinMv >= 300, "a disordered stored window should fall back to the defaults");
+
+  setBatteryChemistry(BATTERY_LIION);
+  batterySeriesCount = 20;
+}
+
 }  // namespace
 
 int main() {
@@ -307,6 +382,7 @@ int main() {
   testTextFields();
   testFormatting();
   testFieldMetadata();
+  testBatteryChemistry();
 
   if (failures == 0) printf("vehicle field model: all checks passed\n");
   return failures == 0 ? 0 : 1;

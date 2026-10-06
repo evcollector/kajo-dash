@@ -164,7 +164,8 @@ and any failed step. Test both original and alternate CYD panels.
 ## Reset behavior
 
 - [ ] Default Reset restores display/vehicle/controller settings, removes saved
-      VESC and FarDriver BLE pairings, and restores logging to Automatic / 5 Hz.
+      VESC and FarDriver BLE pairings, switches logging off, and restores the
+      sample rate to 5 Hz for when logging is enabled again.
 - [ ] Default Reset keeps existing SD-card ride files, their next ride number,
       and battery history.
 - [ ] Full Reset performs the same settings/pairing reset and also removes all

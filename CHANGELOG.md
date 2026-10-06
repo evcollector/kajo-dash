@@ -20,6 +20,46 @@ the 320x240 panel -- or the generator will truncate them and say so. Entries are
 translated the way the rest of the interface is, because a changelog in six
 languages is not worth hand-maintaining.
 
+## 2026-10-06 — Battery chemistry
+
+Battery Configuration is one page, with Li-ion, LiPo, LiFePO4 and editable cell volts.
+
+## 2026-10-06 — Theme previews at real time
+
+Theme previews run at 1x; fast demo rides still train gauge ranges between updates.
+
+## 2026-10-06 — Smoother dashboard updates
+
+Needles glide, unchanged values skip redraws, and overlay slides pause dashboard updates.
+
+## 2026-10-06 — Automatic gauge ranges
+
+Gauge scales learn peaks, shrink after quieter riding, and keep separate link state.
+
+## 2026-10-06 — Motor Data dashboard
+
+Motor Data replaces Mono with six segmented dials and customizable footer fields.
+
+## 2026-10-05 — Replay zoom and redraws
+
+Replay opens faster, draws fewer pixels, and can zoom in around the cursor.
+
+## 2026-10-05 — Road-load demo rides
+
+Demo rides use a road-load model and restart automatically when the pack empties.
+
+## 2026-09-28 — Bluetooth update handoff
+
+Update mode waits for the phone to disconnect before advertising the OTA service.
+
+## 2026-09-28 — Shared battery indicator
+
+Shared battery indicators warn as charge falls and blink the final block when critical.
+
+## 2026-09-28 — USB release installer
+
+The Windows package installs signed firmware over USB without Python or PlatformIO.
+
 ## 2026-09-12 — Phase current in ride logs
 
 Rides now record motor phase current, and replay can chart it. VESC only for
@@ -82,4 +122,3 @@ reworked HUD.
 
 The interface is available in English, Finnish, German, French, Spanish and
 Italian.
-

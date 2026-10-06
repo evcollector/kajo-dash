@@ -297,10 +297,29 @@ int main() {
 
   uiPreviewSetSubmenu(SUBMENU_BATTERY, 0, false);
   uiShow(SCREEN_SUBMENU);
-  tap(275, 22);
-  if (!expect(hasLabel(lv_scr_act(), "PACK SETUP"), "battery Next did not open pack setup")) return 1;
-  tap(40, 22);
-  if (!expect(hasLabel(lv_scr_act(), "CHARGE"), "battery Back did not restore statistics")) return 1;
+  if (!expect(hasLabel(lv_scr_act(), "CHARGE") && hasLabel(lv_scr_act(), vehicleFieldTitle(VEHICLE_FIELD_BATTERY_S)) &&
+                  hasLabel(lv_scr_act(), vehicleFieldTitle(VEHICLE_FIELD_BATTERY_CHEMISTRY)),
+              "battery configuration is not one page of settings and statistics")) return 1;
+  if (!expect(!hasLabel(lv_scr_act(), "NEXT >"), "battery configuration still offers a second page")) return 1;
+  setBatteryChemistry(BATTERY_LIION);
+  cyd::preview::advanceTime(200);
+  if (!expect(tapLabel(vehicleFieldTitle(VEHICLE_FIELD_BATTERY_CHEMISTRY)), "chemistry tile missing")) return 1;
+  if (!expect(hasLabel(lv_scr_act(), "CELL VOLTAGES") && hasLabel(lv_scr_act(), vehicleFieldTitle(VEHICLE_FIELD_CELL_MAX_V)),
+              "chemistry tile did not open the cell voltage page")) return 1;
+  cyd::preview::advanceTime(200);
+  if (!expect(tapLabel(batteryChemistryName(BATTERY_LIFEPO4)), "LiFePO4 option missing")) return 1;
+  if (!expect(batteryChemistry == BATTERY_LIFEPO4 && batteryCellMaxMv == 3650 && batteryCellNominalMv == 3200,
+              "choosing LiFePO4 did not load its default cell voltages")) return 1;
+  saveVehicleInputValue(VEHICLE_FIELD_CELL_MAX_V, "3.35");
+  cyd::preview::advanceTime(200);
+  if (!expect(tapLabel(batteryChemistryName(BATTERY_LIFEPO4)), "LiFePO4 option missing after an edit")) return 1;
+  if (!expect(batteryCellMaxMv == 3650, "choosing the current chemistry again did not restore its defaults")) return 1;
+  cyd::preview::advanceTime(200);
+  tap(40, 22);  // Back returns to the battery page rather than the settings menu
+  cyd::preview::advanceTime(200);
+  if (!expect(hasLabel(lv_scr_act(), "CHARGE") && hasLabel(lv_scr_act(), vehicleFieldTitle(VEHICLE_FIELD_BATTERY_S)),
+              "Back from cell voltages did not return to Battery Configuration")) return 1;
+  setBatteryChemistry(BATTERY_LIION);
 
   saveVehicleInputValue(VEHICLE_FIELD_MODE_LABEL_1, "Eco");
   saveVehicleInputValue(VEHICLE_FIELD_MODE_LABEL_2, "Drive");

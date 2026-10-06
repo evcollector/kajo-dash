@@ -159,7 +159,6 @@ enum SubmenuType {
   SUBMENU_POWER_LIMITS,
   SUBMENU_SPEED_CALIBRATION,
   SUBMENU_GAUGE_RANGES,
-  SUBMENU_PACK_SETUP,
   SUBMENU_PIN,
   SUBMENU_LOGGING,
   SUBMENU_DISPLAY,
@@ -169,6 +168,7 @@ enum SubmenuType {
   SUBMENU_CONFIGURATOR,
   SUBMENU_RESET,
   SUBMENU_BATTERY,
+  SUBMENU_BATTERY_CELLS,
   SUBMENU_CONTROLLER_TYPE,
   SUBMENU_AUTO_RETURN,
   SUBMENU_DEMO,
@@ -326,6 +326,30 @@ void batteryStatsCheckpoint();
 // (controller-reported distance vs. eRPM/tachometer). The reading is not a
 // distance travelled, so it must replace the baseline instead of being banked.
 void batteryStatsRebaseDistance(float odometerKm);
+// Cell chemistry decides which open-circuit curve turns resting voltage into a
+// charge percentage, the nominal cell voltage behind the Wh figures, and the
+// full-cell voltage the pack voltage bar is scaled to.
+enum BatteryChemistry : uint8_t {
+  BATTERY_LIION,
+  BATTERY_LIPO,
+  BATTERY_LIFEPO4,
+  BATTERY_CHEMISTRY_COUNT
+};
+// Each chemistry has default cell voltages the rider can then adjust. The
+// minimum and maximum are the resting voltages that read 0 % and 100 %, not
+// charger limits; the nominal voltage turns amp-hours into watt-hours.
+enum BatteryCellVoltage : uint8_t { BATTERY_CELL_MIN, BATTERY_CELL_NOMINAL, BATTERY_CELL_MAX };
+const char *batteryChemistryName(uint8_t chemistry);
+uint16_t batteryChemistryDefaultMv(uint8_t chemistry, BatteryCellVoltage which);
+float batteryCellFullVolts();  // the rider's maximum cell voltage, in volts
+// Selects a chemistry, loads its default cell voltages and saves. Choosing the
+// current chemistry again restores those defaults.
+void setBatteryChemistry(uint8_t chemistry);
+// Call after editing one of the cell voltages: restores their order and, as
+// with a chemistry change, starts the charge estimate and measured capacity
+// over, because both were derived from the old curve.
+void batteryNormalizeCellVoltages(BatteryCellVoltage edited);
+void batteryRestartChargeEstimate();
 const BatteryStats &batteryStatsLive();
 int batterySocFromVoltage(float packVoltage);  // open-circuit curve, no counting
 void loadBatteryStats();
@@ -353,6 +377,10 @@ extern char motorName[24];
 extern char controllerName[24];
 extern char vehicleBuildId[24];
 extern uint8_t batterySeriesCount;
+extern uint8_t batteryChemistry;  // BatteryChemistry
+extern uint16_t batteryCellMinMv;
+extern uint16_t batteryCellNominalMv;
+extern uint16_t batteryCellMaxMv;
 extern uint16_t batteryCapacityDeciAh;
 extern uint16_t batteryMaxAmps;
 extern uint16_t motorMaxAmps;

@@ -80,7 +80,8 @@ settings screen, and the ride replay views.
 - **VESC telemetry** over wired UART or Bluetooth LE, with discovery and
   saved-device reconnect
 - **Battery estimates**: state of charge from resting voltage plus coulomb
-  counting, learned pack resistance, range and Wh/km
+  counting, learned pack resistance, range and Wh/km, for Li-ion, LiPo or
+  LiFePO4 packs
 - **Ride logging** to a microSD card, with automatic start and stop, and
   on-device ride replay
 - **Signed firmware updates over Bluetooth**, with rollback-safe dual-slot OTA
@@ -120,8 +121,10 @@ screens, not a mock-up. Task layout, data flow and threading rules are in
 
 ## Safety
 
-Currently this firmware just displays and records telemetry (Though profiles and settings adjustment support is coming). 
-It does not control the vehicle, and it is not safety equipment. 
+The current firmware displays and records telemetry. Controller profiles and
+settings adjustment are planned; this version does not change controller
+settings or control the vehicle. It is not safety equipment.
+
 Range, state of charge and wear estimates are derived, and can drift from reality;
 check anything important with VESC Tool or a meter.
 Wiring mistakes on an electric vehicle can destroy a controller or start a fire.
