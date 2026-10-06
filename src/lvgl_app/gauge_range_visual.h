@@ -2,10 +2,11 @@
 
 #include <cstdint>
 
-// The learned ceiling changes in readable steps. Move only its presentation
-// scale between those steps so a steady reading does not jump across a dial.
+// The learned ceiling follows the peak reading up, so the displayed ceiling follows it at once: a
+// needle at the end of the dial stays at the end. When the learned ceiling falls back, the
+// displayed one eases down over a couple of seconds.
 struct GaugeRangeVisual {
-  static constexpr uint32_t kTransitionMs = 900;
+  static constexpr uint32_t kShrinkMs = 2000;
 
   int shown = 0;
   int from = 0;
@@ -19,12 +20,11 @@ struct GaugeRangeVisual {
 
   int advance(int ceiling, uint32_t now) {
     if (ceiling < 1) ceiling = 1;
-    if (!shown || ceiling < target) {
-      // Resets, manual limits and source changes must take effect immediately.
-      reset(ceiling);
+    if (!shown || ceiling >= shown) {
+      reset(ceiling);  // pushed up (or first use): no transition, and a shrink under way is cancelled
       return shown;
     }
-    if (ceiling > target) {
+    if (ceiling != target) {
       from = shown;
       target = ceiling;
       startedAt = now;
@@ -32,13 +32,13 @@ struct GaugeRangeVisual {
     if (shown == target) return shown;
 
     const uint32_t elapsed = now - startedAt;  // also works across millis wrap
-    if (elapsed >= kTransitionMs) {
+    if (elapsed >= kShrinkMs) {
       shown = target;
     } else {
-      const float t = static_cast<float>(elapsed) / kTransitionMs;
+      const float t = static_cast<float>(elapsed) / kShrinkMs;
       const float eased = t * t * (3.0F - 2.0F * t);
-      const int next = from + static_cast<int>((target - from) * eased + 0.5F);
-      if (next > shown) shown = next;
+      const int next = from + static_cast<int>((target - from) * eased - 0.5F);
+      if (next < shown) shown = next < target ? target : next;
     }
     return shown;
   }

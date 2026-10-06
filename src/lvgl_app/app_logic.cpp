@@ -1,4 +1,5 @@
 #include "gauge_range_model.h"
+#include <new>
 #include "app_state.h"
 
 #include <Preferences.h>
@@ -2159,36 +2160,61 @@ const char *dashOemName() { return demoModeIsActive() ? "DEMO MODE" : oemName; }
 
 
 // Separate state for each transport, dashboard demo and theme preview.
-static GaugeRangeTracker gaugeRanges[5][RANGE_COUNT];
-void clearGaugeRangeRuntime() { for (auto &source : gaugeRanges) for (auto &range : source) range = GaugeRangeTracker{}; }
+// Allocated the first time a source is used: each tracker keeps 15 minutes of history, and static
+// DRAM is scarcer than heap.
+static GaugeRangeTracker *gaugeRanges[5];
+static GaugeRangeTracker *gaugeRangesFor(int source) {
+  if (!gaugeRanges[source]) gaugeRanges[source] = new (std::nothrow) GaugeRangeTracker[RANGE_COUNT]();
+  return gaugeRanges[source];
+}
+void clearGaugeRangeRuntime() {
+  for (auto *source : gaugeRanges)
+    if (source) for (int i = 0; i < RANGE_COUNT; ++i) source[i] = GaugeRangeTracker{};
+}
 static int gaugeBackendIndex() { return controllerType == CONTROLLER_FARDRIVER ? 2 : controllerConnection == CONTROLLER_CONNECTION_BLE ? 1 : 0; }
 static int gaugeSource() { return demoPreviewActive ? 4 : dashboardDemoModeEnabled ? 3 : gaugeBackendIndex(); }
 int automaticGaugeSource() { return gaugeSource(); }
-static void initGaugeRanges(int source) {
-  const int defaults[] = {30, 1000, 25, 100, 500, 40};
-  for (int i=0; i<RANGE_COUNT; ++i)
-    if (!gaugeRanges[source][i].ceiling) gaugeRanges[source][i].ceiling = defaults[i];
-  if (source < 3) gaugeRanges[source][RANGE_SPEED].ceiling = max(gaugeRanges[source][RANGE_SPEED].ceiling, (int)learnedGaugeSpeed[source]);
+static const int kGaugeRangeDefaults[RANGE_COUNT] = {30, 500, 25, 50, 500, 25};
+static GaugeRangeTracker *initGaugeRanges(int source) {
+  const int *defaults = kGaugeRangeDefaults;
+  GaugeRangeTracker *ranges = gaugeRangesFor(source);
+  if (!ranges) return nullptr;
+  for (int i=0; i<RANGE_COUNT; ++i) {
+    GaugeRangeTracker &range = ranges[i];
+    if (range.ceiling) continue;
+    range.ceiling = range.floorValue = defaults[i];
+    range.smoothMs = i == RANGE_EFFICIENCY ? 3000 : 0;  // launch transients are not the efficiency peak
+  }
+  // The saved speed is the last ride's peak: it ages out of the window like any other.
+  GaugeRangeTracker &speed = ranges[RANGE_SPEED];
+  if (source < 3 && !speed.seeded && (int)learnedGaugeSpeed[source] > speed.floorValue)
+    speed.seed((int)learnedGaugeSpeed[source]);
+  return ranges;
 }
-int automaticGaugeMaximum(GaugeRangeKind kind) { const int source=gaugeSource(); initGaugeRanges(source); return gaugeRanges[source][kind].ceiling; }
+int automaticGaugeMaximum(GaugeRangeKind kind) {
+  const GaugeRangeTracker *ranges = initGaugeRanges(gaugeSource());
+  return ranges ? ranges[kind].ceiling : kGaugeRangeDefaults[kind];
+}
 void resetAutomaticGaugeRanges() {
   const int source = gaugeSource();
-  for (auto &range : gaugeRanges[source]) range = GaugeRangeTracker{};
+  if (GaugeRangeTracker *ranges = gaugeRanges[source]) for (int i = 0; i < RANGE_COUNT; ++i) ranges[i] = GaugeRangeTracker{};
   if (source < 3) learnedGaugeSpeed[source] = 30;
 }
 static void observeGaugeRanges(int source, const DashboardValues &v, uint32_t fields, uint32_t now) {
   if (!automaticGaugeRanges) return;
-  initGaugeRanges(source);
+  GaugeRangeTracker *ranges = initGaugeRanges(source);
+  if (!ranges) return;
   const float readings[] = {(float)v.speedKmh, (float)max(0,v.watts), max(0.0F,v.current),
                            max(0.0F,v.motorCurrent), max(0.0F,-(float)v.watts),
                            v.speedKmh >= 8 && v.watts > 0 ? (float)v.watts/v.speedKmh : 0};
   const uint32_t masks[] = {TELEMETRY_FIELD_SPEED, TELEMETRY_FIELD_POWER, TELEMETRY_FIELD_CURRENT,
     TELEMETRY_FIELD_MOTOR_CURRENT, TELEMETRY_FIELD_POWER, TELEMETRY_FIELD_SPEED | TELEMETRY_FIELD_POWER};
   const float limits[] = {1000, 100000, 2000, 4000, 100000, 1000};
+  // Only riding ages the window: by speed when the controller reports it, otherwise by load.
+  const bool riding = (fields & TELEMETRY_FIELD_SPEED) ? v.speedKmh >= 1 : abs(v.watts) >= 50;
   for (int i=0; i<RANGE_COUNT; ++i)
-    gaugeRanges[source][i].observe((fields & masks[i]) == masks[i] ? readings[i] : -1, now,
-                                  i == RANGE_SPEED ? 1000 : i == RANGE_EFFICIENCY ? 5000 : 300, limits[i]);
-  if (source < 3) learnedGaugeSpeed[source] = gaugeRanges[source][RANGE_SPEED].ceiling;
+    ranges[i].observe((fields & masks[i]) == masks[i] ? readings[i] : -1, now, riding, limits[i]);
+  if (source < 3) learnedGaugeSpeed[source] = ranges[RANGE_SPEED].ceiling;
 }
 void serviceGaugeRanges() {
   const ControllerSnapshot snapshot = controllerSnapshot();

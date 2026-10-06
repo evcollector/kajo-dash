@@ -17,34 +17,91 @@ static void tap(int x, int y) {
   cyd::preview::setPointer(false,x,y); cyd::preview::advanceTime(200);
 }
 int main() {
-  GaugeRangeTracker range; range.ceiling=30;
-  check(!range.observe(500,100,1000,1000), "one spike expanded range");
-  range.observe(10,200,1000,1000);
-  check(range.ceiling==30,"spike persisted");
-  for (uint32_t now=300; now<1300; now+=100) check(!range.observe(28,now,1000,1000),"expanded too early");
-  check(range.observe(28,1300,1000,1000) && range.ceiling==40,"sustained near-ceiling did not expand");
-  for (int i=0;i<100;++i) range.observe(0,1400+i*100,1000,1000);
-  check(range.ceiling==40,"range shrank while coasting");
-  range.observe(200,12000,1000,1000); range.observe(200,12000,1000,1000);
-  check(range.ceiling==40,"duplicate packet learned");
-  check(range.observe(200,12100,1000,1000),"corroborated overrun failed");
-  GaugeRangeTracker wrap; wrap.ceiling=30; wrap.observe(80,0xffffffc0U,1000,1000);
-  check(wrap.observe(80,64,1000,1000),"timestamp wrap failed");
+  // The ceiling is pushed up by a confirmed reading, to the exact peak, and never by one packet.
+  auto fresh = [](int start) { GaugeRangeTracker t; t.ceiling = t.floorValue = start; return t; };
+  GaugeRangeTracker range = fresh(30);
+  uint32_t now = 1000;
+  auto feed = [&](GaugeRangeTracker &t, float value, bool riding = true, uint32_t step = 100) {
+    now += step; return t.observe(value, now, riding, 1000);
+  };
+  feed(range, 10); feed(range, 500); feed(range, 10);
+  check(range.ceiling==30,"one spike moved the ceiling");
+  feed(range, 29); feed(range, 30);
+  check(range.ceiling==30,"reading at the ceiling pushed it");
+  feed(range, 31);
+  check(range.ceiling==30,"a single reading past the ceiling pushed it");
+  feed(range, 31);
+  check(range.ceiling==31,"ceiling did not follow the reading past it");
+  feed(range, 33); feed(range, 35); feed(range, 35);
+  check(range.ceiling==35,"ceiling did not follow the peak");
+  for (int i=0;i<20;++i) feed(range, 20);
+  check(range.ceiling==35,"ceiling changed after the peak with the window still full");
+  feed(range, 35.2F); feed(range, 35.2F);
+  check(range.ceiling==36,"fractional peak not rounded up to a whole unit");
+  GaugeRangeTracker overrun = fresh(30);
+  feed(overrun, 200); check(overrun.ceiling==30,"first overrun packet learned");
+  feed(overrun, 200); check(overrun.ceiling==200,"confirmed overrun failed");
+  GaugeRangeTracker duplicate = fresh(30);
+  feed(duplicate, 200, true, 100); now -= 100; feed(duplicate, 200, true, 0);
+  check(duplicate.ceiling==30,"duplicate packet learned");
+  GaugeRangeTracker bad = fresh(30);
+  feed(bad, 5000); feed(bad, 5000); feed(bad, -3); feed(bad, NAN);
+  check(bad.ceiling==30,"implausible measurement learned");
+  GaugeRangeTracker gap = fresh(30);
+  feed(gap, 90); now += 5000; feed(gap, 90, true, 0);
+  check(gap.ceiling==30,"reading across a telemetry gap confirmed itself");
+  GaugeRangeTracker wrap = fresh(30);
+  wrap.observe(80,0xffffffc0U,true,1000);
+  check(wrap.observe(80,64,true,1000) && wrap.ceiling==80,"timestamp wrap failed");
+
+  // The scale falls back once the peak ages out of 15 minutes of riding, and only while the
+  // reading is low.
+  GaugeRangeTracker aging = fresh(30);
+  now = 1000; feed(aging, 80); feed(aging, 80);
+  check(aging.ceiling==80,"peak not learned");
+  for (int i=0; i<60*14; ++i) feed(aging, 5, true, 1000);
+  check(aging.ceiling==80,"scale shrank inside the window");
+  for (int i=0; i<60*2; ++i) feed(aging, 5, false, 1000);
+  check(aging.ceiling==80,"standing still aged the window");
+  for (int i=0; i<90; ++i) feed(aging, 25, true, 1000);
+  check(aging.ceiling==80,"scale shrank while the reading was high");
+  for (int i=0; i<5; ++i) feed(aging, 5, true, 1000);
+  check(aging.ceiling==30,"scale did not shrink once the reading was low");
+  GaugeRangeTracker hysteresis = fresh(30);
+  now = 1000; feed(hysteresis, 33); feed(hysteresis, 33);
+  for (int i=0; i<60*16; ++i) feed(hysteresis, 5, true, 1000);
+  check(hysteresis.ceiling==33,"scale shrank by less than 15%");
+  GaugeRangeTracker seeded = fresh(30);
+  seeded.seed(80);
+  check(seeded.ceiling==80,"seed ignored");
+  now = 1000;
+  for (int i=0; i<60*14; ++i) feed(seeded, 5, true, 1000);
+  check(seeded.ceiling==80,"seed aged early");
+  for (int i=0; i<60*2; ++i) feed(seeded, 5, true, 1000);
+  check(seeded.ceiling==30,"seed never aged out");
+  GaugeRangeTracker slow = fresh(40);
+  slow.smoothMs = 3000; now = 1000;
+  for (int i=0; i<20; ++i) feed(slow, 400);  // a 2 s launch transient
+  check(slow.ceiling < 250,"slow quantity learned a short transient in full");  // about half of it by 2 s
+
+  // The displayed ceiling follows a push at once and eases down when the learned one falls.
   GaugeRangeVisual visual;
   visual.reset(30);
-  check(visual.advance(40,1000)==30,"visual scale jumped at start");
-  check(visual.advance(40,1450)==35,"visual scale did not move gradually");
-  check(visual.advance(40,1900)==40,"visual scale did not reach learned ceiling");
-  visual.reset(1000);
-  visual.advance(1500,2000);
-  const int inFlight = visual.advance(1500,2300);
-  check(inFlight>1000 && inFlight<1500,"power range jumped");
-  check(visual.advance(2000,2300)==inFlight,"second expansion jumped");
-  check(visual.advance(2000,3200)==2000,"second expansion did not settle");
-  check(visual.advance(30,3300)==30,"reset did not snap down");
-  visual.reset(30);
-  visual.advance(40,0xffffff00U);
-  check(visual.advance(40,0x00000284U)==40,"visual transition failed across millis wrap");
+  check(visual.advance(35,1000)==35,"displayed ceiling did not follow a push");
+  check(visual.advance(36,1100)==36,"displayed ceiling lagged a second push");
+  visual.reset(80);
+  check(visual.advance(30,1000)==80,"shrink jumped at start");
+  const int mid = visual.advance(30,2000);
+  check(mid<80 && mid>30,"shrink did not ease");
+  check(visual.advance(30,2500)<=mid,"shrink went backwards");
+  check(visual.advance(30,3200)==30,"shrink did not settle");
+  visual.reset(80);
+  visual.advance(30,1000);
+  const int partway = visual.advance(30,1800);
+  check(visual.advance(partway+5,1900)==partway+5,"push did not cancel a shrink");
+  visual.reset(80);
+  visual.advance(30,0xffffff00U);
+  check(visual.advance(30,0x00000900U)==30,"shrink failed across millis wrap");
   GaugeValueVisual needle;
   needle.reset(0,1000);
   const float firstMove = needle.advance(100,1100);

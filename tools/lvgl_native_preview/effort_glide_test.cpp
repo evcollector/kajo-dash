@@ -27,6 +27,7 @@ using namespace cyd::preview;
 
 bool ok = true;
 const int kSpeed = 1;  // the speed instrument
+const int kEffortScalePositions = 4096;  // a full dial, in the units of previewMotorEffortPosition
 
 void fail(const std::string &message) {
   std::cerr << message << '\n';
@@ -309,6 +310,39 @@ int main() {
     if (previewMotorEffortPosition(kSpeed) != previewMotorEffortTarget(kSpeed) || previewMotorEffortTarget(kSpeed) <= settled)
       fail("The replacement screen did not glide to a new reading");
   }
+
+  // J. With automatic ranges a speed that outgrows the scale pushes the ceiling up with it: the
+  // ring stays pegged while it rises, nothing moves when the scale follows, and the scale then
+  // stays where the peak put it.
+  automaticGaugeRanges = true;
+  setDemoPreview(true);
+  resetAutomaticGaugeRanges();
+  freshDashboard(20);
+  for (int speed = 20; speed <= 29; ++speed) {
+    updateDashboardMode(MODE_MOTOR_EFFORT, readings(speed), true);
+    watch(100);
+  }
+  mark = run.samples.size();
+  for (int speed = 30; speed <= 36; ++speed) {
+    updateDashboardMode(MODE_MOTOR_EFFORT, readings(speed), true);
+    watch(100);
+  }
+  {
+    const std::vector<int> climb = positionsSince(mark);
+    // Skip the first reading at the old ceiling, which is still settling into the end of the dial.
+    for (size_t i = 20; i < climb.size(); ++i)
+      if (climb[i] != kEffortScalePositions) { fail("The ring left the end of the dial while the speed pushed the scale"); break; }
+  }
+  for (int i = 0; i < 3; ++i) { updateDashboardMode(MODE_MOTOR_EFFORT, readings(36), true); watch(100); }
+  updateDashboardMode(MODE_MOTOR_EFFORT, readings(20), true);
+  watch(1200);
+  {
+    const int settled = previewMotorEffortPosition(kSpeed);  // 20 of a 36 km/h scale
+    if (settled < kEffortScalePositions * 50 / 100 || settled > kEffortScalePositions * 62 / 100)
+      fail("The scale did not stay at the peak: the ring settled at " + std::to_string(settled));
+  }
+  automaticGaugeRanges = false;
+  setDemoPreview(false);
 
   // Every frame of every glide above repainted like a full redraw, bar the odd antialiased pixel at the
   // edge of a repainted rectangle, and none was expensive.
