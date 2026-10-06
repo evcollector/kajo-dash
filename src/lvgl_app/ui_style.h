@@ -9,12 +9,12 @@
 // New UI should consume these names instead of copying their numeric values.
 namespace cyd_ui {
 // Motor Data stock instrument palette, one hue per quantity as in the Bar Graph
-// dashboard: motion cyan, potential yellow, effort red (input power), and an orange
-// run from the phase amps (lightest) through the battery amps to duty, which sits
-// between battery amps and input power. Explicit dashboard accents override it; the
+// dashboard: motion cyan, potential amber-yellow, effort red (input power), phase amps
+// a brighter lemon yellow (255, 237, 41), and an orange run from the battery amps to
+// duty, which sits between battery amps and input power. Explicit dashboard accents override it; the
 // light variants use amber voltage, matching orange currents and red duty/power.
 constexpr uint16_t kMotorDataSpeed565 = 0x05FF;
-constexpr uint16_t kMotorDataPhase565 = 0xFC00;
+constexpr uint16_t kMotorDataPhase565 = 0xFF65;  // RGB 255, 237, 41
 constexpr uint16_t kMotorDataDuty565 = 0xF9E1;
 constexpr uint16_t kMotorDataCurrent565 = 0xFB40;
 constexpr uint16_t kMotorDataVoltage565 = 0xF664;

@@ -291,8 +291,8 @@ Motor Data replaces Mono in dashboard slot 4. Six fixed instruments, each a
 segmented ring (`makeSegRing(...)` / `setSegRingValue(...)` in `ui_common.cpp`)
 with the shared outer needle (`makeTickNeedle(...)` / `setTickNeedleValue(...)`
 in `dashboards.cpp`). The stock colors follow the Bar Graph dashboard's one hue
-per quantity: speed cyan, phase voltage yellow and input power red, with an orange
-run for the currents (phase amps lightest, then battery amps) and duty between battery amps and input power. They come from `cyd_ui::kMotorData*565` in
+per quantity: speed cyan, phase voltage amber-yellow, phase amps lemon yellow (255, 237, 41),
+input power red, and an orange run for the battery amps and duty between battery amps and input power. They come from `cyd_ui::kMotorData*565` in
 `ui_style.h`, with a separate default palette for light appearance; explicit dashboard
 accents override them. Each dial's number is pure white (black in light
 appearance) and its caption is the dial's color most of the way to the text
