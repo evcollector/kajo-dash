@@ -67,8 +67,6 @@ struct DashWidgets {
   lv_obj_t *uptime2;
   lv_obj_t *battPct;
   BatteryWidget batt;
-  ArcGauge speedArc;
-  ArcGauge powerArc;
   TickDial speedDial;
   TickDial powerDial;
   TickNeedle speedNeedle;
@@ -168,11 +166,9 @@ static const lv_font_t *F4 = &lv_font_rajdhani_24;
 static const lv_font_t *F7 = &lv_font_rajdhani_36;
 
 static TelemetryFieldMask dashAvailableFields = TELEMETRY_FIELDS_ALL;
-static TelemetryFieldMask dashDerivedFields = TELEMETRY_FIELDS_ALL;
 
-void setDashboardTelemetryFields(uint32_t available, uint32_t derived) {
+void setDashboardTelemetryFields(uint32_t available) {
   dashAvailableFields = available;
-  dashDerivedFields = derived & available;
 }
 
 static bool dashHas(TelemetryField field) {
@@ -233,7 +229,6 @@ static lv_obj_t *makeTopTimeLabel(lv_obj_t *parent, const Item &item, const char
   raised.y -= 1;
   return makeLabel(parent, raised, text, color);
 }
-static lv_color_t greenLv() { return dash565(COLOR565_GREEN); }
 static lv_color_t whiteLv() { return dashWhite(); }
 
 // Theme signature colors: stock palette while the accent is Default, the
@@ -1031,10 +1026,10 @@ int previewGlideTarget(int index) { return glides[index].target; }
 // ── HUD (Cyber HUD) ───────────────────────────────────────────────────────────
 
 // Point storage for decorative lv_lines. The points must outlive the objects,
-// so every stroke is carved out of this pool: slots 0/1 are the HUD dials,
-// slot 2 is the Dual Gauge frame.
-static lv_point_t strokePool[3][72];
-static int strokePoolUsed[3];
+// so every stroke is carved out of this pool: slot 0 is the HUD's speed dial,
+// slot 1 its power dial.
+static lv_point_t strokePool[2][72];
+static int strokePoolUsed[2];
 
 // An lv_line sizes itself from its largest point coordinate, so absolute points
 // would give every stroke a bounding box reaching back to the screen origin —
@@ -1071,20 +1066,6 @@ static lv_obj_t *makeStroke(lv_obj_t *parent, int slot, const lv_point_t *pts, i
 static lv_point_t hexLerp(const lv_point_t &a, const lv_point_t &b, int fraction) {
   return {(lv_coord_t)(a.x + (b.x - a.x) * fraction / 256),
           (lv_coord_t)(a.y + (b.y - a.y) * fraction / 256)};
-}
-
-// Corner pieces of a "[" or "]" taken from a layout item's bounding box. Only
-// the corners are drawn, never the full spine: a full-height edge would cut
-// straight through the tick ring beside it.
-static void makeBracket(lv_obj_t *parent, int slot, const Item &item, bool opensRight, lv_color_t color) {
-  const lv_coord_t spine = opensRight ? item.x : (lv_coord_t)(item.x + item.w);
-  const lv_coord_t cap = opensRight ? (lv_coord_t)(item.x + item.w) : item.x;
-  const lv_coord_t bottom = item.y + item.h;
-  const int leg = 18;
-  const lv_point_t top[3] = {{cap, item.y}, {spine, item.y}, {spine, (lv_coord_t)(item.y + leg)}};
-  const lv_point_t low[3] = {{cap, bottom}, {spine, bottom}, {spine, (lv_coord_t)(bottom - leg)}};
-  makeStroke(parent, slot, top, 3, color, 1);
-  makeStroke(parent, slot, low, 3, color, 1);
 }
 
 // Keep every Cyber HUD decoration on exactly the same six-sided geometry.
@@ -1951,27 +1932,6 @@ static void updateGauge(const DashboardValues &v) {
 }
 
 // ── Simple ────────────────────────────────────────────────────────────────────
-
-// Metric card used by the Simple theme (drawTftMetricBox)
-static lv_obj_t *makeMetricCard(lv_obj_t *scr, const Item &card, CydIconId icon, const char *label,
-                                const char *value, lv_color_t accent) {
-  lv_obj_t *panel = makePanel(scr, card.x, card.y, card.w, card.h, 6, themeColorDark(0x4A69), dashBlack(),
-                              false);
-  makeIcon(panel, 4, 16, icon, accent);
-  lv_obj_t *lbl = lv_label_create(panel);
-  lv_obj_set_style_text_font(lbl, F1, 0);
-  lv_obj_set_style_text_color(lbl, accent, 0);
-  lv_label_set_text(lbl, label);
-  lv_obj_set_pos(lbl, 8, 5);
-  lv_obj_t *val = lv_label_create(panel);
-  lv_obj_set_style_text_font(val, F2, 0);
-  lv_obj_set_style_text_color(val, whiteLv(), 0);
-  lv_label_set_text(val, value);
-  lv_obj_set_style_text_align(val, LV_TEXT_ALIGN_RIGHT, 0);
-  lv_obj_set_size(val, card.w - 10, 18);
-  lv_obj_set_pos(val, 5, card.h - 25);
-  return val;
-}
 
 static void simpleSpeedSweep(int value) {
   char text[16];
@@ -3789,41 +3749,7 @@ static void updateTrace(const DashboardValues &v) {
   }
 }
 
-// ── Purpose-focused dashboards ──────────────────────────────────────────────
-
-static lv_obj_t *makePurposeBar(lv_obj_t *parent, int x, int y, int w, int h, lv_color_t color) {
-  lv_obj_t *bar = lv_bar_create(parent);
-  makePassive(bar);
-  lv_obj_set_pos(bar, x, y);
-  lv_obj_set_size(bar, w, h);
-  lv_bar_set_range(bar, 0, 100);
-  lv_obj_set_style_radius(bar, 3, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(bar, lv_color_mix(color, dashBlack(), 30), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(bar, 1, LV_PART_MAIN);
-  lv_obj_set_style_border_color(bar, color, LV_PART_MAIN);
-  lv_obj_set_style_radius(bar, 2, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(bar, color, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_INDICATOR);
-  return bar;
-}
-
-static lv_obj_t *makePurposeTile(lv_obj_t *scr, int x, int y, int w, int h, const char *caption,
-                                  const char *value, lv_color_t accent, const lv_font_t *font = F2,
-                                  lv_obj_t **captionOut = NULL) {
-  makePanel(scr, x, y, w, h, 5, accentDarkLv(), dashBlack(), true);
-  lv_obj_t *captionLabel = makeLabelAt(scr, x + 6, y + 5, caption, labelLv(), F1, 0);
-  if (captionOut) *captionOut = captionLabel;
-  lv_obj_t *label = makeLabelAt(scr, x + w - 6, y + h - lv_font_get_line_height(font) - 5, value, whiteLv(), font, 4);
-  lv_obj_set_width(label, w - 12);
-  lv_obj_set_x(label, x + 6);
-  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_RIGHT, 0);
-  return label;
-}
-
-static void makePurposeHeader(lv_obj_t *scr, const char *title, lv_color_t accent) {
-  makeLabelAt(scr, 160, 15, title, accent, F2, 1);
-}
+// ── Minimal Ride ──────────────────────────────────────────────────────────────
 
 static const Item MINIMAL_CENTER_SPEED = {160, 132, 0, 0, 0, 0, 0, 0, 0, 146, 96, 1, 0};
 static const int MINIMAL_DIAL_CENTER_Y = 138;
@@ -4200,7 +4126,6 @@ static constexpr int EFFICIENCY_PLOT_BASE = 197;
 static constexpr int EFFICIENCY_PLOT_H = 34;
 static lv_obj_t *efficiencyDialObj = NULL;
 static lv_obj_t *efficiencyGraphObj = NULL;
-static lv_color_t efficiencyAccentColor;
 static int efficiencyDialSpeed = 0;  // where the speed dial is drawn, in kGlideScale ths
 // Live consumption, lightly damped — not the ride average, which is already
 // printed inside this dial and again in the RIDE AVG tile below it.
@@ -4584,7 +4509,6 @@ static void buildEfficiency(lv_obj_t *scr, const DashboardValues &v) {
   const DashTexts t = fmtTexts(v);
   const BatteryStats stats = dashBatteryStats();
   char text[32];
-  efficiencyAccentColor = accent;
 
   // Match the compact shared ride-status bar used by Gauge and Motor Data, leaving
   // every pixel below it available to the instruments.

@@ -464,7 +464,6 @@ void controllerSelectionForId(ControllerBackendId id, ControllerType &type, Cont
   }
 }
 
-const ControllerBackend *controllerBackends() { return kBackends; }
 uint8_t controllerBackendCount() { return sizeof(kBackends) / sizeof(kBackends[0]); }
 
 const ControllerBackend *controllerBackendById(ControllerBackendId id) {
@@ -480,10 +479,6 @@ const ControllerBackend *activeControllerBackend() {
 
 const ControllerCapabilities &controllerCapabilities() { return activeControllerBackend()->caps; }
 const char *controllerTypeName() { return activeControllerBackend()->name; }
-const char *controllerTransportName() {
-  return activeControllerBackend()->transport == CONTROLLER_TRANSPORT_BLE ? "Bluetooth LE" : "Wired UART";
-}
-bool controllerUsesVescUart() { return activeControllerBackend()->id == CONTROLLER_ID_VESC_UART; }
 bool controllerUsesVescBle() { return activeControllerBackend()->id == CONTROLLER_ID_VESC_BLE; }
 bool controllerUsesFarDriverBle() { return activeControllerBackend()->id == CONTROLLER_ID_FARDRIVER_BLE; }
 bool controllerUsesBluetooth() { return activeControllerBackend()->transport == CONTROLLER_TRANSPORT_BLE; }
@@ -625,13 +620,6 @@ ControllerSnapshot controllerSnapshot() {
   return snapshot;
 }
 
-TelemetryFieldMask telemetryAvailableFields() {
-  return controllerSnapshot().available;
-}
-TelemetryFieldMask telemetryDerivedFields() {
-  return controllerSnapshot().derived;
-}
-
 BatteryStats getBatteryStats() {
   return controllerSnapshot().battery;
 }
@@ -714,8 +702,4 @@ ControllerSnapshot controllerSnapshot() {
   snapshot.firmwareKnown = telemetryFirmwareVersion(snapshot.firmwareMajor, snapshot.firmwareMinor);
   return snapshot;
 }
-TelemetryFieldMask telemetryAvailableFields() {
-  return controllerSnapshot().available;
-}
-TelemetryFieldMask telemetryDerivedFields() { return telemetryAvailableFields(); }
 #endif

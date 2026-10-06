@@ -682,10 +682,6 @@ const char *metricBatteryLabel() {
   return txt("BATTERY", "AKKU", "BATTERIE", "BATTERIE", "BATERÍA", "BATTERIA");
 }
 
-const char *metricTempLabel() {
-  return txt("TEMP", "LÄMPÖ", "TEMP.", "TEMP.", "TEMP.", "TEMP.");
-}
-
 const char *metricTripLabel() {
   return txt("TRIP", "MATKA", "STRECKE", "TRAJET", "VIAJE", "VIAGGIO");
 }
@@ -694,16 +690,8 @@ const char *metricUptimeLabel() {
   return txt("UPTIME", "AIKA", "LAUFZEIT", "DURÉE", "TIEMPO", "DURATA");
 }
 
-const char *metricTimeLabel() {
-  return txt("TIME", "AIKA", "ZEIT", "TEMPS", "TIEMPO", "TEMPO");
-}
-
 const char *metricPowerLabelShort() {
   return txt("POWER", "TEHO", "LEIST.", "PUISS.", "POT.", "POT.");
-}
-
-const char *metricVoltsLabelShort() {
-  return txt("VOLTS", "VOLTIT", "VOLT", "VOLTS", "VOLT.", "VOLT");
 }
 
 const char *metricBatteryAmpsLabel() {
@@ -712,14 +700,6 @@ const char *metricBatteryAmpsLabel() {
 
 const char *metricPhaseAmpsLabel() {
   return txt("PHASE AMPS", "VAIHEVIRTA", "PHASENSTROM", "COURANT PHASE", "AMP. FASE", "AMP. FASE");
-}
-
-const char *metricAmpsLabelShort() {
-  return txt("AMPS", "VIRTA", "STROM", "AMP.", "AMP.", "AMP.");
-}
-
-const char *metricTempLabelShort() {
-  return txt("TEMP", "LÄMPÖ", "TEMP.", "TEMP.", "TEMP.", "TEMP.");
 }
 
 const char *dashboardDataLabel(DashboardDataItem item) {
@@ -1807,12 +1787,6 @@ void formatPowerWithUnit(char *buffer, size_t size, int watts) {
   snprintf(buffer, size, "%s %s", value, powerUnitLabel(watts));
 }
 
-void formatPowerTight(char *buffer, size_t size, int watts) {
-  char value[12];
-  formatPowerValue(value, sizeof(value), watts);
-  snprintf(buffer, size, "%s%s", value, powerUnitLabel(watts));
-}
-
 static const unsigned long DEMO_UPTIME_FLAG = 0x80000000UL;
 
 static bool decodeDemoUptime(unsigned long encoded, unsigned long &hours, unsigned long &minutes,
@@ -1888,15 +1862,6 @@ void formatUptimeShort(char *buffer, size_t size, unsigned long seconds) {
     minutes = (seconds / 60UL) % 60UL;
   }
   snprintf(buffer, size, "%02lu:%02lu", hours, minutes);
-}
-
-static float clamp01(float value) {
-  return constrain(value, 0.0F, 1.0F);
-}
-
-static float smoothStep(float value) {
-  const float x = clamp01(value);
-  return x * x * (3.0F - 2.0F * x);
 }
 
 static float lerpFloat(float from, float to, float amount) {

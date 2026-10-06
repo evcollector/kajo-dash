@@ -71,7 +71,7 @@ lv_obj_t *freshDashboard(int speed, bool finishSweep = true) {
   lv_obj_t *screen = newScreen();
   lv_scr_load(screen);
   lv_obj_del(old);
-  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
+  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL);
   buildDashboardMode(screen, gMode, readings(speed));
   if (finishSweep) previewFinishStartupSweep();
   updateDashboardMode(gMode, readings(speed), true);
@@ -152,7 +152,7 @@ void runTheme(const char *name, DashboardMode mode, int speedIndex, bool unavail
   kSpeed = speedIndex;
   run = Run();
   dashboardMode = mode;
-  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
+  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL);
   automaticGaugeRanges = false;
   topSpeedKmh = 60;
 
@@ -272,10 +272,10 @@ void runTheme(const char *name, DashboardMode mode, int speedIndex, bool unavail
 
   // G. A reading the controller stops reporting is dropped at once; its return glides in.
   if (unavailableDropsAtOnce) {
-  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL & ~static_cast<uint32_t>(TELEMETRY_FIELD_SPEED), TELEMETRY_FIELDS_ALL);
+  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL & ~static_cast<uint32_t>(TELEMETRY_FIELD_SPEED));
   updateDashboardMode(gMode, readings(30), true);
   if (previewGlidePosition(kSpeed) != 0) fail("An unavailable reading was not cleared at once");
-  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
+  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL);
   updateDashboardMode(gMode, readings(30), true);
   if (previewGlidePosition(kSpeed) != 0) fail("A returning reading jumped instead of gliding");
   watch(60);

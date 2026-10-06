@@ -11,7 +11,7 @@ void updateDashboardMode(DashboardMode mode, const DashboardValues &values, bool
 void updateDashboard(const DashboardValues &values);
 // Supplies the availability metadata from the same controller snapshot as
 // values. Unsupported fields are rendered as a neutral dash, never as zero.
-void setDashboardTelemetryFields(uint32_t available, uint32_t derived);
+void setDashboardTelemetryFields(uint32_t available);
 void applyDashboardGradient(lv_obj_t *scr);
 // The startup sweep marks entering a dashboard. Disable it around a rebuild
 // that only restyles the theme already on screen (automatic light/dark).

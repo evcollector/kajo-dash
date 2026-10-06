@@ -58,12 +58,6 @@ static bool gradientBellBackup = false;
 static uint8_t gradientPositionBackup = 50;
 static AccentTheme gradientThemeBackup = ACCENT_DEFAULT;
 static DashboardCustomization dashboardCustomizationBackup[MODE_COUNT] = {};
-static bool customGradientEnabledBackup = false;
-static bool customGradientHorizontalBackup = false;
-static bool customGradientBellBackup = false;
-static uint8_t customGradientPositionBackup = 50;
-static AccentTheme customGradientThemeBackup = ACCENT_DEFAULT;
-static ScreenMode gradientReturnScreen = SCREEN_SUBMENU;
 static lv_obj_t *ldrTargetLabel = NULL;
 static DashboardMode dashUiPreviewMode = MODE_HUD;
 static bool dashUiGridOpen = true;
@@ -846,7 +840,6 @@ static void loadScreen(lv_obj_t *scr) {
 // ── Tap controls overlay ─────────────────────────────────────────────────────
 
 static constexpr int kDashboardSettingsAction = 900;
-static constexpr int kDashboardRecordAction = 901;
 static constexpr uint32_t kDashboardControlsTimeoutMs = 2000;
 static lv_obj_t *dashboardSettingsButton = NULL;
 static lv_obj_t *dashboardLoggingControl = NULL;
@@ -1273,7 +1266,7 @@ static void showDashboard() {
   lv_obj_t *scr = makeScreen();
   const ControllerSnapshot snapshot = controllerSnapshot();
   const DashboardValues values = snapshot.link == LINK_LIVE ? snapshot.values : DashboardValues{};
-  setDashboardTelemetryFields(snapshot.available, snapshot.derived);
+  setDashboardTelemetryFields(snapshot.available);
   buildDashboard(scr, values);
   // Alerts remain below the controls overlay.
   makeLinkOverlay(scr);
@@ -1382,7 +1375,7 @@ void uiDashboardTick() {
   if (currentScreen == SCREEN_DASHBOARD && !rebuildQueued) {
     const ControllerSnapshot snapshot = controllerSnapshot();
     const DashboardValues values = snapshot.link == LINK_LIVE ? snapshot.values : DashboardValues{};
-    setDashboardTelemetryFields(snapshot.available, snapshot.derived);
+    setDashboardTelemetryFields(snapshot.available);
     updateDashboard(values);
     refreshLinkOverlay(false);
     refreshDashboardLoggingControl();
@@ -1430,7 +1423,7 @@ void uiDashboardTick() {
     // and can reset the ESP32 on the first 100 ms timer tick.  The setup
     // wizard did not expose this because it runs under SCREEN_CONFIG.
     if (!uiUpdatesHeld() && selectorPreviewUpdateDue()) {
-      setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
+      setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL);
       updateDashboardMode(dashUiPreviewMode, makeDummyValues());
     }
   }
@@ -1592,7 +1585,7 @@ static void serviceRecoveryHold() {
 static const uint16_t kAutoReturnChoices[] = {30, 60, 120, 300, 600, 900, 1800, 3600};
 
 static bool screenHandsBackToDashboard(ScreenMode mode) {
-  return mode == SCREEN_MENU || mode == SCREEN_SUBMENU || mode == SCREEN_GRADIENT_CUSTOM ||
+  return mode == SCREEN_MENU || mode == SCREEN_SUBMENU ||
          mode == SCREEN_PIN_SETUP || mode == SCREEN_PIN_LOCK || mode == SCREEN_TOUCH_TEST ||
          mode == SCREEN_FARDRIVER_BLE || mode == SCREEN_RIDE_LOGS;
 }
@@ -1871,12 +1864,6 @@ static lv_obj_t *selectorArrowLeft = NULL;
 static lv_obj_t *selectorArrowRight = NULL;
 static lv_obj_t *selectorHousing = NULL;
 static lv_obj_t *selectorBottomRow = NULL;
-static lv_obj_t *selectorThemeButton = NULL;
-static lv_obj_t *selectorBackgroundButton = NULL;
-static lv_obj_t *selectorThemeName = NULL;
-static lv_obj_t *selectorBackgroundName = NULL;
-static lv_obj_t *selectorThemeDot = NULL;
-static lv_obj_t *selectorBackgroundDot = NULL;
 static void selectedBadgeDrawCb(lv_event_t *e);
 static void toggleSelectorPalette();
 static void toggleColorsMaster();
@@ -2949,13 +2936,6 @@ static const char *farDriverStateDetail(const FarDriverBleStatus &status) {
                             status.state == FARDRIVER_BLE_DISCOVERING,
                             status.state == FARDRIVER_BLE_CONNECTED,
                             status.state == FARDRIVER_BLE_ERROR, status.savedDevice);
-}
-
-static const char *vescBleStateDetail(const VescBleStatus &status) {
-  return bleLinkStateDetail(status.state == VESC_BLE_SCANNING ? 1 : 0,
-                            status.state == VESC_BLE_CONNECTING, false,
-                            status.state == VESC_BLE_CONNECTED, status.state == VESC_BLE_ERROR,
-                            status.savedDevice);
 }
 
 // A failed connect says only "try again" everywhere else, which is fine next
@@ -4432,7 +4412,7 @@ static void makeDisplayColorReference(lv_obj_t *parent, int x, int y, int w, uin
 static void makeDashUiPreview(lv_obj_t *scr) {
   setDemoPreview(true);  // independent from dashboard demo and live logging
   DashboardValues values = makeDummyValues();
-  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL, TELEMETRY_FIELDS_ALL);
+  setDashboardTelemetryFields(TELEMETRY_FIELDS_ALL);
   buildDashboardMode(scr, dashUiPreviewMode, values);
   updateDashboardMode(dashUiPreviewMode, values, true);
   selectorPreviewLastUpdateMs = millis();
@@ -4451,13 +4431,10 @@ static lv_obj_t *selectorTopInfo = NULL;
 static lv_obj_t *selectorTopSave = NULL;
 static lv_obj_t *selectorColorBar = NULL;
 static lv_obj_t *selectorPalette = NULL;
-static int selectorPaletteY = 0;
 static bool selectorOverlayHidden = false;
 static int selectorColorBarY = 0;      // resting y, so it can slide back to it
 static const int kSelectorOverlayH = 44;  // controls occupy y 4..40
 static const int kColorBarH = 44;         // collapsed strip
-static const int kColorBarExpandedH = 100;
-static const int kColorSwatchH = 32;
 static const int kSelectorArrowW = 38;    // side steppers, sized for a thumb
 static const int kSelectorArrowH = 76;
 static const int kSelectorArrowInset = 3;
@@ -4772,20 +4749,6 @@ static void makeCustomizerExplanation(lv_obj_t *popup) {
   lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
 }
 
-static void placeSelectorSummaryDot(lv_obj_t *name, lv_obj_t *dot, int nameX, int rightEdge) {
-  if (!name || !dot) return;
-  lv_point_t textSize;
-  const lv_font_t *font = lv_obj_get_style_text_font(name, 0);
-  lv_txt_get_size(&textSize, lv_label_get_text(name), font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-  const int dotX = min(nameX + textSize.x + 4, rightEdge - 12);
-  // These are coordinates inside the fixed bottom summary button. Avoid
-  // querying the object's live X here: while a new selector screen is being
-  // assembled LVGL may not have resolved its layout yet on the device.
-  lv_obj_set_pos(name, nameX, 20);
-  lv_obj_set_width(name, max(1, dotX - nameX - 3));
-  lv_obj_set_pos(dot, dotX, 19);
-}
-
 static void makeAppearanceSplit(lv_obj_t *popup) {
   lv_obj_t *housing = lv_obj_create(popup);
   lv_obj_remove_style_all(housing);
@@ -5015,13 +4978,6 @@ static void rebuildSelectorPopup() {
 
   lv_obj_set_style_border_color(selectorHousing,
                                 open ? cyd_ui::chromeAccent() : cyd_ui::idleControlBorder(), 0);
-  if (selectorThemeName) lv_label_set_text(selectorThemeName, accentName());
-  if (selectorBackgroundName) {
-    const AccentTheme savedTheme = accentTheme;
-    accentTheme = dashboardGradientTheme;
-    lv_label_set_text(selectorBackgroundName, accentName());
-    accentTheme = savedTheme;
-  }
 
   if (!open) return;
 
@@ -5111,47 +5067,6 @@ static void openSelectorDataPanel() {
   rebuildSelectorPopup();
 }
 
-static lv_obj_t *makeBottomColorChoice(lv_obj_t *parent, int x, int w, const char *titleText, int id,
-                                       lv_obj_t **nameOut, lv_obj_t **dotOut) {
-  lv_obj_t *btn = lv_btn_create(parent);
-  lv_obj_set_pos(btn, x, 3);
-  lv_obj_set_size(btn, w, 36);
-  lv_obj_set_style_radius(btn, 5, 0);
-  lv_obj_set_style_bg_color(btn, cyd_ui::controlSurface(), 0);
-  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
-  lv_obj_set_style_border_width(btn, 1, 0);
-  lv_obj_set_style_border_color(btn, cyd_ui::idleControlBorder(), 0);
-  lv_obj_set_style_shadow_width(btn, 0, 0);
-  lv_obj_set_style_pad_all(btn, 0, 0);
-  applySelectorTouchFx(btn);
-  lv_obj_add_event_cb(btn, buttonEventCb, LV_EVENT_CLICKED, (void *)(intptr_t)id);
-
-  lv_obj_t *title = lv_label_create(btn);
-  lv_obj_set_style_text_font(title, &lv_font_rajdhani_12, 0);
-  lv_obj_set_style_text_color(title, lv_color_white(), 0);
-  lv_label_set_text(title, titleText);
-  lv_obj_align(title, LV_ALIGN_TOP_LEFT, 6, 3);
-
-  lv_obj_t *name = lv_label_create(btn);
-  lv_obj_set_style_text_font(name, &lv_font_rajdhani_12, 0);
-  lv_obj_set_style_text_color(name, c565(COLOR565_LABEL), 0);
-  lv_label_set_long_mode(name, LV_LABEL_LONG_DOT);
-  lv_obj_set_width(name, w - 28);
-  lv_obj_align(name, LV_ALIGN_BOTTOM_LEFT, 6, -3);
-
-  lv_obj_t *dot = lv_obj_create(btn);
-  lv_obj_remove_style_all(dot);
-  makePassive(dot);
-  lv_obj_set_size(dot, 12, 12);
-  lv_obj_align(dot, LV_ALIGN_RIGHT_MID, -7, 0);
-  lv_obj_set_style_radius(dot, 3, 0);
-  lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
-
-  *nameOut = name;
-  *dotOut = dot;
-  return btn;
-}
-
 static void makeColorBar(lv_obj_t *scr) {
   selectorScreen = scr;
   selectorColorBarY = 240 - kColorBarH;
@@ -5237,13 +5152,6 @@ static void makeColorBar(lv_obj_t *scr) {
   lv_label_set_long_mode(resetHint, LV_LABEL_LONG_DOT);
   lv_obj_set_style_text_align(resetHint, LV_TEXT_ALIGN_CENTER, 0);
 
-  selectorThemeName = NULL;
-  selectorBackgroundName = NULL;
-  selectorThemeDot = NULL;
-  selectorBackgroundDot = NULL;
-
-  selectorThemeButton = NULL;
-  selectorBackgroundButton = NULL;
   rebuildSelectorPopup();
 }
 
@@ -7061,110 +6969,6 @@ static void showConfigurator() {
   loadScreen(scr);
 }
 
-// ── Gradient customizer ──────────────────────────────────────────────────────
-
-static lv_obj_t *gradientPositionLabel = NULL;
-
-static void gradientCustomAction(int id) {
-  if (id == BTN_BACK) {
-    dashboardGradientEnabled = customGradientEnabledBackup;
-    dashboardGradientHorizontal = customGradientHorizontalBackup;
-    dashboardGradientBell = customGradientBellBackup;
-    dashboardGradientPosition = customGradientPositionBackup;
-    dashboardGradientTheme = customGradientThemeBackup;
-    queueRebuild(gradientReturnScreen);
-    return;
-  }
-  if (id == BTN_SAVE) {
-    queueRebuild(gradientReturnScreen);
-    return;
-  }
-  if (id == BTN_GRADIENT_ORIENTATION) {
-    dashboardGradientHorizontal = !dashboardGradientHorizontal;
-    queueRebuild(SCREEN_GRADIENT_CUSTOM);
-    return;
-  }
-  if (id == BTN_GRADIENT_BELL) {
-    dashboardGradientBell = !dashboardGradientBell;
-    queueRebuild(SCREEN_GRADIENT_CUSTOM);
-  }
-}
-
-static void gradientPositionEventCb(lv_event_t *e) {
-  lv_obj_t *slider = lv_event_get_target(e);
-  dashboardGradientPosition = constrain(lv_slider_get_value(slider), 15, 85);
-  if (gradientPositionLabel) {
-    char text[20];
-    snprintf(text, sizeof(text), "%s %u%%", txt("POSITION", "SIJAINTI", "POSITION", "POSITION", "POSICIÓN",
-                                                 "POSIZIONE"),
-             dashboardGradientPosition);
-    lv_label_set_text(gradientPositionLabel, text);
-  }
-  if (lv_event_get_code(e) == LV_EVENT_RELEASED) queueRebuild(SCREEN_GRADIENT_CUSTOM);
-}
-
-static void showGradientCustomizer() {
-  lv_obj_t *scr = makeScreen();
-  currentAction = gradientCustomAction;
-  dashboardGradientEnabled = true;
-  setAccentRenderMode(dashUiPreviewMode);
-  applyDashboardGradient(scr);
-
-  lv_obj_t *back = makeNavButton(scr, kMenuEdgeX, 4,
-                                 txt("< BACK", "< TAKAISIN", "< ZURÜCK", "< RETOUR", "< ATRÁS", "< INDIETRO"),
-                                 BTN_BACK, kTopBarButtonH);
-  lv_obj_set_size(back, kWideTopNavW, kTopBarButtonH);
-  makeHeaderBox(scr, txt("GRADIENT", "LIUKUVÄRI", "VERLAUF", "DÉGRADÉ", "DEGRADADO", "GRADIENTE"),
-                txt("CUSTOMIZE", "MUOKKAA", "ANPASSEN", "RÉGLER", "AJUSTAR", "PERSONALIZZA"), 90, 140);
-  lv_obj_t *save = makeNavButton(
-      scr, kWideTopNavRightX, 4, txt("SAVE", "TALLENNA", "SPEICHERN", "SAUVER", "GUARDAR", "SALVA"), BTN_SAVE,
-      kTopBarButtonH);
-  lv_obj_set_width(save, kWideTopNavW);
-  lv_obj_t *controls = makePanel(scr, 10, 52, 300, 178, 8, cyd_ui::idleControlBorder(),
-                                 cyd_ui::panelSurface(), true);
-  lv_obj_set_style_bg_opa(controls, LV_OPA_80, 0);
-  makeMenuButton(controls, 8, 8, 136, 50,
-                 dashboardGradientHorizontal
-                     ? txt("HORIZONTAL", "VAAKA", "HORIZONTAL", "HORIZONTAL", "HORIZONTAL", "ORIZZONTALE")
-                     : txt("VERTICAL", "PYSTY", "VERTIKAL", "VERTICAL", "VERTICAL", "VERTICALE"),
-                 txt("Orientation", "Suunta", "Ausrichtung", "Orientation", "Orientación", "Orientamento"), true,
-                 BTN_GRADIENT_ORIENTATION);
-  makeMenuButton(controls, 156, 8, 136, 50,
-                 dashboardGradientBell ? txt("BELL CURVE", "KELLOKÄYRÄ", "GLOCKENKURVE", "COURBE CLOCHE",
-                                                   "CURVA CAMPANA", "CURVA A CAMPANA")
-                                       : txt("SINGLE FADE", "YKSI LIUKU", "EIN VERLAUF", "FONDU SIMPLE",
-                                             "DEGRADADO SIMPLE", "SFUMATURA SINGOLA"),
-                 dashboardGradientBell ? txt("Two gradients", "Kaksi liukua", "Zwei Verläufe", "Deux dégradés",
-                                             "Dos degradados", "Due gradienti")
-                                       : txt("Color to black", "Väristä mustaan", "Farbe zu Schwarz", "Couleur au noir",
-                                             "Color a negro", "Colore a nero"),
-                 dashboardGradientBell, BTN_GRADIENT_BELL);
-
-  char positionText[20];
-  snprintf(positionText, sizeof(positionText), "%s %u%%",
-           txt("POSITION", "SIJAINTI", "POSITION", "POSITION", "POSICIÓN", "POSIZIONE"),
-           dashboardGradientPosition);
-  gradientPositionLabel = makeLabelAt(controls, 150, 72, positionText, lv_color_white(), &lv_font_rajdhani_12, 3);
-
-  lv_obj_t *slider = lv_slider_create(controls);
-  lv_obj_set_pos(slider, 16, 96);
-  lv_obj_set_size(slider, 268, 28);
-  lv_slider_set_range(slider, 15, 85);
-  lv_slider_set_value(slider, dashboardGradientPosition, LV_ANIM_OFF);
-  lv_obj_set_style_bg_color(slider, c565(COLOR565_DIM), LV_PART_MAIN);
-  lv_obj_set_style_bg_color(slider, accentLv(), LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(slider, lv_color_white(), LV_PART_KNOB);
-  lv_obj_set_style_pad_all(slider, 7, LV_PART_KNOB);
-  lv_obj_add_event_cb(slider, gradientPositionEventCb, LV_EVENT_VALUE_CHANGED, NULL);
-  lv_obj_add_event_cb(slider, gradientPositionEventCb, LV_EVENT_RELEASED, NULL);
-
-  makeLabelAt(controls, 150, 145,
-              txt("Move the fade or bell peak", "Siirrä liukua tai huippua", "Verlauf oder Spitze verschieben",
-                  "Déplacer le fondu ou le pic", "Mover degradado o pico", "Sposta sfumatura o picco"),
-              c565(COLOR565_LABEL), &lv_font_rajdhani_12, 3);
-  loadScreen(scr);
-}
-
 // ── PIN lock ──────────────────────────────────────────────────────────────────
 
 static lv_obj_t *pinMaskLabel = NULL;
@@ -7793,13 +7597,6 @@ void uiShow(ScreenMode mode) {
   selectorArrowRight = NULL;
   selectorHousing = NULL;
   selectorBottomRow = NULL;
-  selectorThemeButton = NULL;
-  selectorBackgroundButton = NULL;
-  selectorThemeName = NULL;
-  selectorBackgroundName = NULL;
-  selectorThemeDot = NULL;
-  selectorBackgroundDot = NULL;
-  gradientPositionLabel = NULL;
   resetProgressBar = NULL;
   resetProgressLabel = NULL;
   // menu/wizard chrome follows the saved theme's accent; a dashboard (or
@@ -7817,9 +7614,6 @@ void uiShow(ScreenMode mode) {
       break;
     case SCREEN_CONFIG:
       showConfigurator();
-      break;
-    case SCREEN_GRADIENT_CUSTOM:
-      showGradientCustomizer();
       break;
     case SCREEN_PIN_SETUP:
       showPinSetup();

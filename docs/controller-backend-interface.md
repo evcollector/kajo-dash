@@ -345,7 +345,6 @@ struct ControllerBackend {
   uint16_t taskStackBytes;  // ESP32 FreeRTOS stack depth is specified in bytes
 };
 
-const ControllerBackend *controllerBackends();
 uint8_t controllerBackendCount();
 const ControllerBackend *activeControllerBackend();
 const ControllerBackend *controllerBackendById(ControllerBackendId id);

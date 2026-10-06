@@ -46,7 +46,6 @@ void setObjBgColor(lv_obj_t *obj, lv_color_t color, lv_style_selector_t selector
 // Plain object helpers
 lv_obj_t *makePanel(lv_obj_t *parent, int x, int y, int w, int h, int radius, lv_color_t border, lv_color_t bg,
                     bool filled);
-lv_obj_t *makeRect(lv_obj_t *parent, const cyd_layout::Item &item, lv_color_t border);
 lv_obj_t *makeFilledRect(lv_obj_t *parent, const cyd_layout::Item &item, lv_color_t border, lv_color_t bg);
 lv_obj_t *makeLineBox(lv_obj_t *parent, const cyd_layout::Item &item, lv_color_t color);
 lv_obj_t *makeHLine(lv_obj_t *parent, int x, int y, int w, lv_color_t color);
@@ -187,7 +186,6 @@ struct SegRingWidget {
 void makeSegRing(SegRingWidget &ring, lv_obj_t *parent, int cx, int cy, int radius, int thickness, int sweepDeg,
                  lv_color_t lit, lv_color_t unlit);
 void setSegRingValue(SegRingWidget &ring, int value, int maxValue);
-void setSegRingColors(SegRingWidget &ring, lv_color_t lit, lv_color_t unlit);
 // A disc behind the ring, out to the blocks' outer edge (drawn by the ring, so it costs no object),
 // not drawn from screen row `bottomY` down (a bar below it, drawn over the ring, stays clear).
 void setSegRingFill(SegRingWidget &ring, lv_color_t fill, int bottomY);
@@ -228,22 +226,6 @@ void glideInit(Glide &glide, void (*place)(void *context, int position), void *c
 void glideAim(Glide &glide, int target, bool animate = true);
 // Drops a glide under way; the instrument stays where it is.
 void glideStop(Glide &glide);
-
-// Segmented arc gauge (drawGaugeScale/updateGaugeArc): 260deg sweep from 140deg
-struct ArcGauge {
-  lv_obj_t *arc;
-  lv_meter_indicator_t *indic;  // set when the gauge is a meter, else NULL
-  int maxValue;
-  int lastValue;
-};
-ArcGauge makeSegGauge(lv_obj_t *parent, int cx, int cy, int r, int maxValue, lv_color_t active,
-                      lv_color_t inactive, lv_color_t tickMajor, lv_color_t tickMinor);
-ArcGauge makeSimpleArc(lv_obj_t *parent, int cx, int cy, int r, int maxValue, int width, lv_color_t active,
-                       lv_color_t inactive, int startDeg = 140, int sweepDeg = 260);
-void setArcValue(ArcGauge &gauge, int value);
-
-// Horizontal bar row (drawLayoutBarRow): outlined bar with fill
-lv_obj_t *makeBarFrame(lv_obj_t *parent, const cyd_layout::Item &frame, lv_color_t color);
 
 // Screen container with black background, no scroll/padding
 lv_obj_t *makeScreen();

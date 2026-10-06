@@ -119,10 +119,6 @@ lv_obj_t *makePanel(lv_obj_t *parent, int x, int y, int w, int h, int radius, lv
   return obj;
 }
 
-lv_obj_t *makeRect(lv_obj_t *parent, const cyd_layout::Item &item, lv_color_t border) {
-  return makePanel(parent, item.x, item.y, item.w, item.h, item.radius, border, lv_color_black(), false);
-}
-
 lv_obj_t *makeFilledRect(lv_obj_t *parent, const cyd_layout::Item &item, lv_color_t border, lv_color_t bg) {
   return makePanel(parent, item.x, item.y, item.w, item.h, item.radius, border, bg, true);
 }
@@ -757,12 +753,6 @@ void setSegRingMajors(SegRingWidget &ring, int extraPx, int steps) {
   if (ring.obj) lv_obj_invalidate(ring.obj);
 }
 
-void setSegRingColors(SegRingWidget &ring, lv_color_t lit, lv_color_t unlit) {
-  ring.lit = lit;
-  ring.unlit = unlit;
-  if (ring.obj) lv_obj_invalidate(ring.obj);
-}
-
 // ── Glide ─────────────────────────────────────────────────────────────────────
 
 static const uint32_t kGlideMinMs = 100;
@@ -825,95 +815,6 @@ void setBatteryLevel(BatteryWidget &widget, int percent, lv_color_t goodColor) {
   lv_obj_set_width(widget.fill, max(1, fillW));
   lv_obj_set_style_bg_opa(widget.fill, fillW > 0 ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
   lv_obj_set_style_bg_color(widget.fill, batteryLevelColorLv(clamped, goodColor), 0);
-}
-
-// ── Gauges ────────────────────────────────────────────────────────────────────
-
-ArcGauge makeSegGauge(lv_obj_t *parent, int cx, int cy, int r, int maxValue, lv_color_t active,
-                      lv_color_t inactive, lv_color_t tickMajor, lv_color_t tickMinor) {
-  lv_obj_t *meter = lv_meter_create(parent);
-  lv_obj_remove_style(meter, NULL, LV_PART_MAIN);
-  // the meter always paints a needle-hub circle at its center; our gauges only
-  // use arcs, and the hub would sit right on top of the value text
-  lv_obj_remove_style(meter, NULL, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(meter, LV_OPA_TRANSP, LV_PART_INDICATOR);
-  lv_obj_set_style_size(meter, 0, LV_PART_INDICATOR);
-  lv_obj_clear_flag(meter, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
-  const int size = r * 2 + 2;
-  lv_obj_set_size(meter, size, size);
-  lv_obj_set_pos(meter, cx - size / 2, cy - size / 2);
-  lv_obj_set_style_text_opa(meter, LV_OPA_TRANSP, LV_PART_TICKS);  // no tick labels
-
-  lv_meter_scale_t *scale = lv_meter_add_scale(meter);
-  lv_meter_set_scale_ticks(meter, scale, 29, 2, 7, tickMinor);
-  lv_meter_set_scale_major_ticks(meter, scale, 4, 2, 12, tickMajor, 6);
-  lv_meter_set_scale_range(meter, scale, 0, maxValue, 260, 140);
-
-  ArcGauge gauge;
-  gauge.maxValue = maxValue;
-  // value band, roughly where updateGaugeArc paints its chunky segments
-  gauge.indic = lv_meter_add_arc(meter, scale, 11, active, -13);
-  lv_meter_set_indicator_start_value(meter, gauge.indic, 0);
-  lv_meter_set_indicator_end_value(meter, gauge.indic, 0);
-  gauge.arc = meter;
-  gauge.lastValue = -1;
-  (void)inactive;
-  return gauge;
-}
-
-ArcGauge makeSimpleArc(lv_obj_t *parent, int cx, int cy, int r, int maxValue, int width, lv_color_t active,
-                       lv_color_t inactive, int startDeg, int sweepDeg) {
-  lv_obj_t *arc = lv_arc_create(parent);
-  lv_arc_set_rotation(arc, startDeg);
-  lv_arc_set_bg_angles(arc, 0, sweepDeg);
-  lv_arc_set_range(arc, 0, maxValue);
-  lv_arc_set_value(arc, 0);
-  lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
-  lv_obj_clear_flag(arc, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_size(arc, r * 2, r * 2);
-  lv_obj_set_pos(arc, cx - r, cy - r);
-  lv_obj_set_style_arc_width(arc, width, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(arc, inactive, LV_PART_MAIN);
-  lv_obj_set_style_arc_width(arc, width, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_color(arc, active, LV_PART_INDICATOR);
-
-  ArcGauge gauge;
-  gauge.arc = arc;
-  gauge.indic = NULL;
-  gauge.maxValue = maxValue;
-  gauge.lastValue = -1;
-  return gauge;
-}
-
-void setArcValue(ArcGauge &gauge, int value) {
-  const int clamped = constrain(value, 0, gauge.maxValue);
-  if (clamped == gauge.lastValue) return;
-  gauge.lastValue = clamped;
-  if (gauge.indic) {
-    lv_meter_set_indicator_end_value(gauge.arc, gauge.indic, clamped);
-  } else {
-    lv_arc_set_value(gauge.arc, clamped);
-  }
-}
-
-// ── Bar rows ──────────────────────────────────────────────────────────────────
-
-lv_obj_t *makeBarFrame(lv_obj_t *parent, const cyd_layout::Item &frame, lv_color_t color) {
-  lv_obj_t *bar = lv_bar_create(parent);
-  makePassive(bar);
-  lv_obj_set_pos(bar, frame.x, frame.y);
-  lv_obj_set_size(bar, frame.w, frame.h);
-  lv_bar_set_range(bar, 0, 100);
-  lv_obj_set_style_radius(bar, 0, LV_PART_MAIN);
-  lv_obj_set_style_radius(bar, 0, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(bar, lv_color_black(), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_border_width(bar, 1, LV_PART_MAIN);
-  lv_obj_set_style_border_color(bar, color, LV_PART_MAIN);
-  lv_obj_set_style_pad_all(bar, 1, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(bar, color, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_INDICATOR);
-  return bar;
 }
 
 // ── Screens ───────────────────────────────────────────────────────────────────

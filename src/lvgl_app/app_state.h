@@ -12,7 +12,6 @@ enum ScreenMode {
   SCREEN_SUBMENU,
   SCREEN_TEXT_INPUT,
   SCREEN_CONFIG,
-  SCREEN_GRADIENT_CUSTOM,
   SCREEN_PIN_SETUP,
   SCREEN_PIN_LOCK,
   SCREEN_TOUCH_TEST,
@@ -463,7 +462,6 @@ void autoDetectDisplayPanelProfile(bool force);
 void displayModuleInfo(char *buffer, size_t size);
 void displayControllerInfo(char *buffer, size_t size);
 const char *controllerTypeName();
-const char *controllerTransportName();
 // The controller choice is applied by a short controlled reboot, after the
 // pressed-state and confirmation notice have had time to reach the panel.
 void requestControllerRestart();
@@ -505,19 +503,14 @@ const char *metricVoltsLabel();
 const char *metricAmpsLabel();
 const char *metricMotorLabel();
 const char *metricBatteryLabel();
-const char *metricTempLabel();
 const char *metricTripLabel();
 const char *metricUptimeLabel();
-const char *metricTimeLabel();
-// Abbreviated forms for narrow label slots (Ride Console's cards leave ~42 px
+// Abbreviated form for narrow label slots (Ride Console's cards leave ~42 px
 // between the card edge and the icon). English keeps the full word.
 const char *metricPowerLabelShort();
-const char *metricVoltsLabelShort();
-const char *metricAmpsLabelShort();
 // Qualified forms for the two currents, used where a caption has room for them.
 const char *metricBatteryAmpsLabel();
 const char *metricPhaseAmpsLabel();
-const char *metricTempLabelShort();
 
 // Units and formatting
 float displaySpeed(float kmh);
@@ -540,7 +533,6 @@ void formatSpeedValue(char *buffer, size_t size, float kmh);
 void formatPowerValue(char *buffer, size_t size, int watts);
 const char *powerUnitLabel(int watts);
 void formatPowerWithUnit(char *buffer, size_t size, int watts);
-void formatPowerTight(char *buffer, size_t size, int watts);
 const char *metricAvgLabel();
 const char *metricRangeLabel();
 const char *energyRateLabel();  // "WH/KM" or "WH/MI", following the unit setting

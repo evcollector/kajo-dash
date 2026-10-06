@@ -203,7 +203,6 @@ struct ControllerBackend {
   uint16_t taskStackBytes;
 };
 
-const ControllerBackend *controllerBackends();
 uint8_t controllerBackendCount();
 const ControllerBackend *activeControllerBackend();
 const ControllerBackend *controllerBackendById(ControllerBackendId id);
@@ -212,8 +211,6 @@ void controllerSelectionForId(ControllerBackendId id, ControllerType &type, Cont
 
 const ControllerCapabilities &controllerCapabilities();
 const char *controllerTypeName();
-const char *controllerTransportName();
-bool controllerUsesVescUart();
 bool controllerUsesFarDriverBle();
 bool controllerUsesVescBle();
 bool controllerUsesBluetooth();
@@ -246,8 +243,6 @@ void controllerResetAllSettings();
 bool controllerQuiesceForFirmwareUpdate();
 bool controllerQuiesceForCompanion();
 ControllerSnapshot controllerSnapshot();
-TelemetryFieldMask telemetryAvailableFields();
-TelemetryFieldMask telemetryDerivedFields();
 
 #ifdef CYD_LVGL_PREVIEW
 void previewSetControllerTelemetryFields(TelemetryFieldMask available, TelemetryFieldMask derived);
