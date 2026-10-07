@@ -1,0 +1,9 @@
+# Two captions in quick succession: with a long --min-caption the scene pauses between them,
+# unless the scene says caption-min 0 (see demo_recorder_caption_min.cmake).
+title "Caption hold"
+boot dashboard
+caption-min 0
+caption "First" "One."
+wait 100
+caption "Second" "Two."
+wait 100

@@ -1,17 +1,18 @@
 # Chapter: the twelve dashboard themes, as a speed edit.
 #
-# The same walk as themes-tour.scn with the waiting taken out: a theme gets about a second and a
-# half, which is enough to read its layout and see the needles move. A preview sits on a frozen
-# thumbnail while its controls are up, so each theme is "show the controls, tap the arrow, hide the
-# controls", and the preview resumes 600 ms after the hide. Theme previews always run the ride in
-# real time.
+# The same walk as themes-tour.scn with the waiting taken out. A theme's preview sits on a frozen
+# thumbnail while its controls are up, and that is fine here: the arrow is tapped straight through
+# the twelve themes without hiding the controls first.
 title "Twelve themes"
 subtitle "One telemetry stream, drawn twelve ways."
 
 # The ride is running before the dashboard is built, so its title reads DEMO MODE from the start.
 demo 1
 boot dashboard
+# A theme name is read at a glance; the montage keeps to one quick tap rhythm.
+caption-min 450
 
+caption-min 1000
 caption "Cyber HUD" "The default: hexagonal readouts and segmented meters." for=3600
 wait 300
 # Skip the ride's standing start; the launch is what is worth watching.
@@ -29,62 +30,41 @@ tap-label "NEXT" settle=500
 tap-label "BACK" settle=250
 tap-label "BACK" settle=500
 
+caption-min 450
 tap-label "Dual Gauge" settle=300
-caption "Dual Gauge" "Two dials."
-tap 160 120 settle=1250
+caption "Dual Gauge"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Simple" "Big speed, range and a power bar."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Simple"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Bar Graph" "Five segmented meters."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Bar Graph"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Motor Data" "Six dials, phase current to duty."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Motor Data"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Pixel" "Pixel-font digits."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Pixel"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Tiles" "Large tiles, here in light."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Tiles"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Ride Console" "Speed bar, power beam, pack card."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Ride Console"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Redline" "A tachometer-style dial."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Redline"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Trace" "The last 60 seconds, traced."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Trace"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Gauge" "One big ring with a gradient arc."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Gauge"
 
-tap 160 120 settle=200
-tap 298 118 settle=200
-caption "Efficiency" "Wh/km and a five-minute chart."
-tap 160 120 settle=1250
+tap 298 118 settle=300
+caption "Efficiency"
 
 caption "Save it" "The saved theme becomes your dashboard."
-tap 160 120 settle=400
 tap-label "SAVE" settle=900
 expect-label "SAVED"
 tap-label "BACK" settle=350

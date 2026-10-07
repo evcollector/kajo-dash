@@ -42,7 +42,7 @@ OUT = ROOT / "dist" / "demo"
 
 FPS = 60
 SPEED = 3  # how much faster than real time the firmware chapters play
-PACE_MS = 200  # video time a pause the scene wrote for looking may last: one quick rhythm throughout
+PACE_MS = 300  # video time a pause the scene wrote for looking may last: one quick rhythm throughout
 MIN_CAPTION_MS = 1000  # video time a caption stays, so a fast chapter can still be read
 SCALE = 4
 DISPLAY = (320, 240)

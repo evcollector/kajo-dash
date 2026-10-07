@@ -111,7 +111,7 @@ is interpolated. The touch ring keeps its own timing in video time, so a tap loo
 any speed.
 
 The pauses a scene wrote for a person to look at a page (`settle` after a tap, `wait`) are capped
-with `--pace` at 200 ms of video, so a tap takes about a fifth of a second to reach the next
+with `--pace` at 300 ms of video, so a tap takes about a third of a second to reach the next
 step however long the scene lingers. A step that the UI really needs the time for (the Touch
 Test bringing its buttons back, say) says `exact=yes` and keeps it.
 
@@ -149,6 +149,7 @@ before anything runs, so a typo costs no render.
 | `hold X Y MS` | a long press. Option `settle` |
 | `caption "heading" ["body"]` | puts this caption on the rail until the next one. Option `for=MS` ends it earlier |
 | `caption-off` | clears the rail's caption |
+| `caption-min MS` | how long, in video milliseconds, a caption of this scene stays before the next one replaces it, in place of `--min-caption`. The themes chapter uses 450 for names read at a glance |
 | `still NAME` | writes the current 320x240 frame to the stills folder |
 | `expect-label "TEXT"`, `expect-no-label "TEXT"` | fails the scene unless the label is, or is not, visible |
 | `dump` | prints every visible label with its position, for authoring |
@@ -229,7 +230,7 @@ A UI change that renames or moves a label the scenes tap fails ctest, not the ne
 | --- | --- |
 | `cyd_demo_scene_<name>` | each committed chapter plays to the end |
 | `cyd_demo_recorder_smoke`, `_deterministic` | the scene commands once, and the same frame digest on a second run |
-| `cyd_demo_recorder_speed`, `_deterministic_speed`, `_speed_range` | `--speed 3` gives a third of the frames and a held caption never shortens a scene, the same digest twice at speed, and an out-of-range speed is a usage error |
+| `cyd_demo_recorder_speed`, `_deterministic_speed`, `_speed_range`, `_caption_min` | `--speed 3` gives a third of the frames and a held caption never shortens a scene, the same digest twice at speed, an out-of-range speed is a usage error, and `caption-min` replaces the hold |
 | `cyd_demo_recorder_fixtures`, `_deterministic_fixtures` | the sensor, link and update fixtures and the finger path, each update state checked by the label it shows, and the same digest twice |
 | `cyd_demo_recorder_missing_label`, `_expectation_failed`, `_unknown_command`, `_before_boot`, `_light_range`, `_path_pairs` | the failures the recorder must name |
 | `test/test_make_demo_video.py` | the caption timeline, fades, rail images, cut file, chapter markers, the `start` chapter's menu model, and that every caption fits |

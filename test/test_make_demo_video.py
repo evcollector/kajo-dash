@@ -309,7 +309,7 @@ class SpeedTests(unittest.TestCase):
         self.assertEqual(args.speed, 3)
         self.assertGreaterEqual(args.speed, 3, "the video is a fast tour")
         self.assertGreaterEqual(args.min_caption, 800)
-        self.assertLessEqual(args.pace, 250, "a navigation step is about a fifth of a second")
+        self.assertLessEqual(args.pace, 300, "a navigation step is about a third of a second")
 
     def test_the_speed_and_hold_can_be_overridden_and_are_bounded(self):
         args = demo.parse_arguments(["--speed", "1", "--min-caption", "0", "--pace", "0"])

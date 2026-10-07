@@ -182,6 +182,7 @@ constexpr CommandSpec kCommands[] = {
     {"update-progress", "ii", ""},
     {"caption", "s?s", "for"},
     {"caption-off", "", ""},
+    {"caption-min", "i", ""},
     {"still", "w", ""},
     {"expect-label", "s", ""},
     {"expect-no-label", "s", ""},
@@ -1112,6 +1113,13 @@ class Recorder {
       trace(step, "\"" + event.heading + "\"");
       captionOpenFrame_ = event.untilFrame < 0 ? static_cast<int64_t>(event.frame) : -1;
       captions_.push_back(std::move(event));
+      return;
+    }
+    if (name == "caption-min") {
+      // This scene's own hold, in video milliseconds, in place of --min-caption.
+      holdCaption();
+      options_.minCaptionMs = std::max(0, static_cast<int>(integer(step, 0)));
+      trace(step, step.args[0].text + " ms");
       return;
     }
     if (name == "caption-off") {

@@ -14,8 +14,9 @@ subtitle "Accent, light or dark, background and readouts, for each theme."
 
 demo 1
 boot dashboard
+caption-min 750
 
-caption "Every theme is tunable" "Settings, Theme, then the theme you want to change. Here, Dual Gauge."
+caption "Every theme is tunable" "Settings, Theme, pick one."
 wait 1400
 tap 160 120 settle=700
 tap-label "SETTINGS" settle=600
@@ -24,38 +25,38 @@ tap-label "Dual Gauge" settle=500
 caption "Customize Theme" "One panel under every preview."
 tap-label "CUSTOMIZE THEME" settle=1500
 
-caption "Accent colour" "Ten to choose from. Magenta on Dual Gauge, live as you tap."
+caption "Accent colour" "Ten to choose from."
 wait 500
 tap 70 132 settle=2600
 
-caption "Light mode" "The same theme on white. Stock accents deepen to stay readable; a colour you pick stays as picked."
+caption "Light mode" "Stock accents deepen to stay readable."
 tap 161 168 settle=3200
 caption "Dark mode" "And back."
 tap 86 168 settle=1800
 
-caption "Background" "A colour, and a gradient: flat, fade, side or bell."
+caption "Background" "A colour, and a gradient."
 tap-label "BACKGROUND" settle=1000
 tap 115 132 settle=800
 tap 245 177 settle=2400
 
-caption "Readouts" "Pick what each slot shows. Volts become recovered energy."
+caption "Readouts" "Pick what each slot shows."
 tap-label "DATA" settle=1000
 expect-label "Select a data section to customize."
 tap 128 100 settle=900
 tap-label "RECOVERED" settle=1800
 
-caption "Auto" "Auto follows the front light sensor, and the backlight with it."
+caption "Auto" "Follows the light sensor."
 tap 85 50 settle=900
 tap 233 168 settle=900
 tap-label "ENABLE" settle=1800
-caption "Dusk" "Dark mode and a dimmer display."
-light 3300 28 over=3200
+caption "Dusk" "Dark mode, dimmer display."
+light 3300 28 over=1800
 wait 900
-caption "Daylight" "Back to light mode, full brightness."
-light 250 95 over=3200
+caption "Daylight" "Light mode, full brightness."
+light 250 95 over=1800
 wait 1200
 
-caption "Saved per theme" "Each theme keeps its own look. Save it and it is your dashboard."
+caption "Saved per theme" "Each theme keeps its own look."
 tap 20 120 settle=700
 tap 160 120 settle=3200
 tap 160 120 settle=700

@@ -207,7 +207,7 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
     # At the speed make_demo_video.py renders them (SPEED, PACE_MS, MIN_CAPTION_MS there), so a step
     # that needs more time than the pace allows fails here and not in the next render.
     add_test(NAME cyd_demo_scene_${chapter_name}
-             COMMAND cyd_demo_recorder "${chapter}" --speed=3 --pace=200 --min-caption=1000)
+             COMMAND cyd_demo_recorder "${chapter}" --speed=3 --pace=300 --min-caption=1000)
   endforeach()
   set(CYD_DEMO_TEST_SCENES "${CMAKE_CURRENT_LIST_DIR}/demo_test_scenes")
   add_test(NAME cyd_demo_recorder_smoke COMMAND cyd_demo_recorder "${CYD_DEMO_TEST_SCENES}/smoke.scn")
@@ -237,6 +237,13 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
       -DRECORDER=$<TARGET_FILE:cyd_demo_recorder>
       -DSCENE=${CYD_DEMO_TEST_SCENES}/smoke.scn
       -P "${CMAKE_CURRENT_LIST_DIR}/demo_recorder_speed.cmake")
+  add_test(
+    NAME cyd_demo_recorder_caption_min
+    COMMAND ${CMAKE_COMMAND}
+      -DRECORDER=$<TARGET_FILE:cyd_demo_recorder>
+      -DHELD=${CYD_DEMO_TEST_SCENES}/caption_min.scn
+      -DFREE=${CYD_DEMO_TEST_SCENES}/caption_min_off.scn
+      -P "${CMAKE_CURRENT_LIST_DIR}/demo_recorder_caption_min.cmake")
   add_test(NAME cyd_demo_recorder_speed_range COMMAND cyd_demo_recorder "${CYD_DEMO_TEST_SCENES}/smoke.scn" --speed=0)
   set_tests_properties(cyd_demo_recorder_speed_range PROPERTIES PASS_REGULAR_EXPRESSION "usage:")
   # A matching message passes the test whatever the exit code, so each of these proves the

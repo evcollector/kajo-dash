@@ -13,22 +13,23 @@ subtitle "Every logged ride, charted on the display."
 logging on
 demo 1
 boot dashboard
+caption-min 750
 
-caption "Ride logging" "Rides are recorded to the microSD card, started and stopped automatically."
+caption "Ride logging" "Recorded to the microSD card."
 wait 1600
 tap 160 120 settle=700
 tap-label "SETTINGS" settle=700
 tap-label "LOGGING" settle=1800
 
-caption "Your rides" "Open the list and pick any ride on the card. Demo rides are marked."
+caption "Your rides" "Pick any ride on the card."
 tap-label "RIDE LOGS" settle=2200
 
-caption "Replay" "Tap or drag anywhere in the charts to seek."
+caption "Replay" "Tap or drag to seek."
 tap-label "RIDE 12" settle=1400
 drag 40 120 146 120 1000 settle=1600
 drag 146 120 232 120 800 settle=900
 
-caption "Play" "Rates from 1x up to 100x."
+caption "Play" "1x up to 100x."
 tap 159 220 settle=2000
 tap 296 21 settle=350
 tap 296 21 settle=350
@@ -38,7 +39,7 @@ tap 296 21 settle=1800
 tap 159 220 settle=600
 
 # Back to the regen dip, then zoom in on it: the moment under the cursor keeps its place.
-caption "Zoom around the cursor" "Each step halves the stretch of ride on screen."
+caption "Zoom" "Each step halves the span."
 tap 146 120 settle=900
 tap 300 220 settle=700
 tap 300 220 settle=700
@@ -48,7 +49,7 @@ tap 18 220 settle=550
 tap 18 220 settle=550
 tap 18 220 settle=900
 
-caption "Up to four charts" "Choose how many, and what each one shows."
+caption "Up to four charts" "Choose what each shows."
 tap 248 21 settle=1000
 tap-label "4" settle=800
 tap-label "Current" settle=800
@@ -56,7 +57,7 @@ tap-label "Phase amps" settle=800
 tap-label "DONE" settle=900
 drag 232 120 146 120 900 settle=1800
 
-caption "Ride summary" "Distance, speeds, energy, regen and peaks."
+caption "Ride summary" "Distance, speeds, energy, peaks."
 tap 155 21 settle=3200
 tap-label "DONE" settle=600
 tap-label "BACK" settle=1200
