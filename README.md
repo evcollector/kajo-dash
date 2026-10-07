@@ -97,10 +97,11 @@ settings screen, and the ride replay views.
 | --- | --- | --- |
 | VESC | UART (wired) | Working |
 | VESC | Bluetooth LE | Working |
-| FarDriver | Bluetooth LE | Prototype: connection and diagnostics work, telemetry decoding is unverified |
+| FarDriver | Bluetooth LE | Works in limited testing: connects, reads telemetry and records rides, but with no guarantees |
 
-There are no tagged releases yet. Expect settings and ride-log formats to change
-without migration until the first one.
+v0.01 is the first release. FarDriver support has had only limited testing on a
+few controllers, so treat its readings as unverified until you have checked them
+against your own controller.
 
 ## How it is built
 
