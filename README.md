@@ -95,7 +95,7 @@ settings screen, and the ride replay views.
 
 | Controller | Link | State |
 | --- | --- | --- |
-| VESC | UART (wired) | Working |
+| VESC | UART (wired) | In testing |
 | VESC | Bluetooth LE | Working |
 | FarDriver | Bluetooth LE | Works in limited testing: connects, reads telemetry and records rides, but with no guarantees |
 
