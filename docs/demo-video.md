@@ -42,8 +42,7 @@ The opening holds each install step for 4–5 seconds: one Windows ZIP, no devel
 tools, Extract All, a USB data cable, the launcher filename, USB install and the
 automatic restart. Driver links and BOOT/RST are separate troubleshooting steps,
 not requirements for every install. These are redrawn instructions, not footage
-of a download or physical flash, and the chapter notes that no public release
-exists yet. Developer tools are explicitly optional. Unlike the firmware scenes,
+of a download or physical flash, and the chapter says so on its rail. Developer tools are explicitly optional. Unlike the firmware scenes,
 these holds are in output time and are not shortened by `--speed` or `--pace`.
 
 `tools/demo/cut.json` also holds the `intro` and `outro` cards of the full cut (a `title`, an
@@ -59,6 +58,22 @@ chapter list).
 | `<chapter>.events.json` | the caption timeline, in frames |
 | `<chapter>.gif`, `<chapter>.sheet.png` | with `--gif` (README loop) and `--sheet` (one frame every few seconds) |
 | `stills/<chapter>_<name>.png` | 320x240 captures from the scene's `still` steps |
+
+## Published copies
+
+The README embeds the chapter GIFs and links the full cut, which are kept in `docs/media/`:
+`demo.mp4`, `demo.chapters.txt` and one `<chapter>.gif` for each chapter of the cut. They are a
+render for sharing, not the working output, so `dist/` stays ignored. Refresh them after the UI or
+a scene changes, at the quality the published cut uses:
+
+```powershell
+python tools\make_demo_video.py --gif --crf 22
+copy dist\demo\demo.mp4, dist\demo\demo.chapters.txt docs\media
+foreach ($c in "start","themes","customize","replay","display","developer","updates") { copy dist\demo\$c.gif docs\media }
+```
+
+Each refresh adds the new binaries to the repository's history, so refresh when a release or a
+visible UI change calls for it, not after every edit.
 
 ## What the video is, and is not
 

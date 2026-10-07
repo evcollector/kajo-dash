@@ -28,7 +28,7 @@ FRAME = (1280, 960)
 
 TITLE = "Get started"
 SUBTITLE = "One download to install. Developer tools are optional."
-NOTE = "The terminal, installer and menu are redrawn. No release is published yet. The layout editor is the real page, in Chrome."
+NOTE = "The terminal, installer and menu are redrawn, not recorded. The layout editor is the real page, in Chrome."
 DISCLOSURE = "Captured from the repository's own tools, not the firmware simulator."
 
 # Every caption of the chapter, so a test can check that each fits the rail.
@@ -296,7 +296,7 @@ class Captions:
 
 
 INSTALL_STEPS = [
-    ("download", 5.0, ["FIRST INSTALL / WINDOWS", "", "One download. No development tools.", "", "github.com/evcollector/kajo-dash/releases", "KAJO-Dash-Firmware-v...-Windows.zip", "", "Release package preview: no public release yet."]),
+    ("download", 5.0, ["FIRST INSTALL / WINDOWS", "", "One download. No development tools.", "", "github.com/evcollector/kajo-dash/releases", "KAJO-Dash-Firmware-v...-Windows.zip", "", "Illustrated guide, not a recorded download."]),
     ("extract", 4.0, ["FIRST INSTALL / WINDOWS", "", "ZIP file > Extract All", "", "Keep the whole extracted folder together.", "Do not run the launcher from inside the ZIP."]),
     ("cable", 4.0, ["FIRST INSTALL / WINDOWS", "", "CYD display -- USB DATA cable -- Windows PC", "", "Charge-only cable: power, but no connection."]),
     ("launch", 4.0, ["FIRST INSTALL / WINDOWS", "", "Open the extracted folder.", "", "Double-click:", "Install or Update KAJO-Dash.bat"]),

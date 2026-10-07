@@ -24,6 +24,31 @@
 
 <!-- Photos and videos of real builds go here. -->
 
+## See it in action
+
+<p align="center">
+  <b><a href="docs/media/demo.mp4">Watch the 2½-minute tour (MP4)</a></b><br>
+  Installing, the twelve themes, customising one, ride replay, display settings, developer mode and
+  a Bluetooth firmware update. <a href="docs/media/demo.chapters.txt">Chapter list</a>.
+</p>
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/media/themes.gif" alt="Tapping through the twelve dashboard themes"><br><b>Twelve themes</b></td>
+    <td align="center" width="33%"><img src="docs/media/customize.gif" alt="Changing the accent colour, appearance and background of a theme"><br><b>Make it yours</b></td>
+    <td align="center" width="33%"><img src="docs/media/replay.gif" alt="Replaying a ride on the display: seek, zoom and charts"><br><b>Ride replay</b></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><img src="docs/media/display.gif" alt="Display settings: brightness, auto brightness, ambient LED and touch test"><br><b>Display settings</b></td>
+    <td align="center" width="33%"><img src="docs/media/developer.gif" alt="Unlocking developer mode and its options"><br><b>Developer mode</b></td>
+    <td align="center" width="33%"><img src="docs/media/updates.gif" alt="A signed firmware update over Bluetooth"><br><b>Updates over Bluetooth</b></td>
+  </tr>
+</table>
+
+The tour is rendered from the firmware simulator, not filmed: it is the real UI code running on a
+PC with demo data, so it shows what the screens do and makes no claim about frame rate on a CYD.
+[docs/demo-video.md](docs/demo-video.md) explains how it is made and how to re-render it.
+
 ## Themes
 
 <table>
