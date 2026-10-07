@@ -7,10 +7,10 @@
   },
   "chapters": ["start", "themes", "customize", "replay", "display", "developer", "updates"],
   "outro": {
-    "title": "Build it yourself",
-    "subtitle": "Everything in this video runs from the repository.",
-    "lines": ["Run kajo.bat to begin.", "github.com/evcollector/kajo-dash"],
-    "mark": "Get the code",
+    "title": "Install it. Or make it your own.",
+    "subtitle": "Windows release ZIP to install. Source code to develop.",
+    "lines": ["Releases: download, extract, connect USB, run the installer.", "Developers: clone the repo and run kajo.bat.", "github.com/evcollector/kajo-dash"],
+    "mark": "Get KAJO-Dash",
     "seconds": 6
   }
 }

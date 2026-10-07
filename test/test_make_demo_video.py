@@ -351,6 +351,27 @@ class ChapterMarkTests(unittest.TestCase):
 
 
 class StartChapterTests(unittest.TestCase):
+    def test_first_install_is_readable_and_separate_from_development(self):
+        class CountingWriter:
+            frames = 0
+
+            def add(self, image, count=1):
+                self.frames += count
+
+        writer = CountingWriter()
+        captions = start_capture.Captions()
+        with mock.patch.object(start_capture, "render_console"), mock.patch.object(start_capture, "render_installer"):
+            start_capture.console_part(writer, captions, 60)
+        keys = [step[0] for step in start_capture.INSTALL_STEPS]
+        self.assertEqual(keys, ["download", "extract", "cable", "launch", "installer", "restart", "driver", "boot"])
+        self.assertEqual(len(captions.events), len(keys) + 1)
+        for index, key in enumerate(keys):
+            self.assertEqual(captions.events[index]["heading"], start_capture.CAPTIONS[key][0])
+            self.assertGreaterEqual(captions.events[index + 1]["frame"] - captions.events[index]["frame"], 240)
+        self.assertEqual(captions.events[-1]["heading"], start_capture.CAPTIONS["clone"][0])
+        self.assertIn("No Python, PlatformIO or app needed", start_capture.CAPTIONS["download"][1])
+        self.assertIn("Install or Update KAJO-Dash.bat", start_capture.CAPTIONS["launch"][1])
+
     def test_the_chapter_is_found_without_a_scene(self):
         self.assertIsNotNone(demo.story_path("start"))
         demo.check_chapter("start")

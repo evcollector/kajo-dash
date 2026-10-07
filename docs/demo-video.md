@@ -27,7 +27,7 @@ for speed while drafting. Everything lands in `dist/demo/`, which git ignores.
 
 | # | Chapter | Shows |
 | --- | --- | --- |
-| 1 | `start` | a speed edit of getting started: the release installer, then cloning and `kajo.bat`, the simulator and the layout editor |
+| 1 | `start` | a readable Windows first-install guide, then a separate optional developer tour: cloning and `kajo.bat`, the simulator and the layout editor |
 | 2 | `themes` | a speed edit of the twelve dashboard themes on their live previews, and saving one |
 | 3 | `customize` | Dual Gauge in magenta; dark, light and auto appearance; background and gradient; what each readout shows |
 | 4 | `replay` | on-device ride replay: seek, play, zoom, charts, summary |
@@ -37,6 +37,14 @@ for speed while drafting. Everything lands in `dist/demo/`, which git ignores.
 
 `themes-tour` is the unhurried walk through the themes that `themes` condenses (a minute against
 half a minute). It is not in the cut; render it by name.
+
+The opening holds each install step for 4–5 seconds: one Windows ZIP, no developer
+tools, Extract All, a USB data cable, the launcher filename, USB install and the
+automatic restart. Driver links and BOOT/RST are separate troubleshooting steps,
+not requirements for every install. These are redrawn instructions, not footage
+of a download or physical flash, and the chapter notes that no public release
+exists yet. Developer tools are explicitly optional. Unlike the firmware scenes,
+these holds are in output time and are not shortened by `--speed` or `--pace`.
 
 `tools/demo/cut.json` also holds the `intro` and `outro` cards of the full cut (a `title`, an
 optional `subtitle` and `lines`, how many `seconds` they hold, and the `mark` they carry in the

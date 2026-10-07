@@ -1,4 +1,4 @@
-"""The `start` chapter: how a new contributor gets going, as a speed edit.
+"""The `start` chapter: a readable first install, then a contributor speed edit.
 
 Not firmware footage, so it is not a scene. Two things are shown, at the 1280x960 the simulator
 chapters use for the display, and handed to make_demo_video.py like any other recording:
@@ -27,15 +27,21 @@ ROOT = Path(__file__).resolve().parents[2]
 FRAME = (1280, 960)
 
 TITLE = "Get started"
-SUBTITLE = "Install a release, or clone it and build."
+SUBTITLE = "One download to install. Developer tools are optional."
 NOTE = "The terminal, installer and menu are redrawn. No release is published yet. The layout editor is the real page, in Chrome."
 DISCLOSURE = "Captured from the repository's own tools, not the firmware simulator."
 
 # Every caption of the chapter, so a test can check that each fits the rail.
 CAPTIONS = {
-    "download": ("Just want to run it?", "Download the release ZIP and extract it."),
-    "installer": ("Install it", "Plug in the display and choose USB."),
-    "clone": ("Want to hack on it?", "Clone it and run kajo.bat."),
+    "download": ("1. One Windows download", "Get the firmware Windows ZIP from GitHub Releases. No Python, PlatformIO or app needed."),
+    "extract": ("2. Extract everything", "Right-click the ZIP and choose Extract All. Keep all the extracted files together."),
+    "cable": ("3. Connect the display", "Use a USB data cable. A charge-only cable cannot install firmware."),
+    "launch": ("4. Open the installer", "Double-click Install or Update KAJO-Dash.bat in the extracted folder."),
+    "installer": ("5. Choose USB install", "Choose 1. Install over USB cable. With one display connected, its port is selected automatically."),
+    "restart": ("Wait for the restart", "Keep the cable connected until installation finishes and KAJO-Dash starts on the display."),
+    "driver": ("No display found?", "Try a data cable first. If the USB driver is missing, use the driver's link printed by the installer."),
+    "boot": ("Cannot connect?", "Hold BOOT, tap RST, and keep holding BOOT until writing starts. Then release BOOT."),
+    "clone": ("Optional: develop it", "You do not need these tools to install. To change the code, clone the repo and run kajo.bat."),
     "simulator": ("Simulator", "The real UI on your PC."),
     "previews": ("Preview renders", "Every screen as an image."),
     "layout": ("Layout editor", "Edit tools/layout.json."),
@@ -289,15 +295,29 @@ class Captions:
         self.events.append({"frame": frame, "heading": heading, "body": body})
 
 
+INSTALL_STEPS = [
+    ("download", 5.0, ["FIRST INSTALL / WINDOWS", "", "One download. No development tools.", "", "github.com/evcollector/kajo-dash/releases", "KAJO-Dash-Firmware-v...-Windows.zip", "", "Release package preview: no public release yet."]),
+    ("extract", 4.0, ["FIRST INSTALL / WINDOWS", "", "ZIP file > Extract All", "", "Keep the whole extracted folder together.", "Do not run the launcher from inside the ZIP."]),
+    ("cable", 4.0, ["FIRST INSTALL / WINDOWS", "", "CYD display -- USB DATA cable -- Windows PC", "", "Charge-only cable: power, but no connection."]),
+    ("launch", 4.0, ["FIRST INSTALL / WINDOWS", "", "Open the extracted folder.", "", "Double-click:", "Install or Update KAJO-Dash.bat"]),
+    ("installer", 4.0, None),
+    ("restart", 4.0, ["FIRST INSTALL / WINDOWS", "", "Leave the USB cable connected.", "", "Wait for installation to finish.", "The display restarts into KAJO-Dash.", "", "Instructional guide, not a recorded flash."]),
+    ("driver", 5.0, ["TROUBLESHOOTING / ONLY IF NEEDED", "", "No USB adapter found?", "", "Check the data cable.", "Install the matching USB driver if missing.", "The installer prints CH340 / CP210x links."]),
+    ("boot", 5.0, ["TROUBLESHOOTING / ONLY IF NEEDED", "", "Could not connect to the display?", "", "1. Hold BOOT.", "2. Tap RST while holding BOOT.", "3. Keep holding until writing starts.", "4. Release BOOT."]),
+]
+
+
 def console_part(writer: Writer, captions: Captions, fps: int) -> None:
-    """Download and install, then clone and start kajo.bat: about a second per step."""
-    captions.at(writer.frames, *CAPTIONS["download"])
-    writer.add(render_installer(), frames_for(1.1, fps))
-    captions.at(writer.frames, *CAPTIONS["installer"])
-    writer.add(render_installer("1"), frames_for(0.4, fps))
-    writer.add(render_installer("1", pressed=True), frames_for(0.4, fps))
+    """Hold each install instruction long enough to read, then show optional development."""
+    for key, seconds, guide in INSTALL_STEPS:
+        captions.at(writer.frames, *CAPTIONS[key])
+        image = render_installer("1", pressed=True) if guide is None else render_console(
+            guide, "KAJO-Dash installation guide", cursor=False
+        )
+        writer.add(image, frames_for(seconds, fps))
 
     captions.at(writer.frames, *CAPTIONS["clone"])
+    writer.add(render_console(["OPTIONAL / DEVELOP THE FIRMWARE", "", "The first install is complete.", "The following tools are only for development."], cursor=False), frames_for(4.0, fps))
     rows: list[str] = []
 
     def type_command(command: str, seconds: float) -> None:
