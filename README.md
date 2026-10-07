@@ -26,11 +26,21 @@
 
 ## See it in action
 
-<p align="center">
-  <b><a href="docs/media/demo.mp4">Watch the 2½-minute tour (MP4)</a></b><br>
-  Installing, the twelve themes, customising one, ride replay, display settings, developer mode and
-  a Bluetooth firmware update. <a href="docs/media/demo.chapters.txt">Chapter list</a>.
-</p>
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/media/demo.mp4"><img src="docs/media/demo.jpg" alt="Play the 2½-minute tour"></a><br>
+      <b><a href="docs/media/demo.mp4">Watch the 2½-minute tour (MP4)</a></b><br>
+      Installing, the twelve themes, customising one, ride replay, display settings, developer mode and
+      a Bluetooth firmware update. <a href="docs/media/demo.chapters.txt">Chapter list</a>.
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/media/live-demo.mp4"><img src="docs/media/live-demo.jpg" alt="Play the live demo on a real display"></a><br>
+      <b><a href="docs/media/live-demo.mp4">Watch the live demo (MP4)</a></b><br>
+      Filmed on a real display: installing the firmware over USB, first boot and using the dashboard.
+    </td>
+  </tr>
+</table>
 
 <table>
   <tr>
@@ -45,7 +55,7 @@
   </tr>
 </table>
 
-The tour is rendered from the firmware simulator, not filmed: it is the real UI code running on a
+The tour on the left is rendered from the firmware simulator, not filmed: it is the real UI code running on a
 PC with demo data, so it shows what the screens do and makes no claim about frame rate on a CYD.
 [docs/demo-video.md](docs/demo-video.md) explains how it is made and how to re-render it.
 
