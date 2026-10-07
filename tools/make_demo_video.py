@@ -22,6 +22,7 @@ import functools
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,7 @@ SOURCE = ROOT / "tools" / "lvgl_native_preview"
 BUILD = SOURCE / "build_demo_recorder"
 LVGL = ROOT / ".pio" / "libdeps" / "kajo" / "lvgl"
 SCENES = ROOT / "tools" / "demo" / "scenes"
+STORIES = ROOT / "tools" / "demo"
 CUT = ROOT / "tools" / "demo" / "cut.json"
 FONTS = ROOT / "tools" / "fonts" / "rajdhani"
 BRAND = ROOT / "tools" / "logo" / "brand" / "png"
@@ -153,12 +155,73 @@ def load_cut(path: Path = CUT) -> list[str]:
     return chapters
 
 
+def load_cards(path: Path = CUT) -> dict[str, dict]:
+    """The optional opening and closing cards of the full cut: {"intro": {...}, "outro": {...}}.
+
+    A card has a `title`, optionally a `subtitle` and `lines`, and how long it holds (`seconds`).
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    cards: dict[str, dict] = {}
+    for key in ("intro", "outro"):
+        if key not in data:
+            continue
+        card = data[key]
+        if not isinstance(card, dict) or not isinstance(card.get("title"), str):
+            raise ValueError(f"{path}: '{key}' needs a title")
+        if not isinstance(card.get("lines", []), list) or not all(isinstance(line, str) for line in card.get("lines", [])):
+            raise ValueError(f"{path}: '{key}' lines must be a list of strings")
+        cards[key] = card
+    return cards
+
+
+def clock(seconds: float) -> str:
+    """m:ss for a chapter list; a player or a video site reads these as chapter starts."""
+    whole = int(seconds)
+    return f"{whole // 60}:{whole % 60:02d}"
+
+
+def chapter_list(marks: list[tuple[str, float]]) -> str:
+    """`m:ss Title` lines, from (title, seconds long) in order. Starts at 0:00, as video sites require."""
+    lines, start = [], 0.0
+    for title, length in marks:
+        lines.append(f"{clock(start)} {title}")
+        start += length
+    return "\n".join(lines) + "\n"
+
+
+def chapter_metadata(marks: list[tuple[str, float]]) -> str:
+    """ffmpeg's FFMETADATA1 chapter list for the same marks, in milliseconds."""
+    out, start = [";FFMETADATA1"], 0
+    for title, length in marks:
+        end = start + round(length * 1000)
+        escaped = re.sub(r"([=;#\\])", r"\\\1", title)
+        out += ["[CHAPTER]", "TIMEBASE=1/1000", f"START={start}", f"END={end}", f"title={escaped}"]
+        start = end
+    return "\n".join(out) + "\n"
+
+
 def scene_path(name: str) -> Path:
     path = SCENES / f"{name}.scn"
     if not path.exists():
-        known = ", ".join(sorted(p.stem for p in SCENES.glob("*.scn"))) or "none"
-        raise FileNotFoundError(f"no scene named '{name}' in {SCENES} (scenes: {known})")
+        raise FileNotFoundError(f"no scene named '{name}' in {SCENES} (chapters: {', '.join(known_chapters())})")
     return path
+
+
+def known_chapters() -> list[str]:
+    """Scenes plus the capture modules in tools/demo (`<name>_capture.py`), sorted."""
+    names = {p.stem for p in SCENES.glob("*.scn")} | {p.stem.removesuffix("_capture") for p in STORIES.glob("*_capture.py")}
+    return sorted(names) or ["none"]
+
+
+def story_path(name: str) -> Path | None:
+    """The capture module for a chapter that is not firmware footage, if it has one."""
+    path = STORIES / f"{name}_capture.py"
+    return path if path.exists() else None
+
+
+def check_chapter(name: str) -> None:
+    if story_path(name) is None:
+        scene_path(name)
 
 
 def x264_arguments(crf: int, preset: str) -> list[str]:
@@ -326,6 +389,35 @@ def record(recorder: Path, ffmpeg: str, scene: Path, out: Path) -> Recording:
     return Recording(name, screen, events)
 
 
+def record_story(ffmpeg: str, name: str, out: Path) -> Recording:
+    """A chapter that is not firmware footage: tools/demo/<name>_capture.py makes its own screen
+    layer and caption events, at the same size and rate as a scene's."""
+    import importlib.util
+
+    path = story_path(name)
+    spec = importlib.util.spec_from_file_location(f"{name}_capture", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    screen, events = module.capture(out, ffmpeg, FPS)
+    return Recording(name, screen, events)
+
+
+def make_card_clip(ffmpeg: str, image, seconds: float, target: Path, crf: int, preset: str) -> Path:
+    """An opening or closing card on its own, with the same fades and encode as a chapter's card."""
+    source = target.with_suffix(".png")
+    image.save(source)
+    graph = (
+        f"[0:v]format=gbrp,fade=t=in:st=0:d={CARD_FADE},fade=t=out:st={seconds - CARD_FADE}:d={CARD_FADE},"
+        f"{TO_YUV},fps={FPS},setsar=1[v]"
+    )
+    run([
+        ffmpeg, "-y", "-loglevel", "error", "-loop", "1", "-framerate", str(FPS), "-t", str(seconds), "-i", source,
+        "-filter_complex", graph, "-map", "[v]", *x264_arguments(crf, preset), target,
+    ])  # fmt: skip
+    source.unlink()
+    return target
+
+
 def convert_stills(folder: Path, name: str) -> None:
     """The recorder writes stills as PPM at the panel's own 320x240; keep them as PNG."""
     if not folder.exists():
@@ -408,7 +500,7 @@ def render_background():
     return image
 
 
-def render_rail_static(number: int | None, title: str, subtitle: str, note: str = ""):
+def render_rail_static(number: int | None, title: str, subtitle: str, note: str = "", disclosure: str = DISCLOSURE):
     """Everything on the rail that does not change during a chapter. Returns the layer, the y at
     which captions may start and the y they must stay above (the footer, which carries the
     chapter's note, if it has one, above the standing disclosure)."""
@@ -433,7 +525,7 @@ def render_rail_static(number: int | None, title: str, subtitle: str, note: str 
     draw.rectangle((0, y, 56, y + 4), fill=ORANGE)
     caption_top = y + 44
 
-    footer = wrap(draw, DISCLOSURE, font("SemiBold", 20), width)
+    footer = wrap(draw, disclosure, font("SemiBold", 20), width)
     note_lines = wrap(draw, note, font("SemiBold", 20), width) if note else []
     note_height = 24 * len(note_lines) + 14 if note_lines else 0
     footer_top = height - 26 - note_height - 24 * (len(footer) + 1)
@@ -472,7 +564,9 @@ def with_alpha(layer, alpha: float):
     return faded
 
 
-def render_card(number: int | None, title: str, subtitle: str):
+def render_card(number: int | None, title: str, subtitle: str, lines: list[str] | None = None, disclosure: str = DISCLOSURE):
+    """A full-frame card: the lockup, then the chapter number (if any), title, subtitle and, on
+    the opening and closing cards, a few lines of plain text."""
     from PIL import Image, ImageDraw
 
     width, height = CANVAS
@@ -490,8 +584,15 @@ def render_card(number: int | None, title: str, subtitle: str):
     y = draw_lines(draw, width // 2, y, wrap(draw, title, font("Bold", 104), 1500), font("Bold", 104), WHITE, 108, "ma")
     if subtitle:
         y += 16
-        draw_lines(draw, width // 2, y, wrap(draw, subtitle, font("SemiBold", 40), 1300), font("SemiBold", 40), MUTED, 48, "ma")
-    draw.text((width // 2, height - 70), DISCLOSURE, font=font("SemiBold", 24), fill=MUTED, anchor="ma")
+        y = draw_lines(draw, width // 2, y, wrap(draw, subtitle, font("SemiBold", 40), 1300), font("SemiBold", 40), MUTED, 48, "ma")
+    if lines:
+        y += 36
+        for line in lines:
+            colour = ORANGE if line.startswith(REPOSITORY) else SOFT
+            y = draw_lines(draw, width // 2, y, wrap(draw, line, font("SemiBold", 36), 1300), font("SemiBold", 36), colour, 46, "ma")
+        if y > height - 110:
+            raise ValueError(f"the lines of the '{title}' card are too long: they reach {y}px of {height - 110}px")
+    draw.text((width // 2, height - 70), disclosure, font=font("SemiBold", 24), fill=MUTED, anchor="ma")
     return image
 
 
@@ -505,7 +606,8 @@ def write_rail(work: Path, recording: Recording, number: int | None) -> Path:
     events = recording.events
     spans = caption_spans(events.get("captions", []), recording.frames)
     static, caption_top, caption_limit = render_rail_static(
-        number, events.get("title", ""), events.get("subtitle", ""), events.get("note", "")
+        number, events.get("title", ""), events.get("subtitle", ""), events.get("note", ""),
+        events.get("disclosure", DISCLOSURE),
     )
     layers = [render_caption(span, caption_top, caption_limit) for span in spans]
 
@@ -533,7 +635,7 @@ def compose_chapter(ffmpeg: str, recording: Recording, number: int | None, out: 
     background = work / "background.png"
     render_background().save(background)
     card = work / "card.png"
-    render_card(number, title, subtitle).save(card)
+    render_card(number, title, subtitle, None, events.get("disclosure", DISCLOSURE)).save(card)
     rail = write_rail(work, recording, number)
 
     target = out / f"{recording.name}.mp4"
@@ -572,11 +674,20 @@ def make_sheet(ffmpeg: str, recording: Recording, out: Path, columns: int = 5, t
     return target
 
 
-def join_chapters(ffmpeg: str, chapters: list[Path], target: Path) -> Path:
+def join_chapters(ffmpeg: str, clips: list[Path], target: Path, marks: list[tuple[str, float]] | None = None) -> Path:
+    """Join the clips without re-encoding. With marks (title, seconds) the file carries MP4 chapters
+    and a `<name>.chapters.txt` list is written beside it for a video site's description."""
     listing = target.with_suffix(".txt")
-    listing.write_text("".join(f"file '{path.resolve().as_posix()}'\n" for path in chapters), encoding="utf-8")
-    run([ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listing, "-c", "copy", "-movflags", "+faststart", target])
+    listing.write_text("".join(f"file '{path.resolve().as_posix()}'\n" for path in clips), encoding="utf-8")
+    command = [ffmpeg, "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", listing]
+    metadata = target.with_suffix(".ffmetadata")
+    if marks:
+        metadata.write_text(chapter_metadata(marks), encoding="utf-8")
+        command += ["-i", metadata, "-map", "0", "-map_metadata", "1", "-map_chapters", "1"]
+        target.with_suffix(".chapters.txt").write_text(chapter_list(marks), encoding="utf-8")
+    run(command + ["-c", "copy", "-movflags", "+faststart", target])
     listing.unlink()
+    metadata.unlink(missing_ok=True)
     return target
 
 
@@ -608,18 +719,26 @@ def main(argv: list[str] | None = None) -> int:
         cut = load_cut()
         names = args.scenes or cut
         for name in names:
-            scene_path(name)
-        recorder = recorder_executable() if args.no_build else build_recorder()
-        if recorder is None:
-            raise FileNotFoundError("The demo recorder is not built; run without --no-build")
+            check_chapter(name)
+        cards = load_cards()
+        needs_recorder = any(story_path(name) is None for name in names)
+        recorder = None
+        if needs_recorder:
+            recorder = recorder_executable() if args.no_build else build_recorder()
+            if recorder is None:
+                raise FileNotFoundError("The demo recorder is not built; run without --no-build")
 
         out: Path = args.out
         out.mkdir(parents=True, exist_ok=True)
         preset, crf = ("veryfast", max(args.crf, 20)) if args.quick else ("slow", args.crf)
         chapters: list[Path] = []
+        marks: list[tuple[str, float]] = []
         for name in names:
             print(f"\n== {name}", flush=True)
-            recording = record(recorder, ffmpeg, scene_path(name), out)
+            if story_path(name) is not None:
+                recording = record_story(ffmpeg, name, out)
+            else:
+                recording = record(recorder, ffmpeg, scene_path(name), out)
             print(f"  {recording.frames} frames, {recording.seconds:.1f} s", flush=True)
             if args.sheet:
                 make_sheet(ffmpeg, recording, out)
@@ -630,13 +749,27 @@ def main(argv: list[str] | None = None) -> int:
             number = cut.index(name) + 1 if name in cut else None
             work = out / "work" / name
             chapters.append(compose_chapter(ffmpeg, recording, number, out, work, crf, preset))
+            marks.append((recording.events.get("title") or name, CARD_SECONDS + recording.seconds))
             if not args.keep_work:
                 shutil.rmtree(work, ignore_errors=True)
             print(f"  {chapters[-1].name}: {chapters[-1].stat().st_size / 1e6:.1f} MB", flush=True)
 
         if chapters and not args.scenes and not args.no_cut and len(chapters) > 1:
             print("\n== cut", flush=True)
-            final = join_chapters(ffmpeg, chapters, out / "demo.mp4")
+            parts, titles = list(chapters), list(marks)
+            for key in ("intro", "outro"):
+                if key not in cards:
+                    continue
+                card = cards[key]
+                seconds = float(card.get("seconds", 4.0))
+                clip = make_card_clip(
+                    ffmpeg, render_card(None, card["title"], card.get("subtitle", ""), card.get("lines")),
+                    seconds, out / f"{key}.mp4", crf, preset,
+                )  # fmt: skip
+                position = 0 if key == "intro" else len(parts)
+                parts.insert(position, clip)
+                titles.insert(position, (card.get("mark", card["title"]), seconds))
+            final = join_chapters(ffmpeg, parts, out / "demo.mp4", titles)
             print(f"  {final.name}: {final.stat().st_size / 1e6:.1f} MB", flush=True)
         if not args.keep_work:
             shutil.rmtree(out / "work", ignore_errors=True)

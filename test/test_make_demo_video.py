@@ -13,6 +13,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import make_demo_video as demo  # noqa: E402
 
+sys.path.insert(0, str(ROOT / "tools" / "demo"))
+import start_capture  # noqa: E402
+
 HAS_PILLOW = importlib.util.find_spec("PIL") is not None
 
 
@@ -122,14 +125,15 @@ class CutTests(unittest.TestCase):
         chapters = demo.load_cut()
         self.assertTrue(chapters)
         for name in chapters:
-            self.assertTrue(demo.scene_path(name).exists(), name)
+            demo.check_chapter(name)  # a scene, or a capture module
 
     def test_every_scene_is_in_the_cut_or_deliberately_not(self):
-        scenes = {path.stem for path in demo.SCENES.glob("*.scn")}
-        self.assertTrue(set(demo.load_cut()) <= scenes)
+        self.assertTrue(set(demo.load_cut()) <= set(demo.known_chapters()))
 
     def test_every_chapter_names_itself(self):
         for name in demo.load_cut():
+            if demo.story_path(name):
+                continue  # names itself in its capture module
             lines = demo.scene_path(name).read_text(encoding="utf-8").splitlines()
             self.assertTrue(any(line.startswith("title ") for line in lines), f"{name} has no title for its card")
 
@@ -243,6 +247,8 @@ class ArtworkTests(unittest.TestCase):
         import re
 
         for name in demo.load_cut():
+            if demo.story_path(name):
+                continue
             text = demo.scene_path(name).read_text(encoding="utf-8")
             title = re.search(r'^title "(.*)"', text, re.M).group(1)
             subtitle = re.search(r'^subtitle "(.*)"', text, re.M)
@@ -256,6 +262,27 @@ class ArtworkTests(unittest.TestCase):
                 strings = re.findall(r'"((?:[^"\\]|\\.)*)"', line)
                 span = demo.Span(0, 1, strings[0], strings[1] if len(strings) > 1 else "")
                 demo.render_caption(span, top, limit)  # raises when it does not fit
+
+    def test_every_caption_of_the_start_chapter_fits_the_rail(self):
+        _, top, limit = demo.render_rail_static(
+            1, start_capture.TITLE, start_capture.SUBTITLE, start_capture.NOTE, start_capture.DISCLOSURE
+        )
+        for heading, body in start_capture.CAPTIONS.values():
+            demo.render_caption(demo.Span(0, 1, heading, body), top, limit)  # raises when it does not fit
+
+    def test_a_card_with_lines_fills_the_canvas_and_too_many_lines_are_an_error(self):
+        card = demo.render_card(None, "Build it yourself", "Everything runs from the repository.", ["Start with kajo.bat.", demo.REPOSITORY])
+        self.assertEqual(card.size, demo.CANVAS)
+        with self.assertRaises(ValueError):
+            demo.render_card(None, "Title", "Sub", ["a long line of text " * 4] * 12)
+
+    def test_the_menu_is_redrawn_at_the_chapter_size(self):
+        try:
+            menu = start_capture.render_menu("3")
+        except FileNotFoundError as error:
+            self.skipTest(str(error))
+        self.assertEqual(menu.size, start_capture.FRAME)
+        self.assertEqual(start_capture.FRAME, (demo.DISPLAY[0] * demo.SCALE, demo.DISPLAY[1] * demo.SCALE))
 
     def test_fading_a_layer_scales_its_alpha_without_touching_the_original(self):
         from PIL import Image
@@ -274,6 +301,56 @@ class ArtworkTests(unittest.TestCase):
         lines = demo.wrap(draw, "Open the list and pick any ride on the card. Demo rides are marked.", face, 460)
         self.assertGreater(len(lines), 1)
         self.assertTrue(all(draw.textlength(line, font=face) <= 460 for line in lines))
+
+
+class ChapterMarkTests(unittest.TestCase):
+    def test_the_chapter_list_starts_at_zero_and_adds_each_length(self):
+        text = demo.chapter_list([("Intro", 4.5), ("Twelve themes", 37.28), ("Updates", 40.0)])
+        self.assertEqual(text.splitlines(), ["0:00 Intro", "0:04 Twelve themes", "0:41 Updates"])
+
+    def test_the_metadata_chapters_tile_the_video_in_milliseconds(self):
+        lines = demo.chapter_metadata([("Intro", 4.5), ("A=B; C", 2.0)]).splitlines()
+        self.assertEqual(lines[0], ";FFMETADATA1")
+        self.assertEqual(lines[1:6], ["[CHAPTER]", "TIMEBASE=1/1000", "START=0", "END=4500", "title=Intro"])
+        self.assertEqual(lines[8:10], ["START=4500", "END=6500"])
+        self.assertEqual(lines[10], "title=A" + chr(92) + "=B" + chr(92) + "; C", "separators in a title are escaped")
+
+    def test_the_cut_has_an_intro_and_outro_that_name_themselves(self):
+        cards = demo.load_cards()
+        self.assertEqual(set(cards), {"intro", "outro"})
+        for card in cards.values():
+            self.assertTrue(card["title"])
+
+    def test_a_card_without_a_title_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cut.json"
+            path.write_text(json.dumps({"chapters": [], "intro": {"subtitle": "x"}}), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                demo.load_cards(path)
+
+
+class StartChapterTests(unittest.TestCase):
+    def test_the_chapter_is_found_without_a_scene(self):
+        self.assertIsNotNone(demo.story_path("start"))
+        demo.check_chapter("start")
+        self.assertIn("start", demo.known_chapters())
+
+    def test_the_menu_is_read_from_kajo_bat_and_leaves_out_the_private_companion_entry(self):
+        entries = start_capture.menu_entries()
+        items = [entry for entry in entries if "|" in entry]
+        self.assertGreaterEqual(len(items), 8)
+        self.assertTrue(any(entry.startswith("1|Simulator|") for entry in items))
+        self.assertFalse(any("Companion" in entry or "phone" in entry for entry in entries))
+
+    def test_every_menu_key_has_a_help_page_or_is_quit(self):
+        lines, items = start_capture.menu_model()
+        self.assertEqual(items[-1]["key"], "Q")
+        self.assertTrue(all(item["help"] for item in items[:-1]))
+
+    def test_the_firmware_header_is_read_from_config_h(self):
+        name, code, _ = start_capture.firmware_header()
+        self.assertNotEqual(name, "?")
+        self.assertTrue(code.isdigit())
 
 
 if __name__ == "__main__":

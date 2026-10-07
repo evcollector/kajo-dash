@@ -10,7 +10,9 @@ matches the UI fails instead of recording the wrong thing.
 
 Needs what the [simulator](development.md#simulator) needs (an installed
 `.pio/libdeps/kajo/lvgl`, CMake, Visual Studio C++ Build Tools, Pillow) and `ffmpeg` in `PATH`
-(or its location in `FFMPEG`).
+(or its location in `FFMPEG`). The `start` chapter also drives Google Chrome through Playwright
+(`pip install playwright`; it uses the installed Chrome and downloads no browser) and needs a
+monospace font for the menu (Consolas, or DejaVu Sans Mono or Liberation Mono).
 
 ```powershell
 python tools\make_demo_video.py                  # every chapter in tools\demo\cut.json, then demo.mp4
@@ -18,22 +20,31 @@ python tools\make_demo_video.py themes --gif     # one chapter, plus a README GI
 python tools\make_demo_video.py replay --screen-only --sheet --no-build   # authoring: no dressing
 ```
 
-All six chapters render in about three and a half minutes, GIFs and sheets included; `--quick`
-trades size for speed while drafting. Everything lands in `dist/demo/`, which git ignores.
+All seven chapters render in about four minutes, GIFs and sheets included; `--quick` trades size
+for speed while drafting. Everything lands in `dist/demo/`, which git ignores.
 
 | # | Chapter | Shows |
 | --- | --- | --- |
-| 1 | `themes` | the twelve dashboard themes on their live previews, and saving one |
+| 1 | `themes` | a speed edit of the twelve dashboard themes on their live previews, and saving one |
 | 2 | `customize` | Dual Gauge in magenta; dark, light and auto appearance; background and gradient; what each readout shows |
 | 3 | `replay` | on-device ride replay: seek, play, zoom, charts, summary |
 | 4 | `display` | brightness, auto brightness and its calibration, the ambient LED, the touch test, the display panel page |
 | 5 | `developer` | unlocking developer mode, and what is inside it |
 | 6 | `updates` | a signed firmware update over Bluetooth, from Bluetooth Link to the verified restart |
+| 7 | `start` | a speed edit of getting started: the `kajo.bat` menu, then the layout editor |
+
+`themes-tour` is the unhurried walk through the themes that `themes` condenses (a minute against
+half a minute). It is not in the cut; render it by name.
+
+`tools/demo/cut.json` also holds the `intro` and `outro` cards of the full cut (a `title`, an
+optional `subtitle` and `lines`, how many `seconds` they hold, and the `mark` they carry in the
+chapter list).
 
 | File | What |
 | --- | --- |
 | `<chapter>.mp4` | 1920x1080, 60 fps, BT.709: chapter card, then the display with captions |
-| `demo.mp4` | the chapters of `cut.json` joined, each dipping to black at its ends |
+| `demo.mp4` | the intro, the chapters of `cut.json` and the outro joined, each dipping to black at its ends, with MP4 chapter markers |
+| `demo.chapters.txt` | the same chapters as `m:ss Title` lines, for a video site's description |
 | `<chapter>.screen.mkv` | the display alone at 4x, stored losslessly, touch ring included |
 | `<chapter>.events.json` | the caption timeline, in frames |
 | `<chapter>.gif`, `<chapter>.sheet.png` | with `--gif` (README loop) and `--sheet` (one frame every few seconds) |
@@ -58,6 +69,13 @@ chapter says so on its rail: `note "..."` puts a line in the footer above the st
 The host also has no backlight, and the LED and the panel profile do nothing. The recorder draws
 the brightness setting itself (see below); the other two are not drawn at all, and the `display`
 chapter's note says so.
+
+The `start` chapter is not firmware footage and says so on its rail. The layout editor in it is
+the real `tools/layout_editor.html` in Chrome, served read-only so nothing can be saved. The
+`kajo.bat` menu is **redrawn**: its entries come from `kajo.bat`, its help column from
+`scripts/menu_help.txt` and its layout and colours from `scripts/menu.ps1`, but it is a picture of
+the menu and not a console recording. The companion-app entry is left out because it exists only
+with the private checkout, which a fresh clone does not have.
 
 ## How a frame is made
 
@@ -174,6 +192,12 @@ Things the UI does that a scene has to work with:
 2. Add `<name>` to `tools/demo/cut.json`; its position is the chapter number.
 3. Render it, and run the tests below.
 
+A chapter that is not the firmware (like `start`) is a Python module instead,
+`tools/demo/<name>_capture.py`, whose `capture(out, ffmpeg, fps)` writes `<name>.screen.mkv` at
+1280x960 and returns it with the caption events (`frames`, `fps`, `title`, `subtitle`, `note`,
+`disclosure`, `captions`). Give it a `disclosure` of its own: the standing footer says the frames
+come from the simulator.
+
 ## Keeping it working
 
 A UI change that renames or moves a label the scenes tap fails ctest, not the next release video:
@@ -184,7 +208,7 @@ A UI change that renames or moves a label the scenes tap fails ctest, not the ne
 | `cyd_demo_recorder_smoke`, `_deterministic` | the scene commands once, and the same frame digest on a second run |
 | `cyd_demo_recorder_fixtures`, `_deterministic_fixtures` | the sensor, link and update fixtures and the finger path, each update state checked by the label it shows, and the same digest twice |
 | `cyd_demo_recorder_missing_label`, `_expectation_failed`, `_unknown_command`, `_before_boot`, `_light_range`, `_path_pairs` | the failures the recorder must name |
-| `test/test_make_demo_video.py` | the caption timeline, fades, rail images, cut file, and that every caption fits |
+| `test/test_make_demo_video.py` | the caption timeline, fades, rail images, cut file, chapter markers, the `start` chapter's menu model, and that every caption fits |
 
 The recorder is `tools/lvgl_native_preview/demo_recorder.cpp`. Like all simulator orchestration it
 lives beside the other host tools and adds no behaviour to the firmware sources.
