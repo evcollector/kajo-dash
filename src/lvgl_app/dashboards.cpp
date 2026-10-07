@@ -5,6 +5,7 @@
 #include "ui_common.h"
 #include "ui_style.h"
 
+#include <limits.h>
 #include <math.h>
 
 using namespace cyd_layout;
