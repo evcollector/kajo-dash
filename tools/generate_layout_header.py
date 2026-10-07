@@ -105,6 +105,8 @@ def write_header(layout: dict) -> None:
 
     screens = layout["screens"]
     for screen_id, screen in screens.items():
+        if not screen.get("items"):
+            continue  # a view-only screen (readOnly): drawn in dashboards.cpp, no constants
         prefix = ident(screen.get("prefix") or screen_id)
         for item in screen.get("items", []):
             name = f"{prefix}_{ident(item['id'])}"

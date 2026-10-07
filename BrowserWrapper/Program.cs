@@ -10,18 +10,17 @@ static class Program
 {
     private const int Port = 8765;
     private const string EditorPath = "/tools/layout_editor.html";
-    private const string EditorVersion = "lvgl-previews-20260708";
+    private const string EditorVersion = "lvgl-previews-20261007";
 
     [STAThread]
     static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
 
-        bool lvglMode = args.Any(arg => string.Equals(arg, "--lvgl", StringComparison.OrdinalIgnoreCase));
-        string appTitle = lvglMode ? "KAJO-Dash Layout Editor" : "KAJO-Dash Layout Editor (legacy)";
+        // The editor only has the native LVGL mode now; a leftover --lvgl argument is ignored.
+        const string appTitle = "KAJO-Dash Layout Editor";
         string root = FindProjectRoot();
-        string modeQuery = lvglMode ? "lvgl=1&" : "";
-        string url = $"http://127.0.0.1:{Port}{EditorPath}?{modeQuery}v={EditorVersion}";
+        string url = $"http://127.0.0.1:{Port}{EditorPath}?v={EditorVersion}";
         Process? server = IsReachable(url) ? null : StartServer(root);
         if (server is null && !IsReachable(url))
         {

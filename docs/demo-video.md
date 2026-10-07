@@ -20,7 +20,9 @@ python tools\make_demo_video.py themes --gif     # one chapter, plus a README GI
 python tools\make_demo_video.py replay --screen-only --sheet --no-build   # authoring: no dressing
 ```
 
-All seven chapters render in about four minutes, GIFs and sheets included; `--quick` trades size
+The firmware chapters play three times faster than the scripts are written, so the video is a
+fast tour that is easy to glance through (`--speed 1` plays a scene in real time; see
+[Speed](#speed)). All seven chapters render in about four minutes, GIFs and sheets included; `--quick` trades size
 for speed while drafting. Everything lands in `dist/demo/`, which git ignores.
 
 | # | Chapter | Shows |
@@ -99,6 +101,22 @@ with the private checkout, which a fresh clone does not have.
 - `cyd_demo_recorder --digest` prints a hash of every frame the firmware drew and the backlight
   level; ctest runs a scene twice and fails if the two differ.
 
+## Speed
+
+A scene is written in real time: every `wait`, `settle` and drag lasts what it would on a device.
+The video plays it faster by sampling frames further apart in scene time: at `--speed 3` each
+60 fps video frame is 50 ms of the scene instead of 16.7 ms. Every frame is still one the
+firmware drew, only fewer of them, so the needles and slides move three times as fast and nothing
+is interpolated. The touch ring keeps its own timing in video time, so a tap looks the same at
+any speed.
+
+A caption that goes by in a second cannot be read, so the recorder also holds each caption for at
+least `--min-caption` milliseconds of video (1500 by default): before the next caption appears,
+the scene pauses until the last one has had that long. A chapter is therefore a run of quick
+actions with a short beat at each caption. Both are options of `make_demo_video.py`
+(`--speed N`, `--min-caption MS`) and of `cyd_demo_recorder`; the recorder's default is real time
+with no hold.
+
 ## Scene scripts
 
 A scene is a text file in `tools/demo/scenes/`: one command per line, `#` starts a comment, strings
@@ -145,7 +163,7 @@ what was on screen when it finds nothing. It also warns when the tap would land 
 control than the label's own, which means something is covering it. Labels are matched by their
 English text, so a scene plays in English only.
 
-Times are scene time. A caption appears from the next frame written and fades in over 8 frames and
+Times are scene time, which a speed above 1 compresses (see [Speed](#speed)); `for=MS` on a caption is scene time too. A caption appears from the next frame written and fades in over 8 frames and
 out over 6; one that cannot fit above the rail's footer is an error rather than an overlap.
 
 ## Writing a scene
@@ -206,6 +224,7 @@ A UI change that renames or moves a label the scenes tap fails ctest, not the ne
 | --- | --- |
 | `cyd_demo_scene_<name>` | each committed chapter plays to the end |
 | `cyd_demo_recorder_smoke`, `_deterministic` | the scene commands once, and the same frame digest on a second run |
+| `cyd_demo_recorder_speed`, `_deterministic_speed`, `_speed_range` | `--speed 3` gives a third of the frames and a held caption never shortens a scene, the same digest twice at speed, and an out-of-range speed is a usage error |
 | `cyd_demo_recorder_fixtures`, `_deterministic_fixtures` | the sensor, link and update fixtures and the finger path, each update state checked by the label it shows, and the same digest twice |
 | `cyd_demo_recorder_missing_label`, `_expectation_failed`, `_unknown_command`, `_before_boot`, `_light_range`, `_path_pairs` | the failures the recorder must name |
 | `test/test_make_demo_video.py` | the caption timeline, fades, rail images, cut file, chapter markers, the `start` chapter's menu model, and that every caption fits |

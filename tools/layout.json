@@ -1,9 +1,9 @@
 {
-  "_comment": "Single source of truth for dashboard text/value readout placement and editor-adjustable structural items. Consumed directly by tools/preview_ui.py and tools/layout_editor.html, and converted for firmware into include/cyd_layout_generated.h by tools/generate_layout_header.py. Coordinates are 320x240 device pixels. anchor: la=top-left, mm=center, ra=right. fit=[fonts] picks the first font whose rendered width fits max_w (mirrors firmware drawCenteredFittedText). 'label'/'extras' are sub-texts drawn at dx/dy relative to the element. Screens use ordered items with kind=text/shape.",
+  "_comment": "Single source of truth for dashboard text/value readout placement and editor-adjustable structural items. Consumed directly by tools/layout_editor.html, and converted for firmware into include/cyd_layout_generated.h by tools/generate_layout_header.py. Coordinates are 320x240 device pixels. anchor: la=top-left, mm=center, ra=right. fit=[fonts] picks the first font whose rendered width fits max_w (mirrors firmware drawCenteredFittedText). 'label'/'extras' are sub-texts drawn at dx/dy relative to the element. Screens use ordered items with kind=text/shape. Screens marked readOnly (11 Gauge, 12 Efficiency) are drawn in dashboards.cpp and are listed only so the editor shows every theme; they have no items and generate no constants.",
   "screens": {
     "hud": {
       "name": "01 Cyber HUD",
-      "image": "../preview_output/01_cyber_hud.png",
+      "image": "../preview_output/lvgl/01_cyber_hud.png",
       "prefix": "HUD",
       "items": [
         {
@@ -597,7 +597,7 @@
     },
     "dualGauge": {
       "name": "02 Dual Gauge",
-      "image": "../preview_output/02_dual_gauge.png",
+      "image": "../preview_output/lvgl/02_dual_gauge.png",
       "prefix": "GAUGE",
       "items": [
         {
@@ -836,7 +836,7 @@
           "anchor": "la",
           "font": "F10",
           "color": "LABEL",
-          "text": "\u00c2\u00b0C"
+          "text": "\u00b0C"
         },
         {
           "id": "motorTempLabel",
@@ -877,7 +877,7 @@
           "anchor": "la",
           "font": "F10",
           "color": "LABEL",
-          "text": "\u00c2\u00b0C"
+          "text": "\u00b0C"
         },
         {
           "id": "escTempLabel",
@@ -1003,7 +1003,7 @@
     },
     "simple": {
       "name": "03 Simple",
-      "image": "../preview_output/03_simple.png",
+      "image": "../preview_output/lvgl/03_simple.png",
       "prefix": "SIMPLE",
       "items": [
         {
@@ -1255,7 +1255,7 @@
     },
     "barGraph": {
       "name": "04 Bar Graph",
-      "image": "../preview_output/04_bar_graph.png",
+      "image": "../preview_output/lvgl/04_bar_graph.png",
       "prefix": "BARS",
       "items": [
         {
@@ -2195,7 +2195,7 @@
     },
     "pixelGauge": {
       "name": "06 Pixel",
-      "image": "../preview_output/06_pixel_gauge.png",
+      "image": "../preview_output/lvgl/06_pixel_gauge.png",
       "prefix": "PIXEL_GAUGE",
       "items": [
         {
@@ -2575,7 +2575,7 @@
     },
     "largeTiles": {
       "name": "07 Tiles",
-      "image": "../preview_output/07_large_tiles.png",
+      "image": "../preview_output/lvgl/07_large_tiles.png",
       "prefix": "LARGE_TILES",
       "items": [
         {
@@ -3181,7 +3181,7 @@
     },
     "bigReadout": {
       "name": "08 Ride Console",
-      "image": "../preview_output/08_big_readout.png",
+      "image": "../preview_output/lvgl/08_big_readout.png",
       "prefix": "BIG_READOUT",
       "items": [
         {
@@ -3517,7 +3517,7 @@
     },
     "redline": {
       "name": "09 Redline",
-      "image": "../preview_output/09_redline.png",
+      "image": "../preview_output/lvgl/09_redline.png",
       "prefix": "REDLINE",
       "items": [
         {
@@ -3677,7 +3677,7 @@
           "anchor": "la",
           "font": "F12",
           "color": "WHITE",
-          "text": "\u00c2\u00b0C"
+          "text": "\u00b0C"
         },
         {
           "id": "volts",
@@ -3907,7 +3907,7 @@
     },
     "trace": {
       "name": "10 Trace",
-      "image": "../preview_output/10_trace.png",
+      "image": "../preview_output/lvgl/10_trace.png",
       "prefix": "TRACE",
       "items": [
         {
@@ -4280,7 +4280,7 @@
           "anchor": "mm",
           "font": "F16",
           "color": "WHITE",
-          "text": "36 \u00c2\u00b0C"
+          "text": "36 \u00b0C"
         },
         {
           "id": "tripLabel",
@@ -4303,6 +4303,22 @@
           "text": "25.3 KM"
         }
       ]
+    },
+    "minimal": {
+      "name": "11 Gauge",
+      "image": "../preview_output/lvgl/11_minimal_ride.png",
+      "prefix": "MINIMAL",
+      "readOnly": true,
+      "note": "Drawn in dashboards.cpp, not by this file.",
+      "items": []
+    },
+    "efficiency": {
+      "name": "12 Efficiency",
+      "image": "../preview_output/lvgl/12_efficiency.png",
+      "prefix": "EFFICIENCY",
+      "readOnly": true,
+      "note": "Drawn in dashboards.cpp, not by this file.",
+      "items": []
     }
   }
 }

@@ -432,6 +432,22 @@
     </section>
 
     <section class="ui-kit-section">
+      <div class="ui-kit-title">Customize Theme panel · three tabs</div>
+      <p class="ui-kit-note">Opens from the preview's bottom housing and belongs to it: a tap outside closes it and brings the preview's controls back. THEME picks the accent and Dark, Light or Auto appearance; BACKGROUND picks the gradient colour and one of four presets; DATA chooses what each readout of the theme shows. Selecting Auto appearance asks to enable Auto brightness, since both read the light sensor. The panel changes the dashboard behind it, never the menu chrome. Drawn by <code>makePopupButton(...)</code> and <code>makePopupSwatch(...)</code>.</p>
+      <div style="display:flex; flex-wrap:wrap; gap:8px">
+        <img src="../preview_output/lvgl/14_dash_ui_colors.png" width="320" height="240" alt="Customize Theme panel, THEME tab">
+        <img src="../preview_output/lvgl/14_gradient_custom.png" width="320" height="240" alt="Customize Theme panel, BACKGROUND tab">
+        <img src="../preview_output/lvgl/14_dash_ui_data.png" width="320" height="240" alt="Customize Theme panel, DATA tab">
+      </div>
+    </section>
+
+    <section class="ui-kit-section">
+      <div class="ui-kit-title">Ride replay · chart picker</div>
+      <p class="ui-kit-note">One to four stacked charts, chosen from the same accent-bordered selector housing. See the flat-fill palette above and “Ride replay charts” in the component rules.</p>
+      <img src="../preview_output/lvgl/25_replay_charts.png" width="320" height="240" alt="Ride replay with the chart picker">
+    </section>
+
+    <section class="ui-kit-section">
       <div class="ui-kit-title">Dashboard battery</div>
       <div class="cyd-demo" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
         <svg width="36" height="16" viewBox="0 0 36 16" aria-label="Dark, 3 blocks"><rect x="0.5" y="0.5" width="32" height="15" rx="3" fill="#000" stroke="#fff"/><rect x="33" y="4" width="3" height="8" fill="#fff"/><rect x="3" y="2" width="5" height="12" fill="#00FC00"/><rect x="9" y="2" width="5" height="12" fill="#00FC00"/><rect x="15" y="2" width="5" height="12" fill="#00FC00"/></svg>
@@ -582,11 +598,10 @@
   <script>
     const STORAGE_KEY = "cydLayoutEditor.v4";
     const QUERY = new URLSearchParams(window.location.search);
-    const LVGL_MODE = QUERY.get("lvgl") === "1";
-    const ASSET_VERSION = LVGL_MODE ? "lvgl-previews-20260708" : "battery-procedural-20260707";
-    const CONTACT_SHEET_PATH = LVGL_MODE ? "../preview_output/lvgl/contact_sheet.png" : "../preview_output/contact_sheet.png";
-    // Only the LVGL generator still exists; the pre-LVGL run_preview.bat and
-    // its /api/run-preview route are gone.
+    // The editor works on the native LVGL renders only. The pre-LVGL renderer, its images and its
+    // ?lvgl=1 switch are gone, so the query string selects nothing.
+    const ASSET_VERSION = "lvgl-previews-20261007";
+    const CONTACT_SHEET_PATH = "../preview_output/lvgl/contact_sheet.png";
     const RUN_PREVIEW_ENDPOINT = "/api/run-preview-lvgl";
     const SNAP = 3;
     const CENTERS = { x: [0, 160, 320], y: [0, 120, 240] };
@@ -743,15 +758,13 @@
     el.editorTitle = document.getElementById("editorTitle");
     el.main = document.querySelector("main");
     el.workflowBar = document.querySelector(".workflow-bar");
-    if (LVGL_MODE) {
-      document.body.classList.add("lvgl-native");
-      document.title = "KAJO-Dash Layout Editor";
-      el.editorTitle.textContent = "KAJO-Dash Layout Editor";
-      el.runPreview.textContent = "Generate LVGL previews";
-      el.refreshEditor.hidden = false;
-      el.targetLabel.textContent = "Native LVGL target · 320×240";
-      el.workspaceLabel.textContent = "Editable workspace · native LVGL base";
-    }
+    document.body.classList.add("lvgl-native");
+    document.title = "KAJO-Dash Layout Editor";
+    el.editorTitle.textContent = "KAJO-Dash Layout Editor";
+    el.runPreview.textContent = "Generate LVGL previews";
+    el.refreshEditor.hidden = false;
+    el.targetLabel.textContent = "Native LVGL target · 320×240";
+    el.workspaceLabel.textContent = "Editable workspace · native LVGL base";
 
     let layout = null;       // normalized: screens[id] = {name,image,prefix,schema,items:[]}
     let pristine = null;     // normalized copy from disk
@@ -759,7 +772,7 @@
     let selection = new Set();
     let drag = null;
     let fileHandle = null;
-    let backdropOn = LVGL_MODE;
+    let backdropOn = true;
     const undoStack = [], redoStack = [];
     let lastCommitted = null;
     let fileSig = "";   // signature of layout.json as loaded; local autosave is only reapplied while it matches
@@ -793,7 +806,9 @@
       largeTiles: "07 Tiles",
       bigReadout: "08 Ride Console",
       redline: "09 Redline",
-      trace: "10 Trace"
+      trace: "10 Trace",
+      minimal: "11 Gauge",
+      efficiency: "12 Efficiency"
     };
     const colorOf = c => Array.isArray(c) ? `rgb(${c[0]},${c[1]},${c[2]})`
       : (typeof c === "string" ? (COLORS[c] || (c.startsWith("#") ? c : "#fff")) : "#fff");
@@ -836,7 +851,9 @@
       const out = { screens: {} };
       for (const [sid, s] of Object.entries(raw.screens)) {
         const meta = { name: CANONICAL_SCREEN_NAMES[sid] || s.name, image: s.image, prefix: s.prefix };
-        meta.schema = "items";
+        // A view-only screen is drawn in dashboards.cpp, so there is nothing in the layout file to edit.
+        if (s.readOnly) { meta.readOnly = true; meta.note = s.note; }
+        meta.schema = s.readOnly ? "view" : "items";
         // spread first so on-disk key order (and thus minimal save diffs) is preserved
         meta.items = expandTextAttachments(s.items.map(it => normalizeBatteryIndicator({ ...it, kind: it.kind || (it.type ? "shape" : "text") })));
         out.screens[sid] = meta;
@@ -914,6 +931,7 @@
       const screens = {};
       for (const [sid, s] of Object.entries(layout.screens)) {
         const base = { name: s.name, image: s.image, prefix: s.prefix };
+        if (s.readOnly) { base.readOnly = true; base.note = s.note; }
         screens[sid] = { ...base, items: s.items.map(stripInternal) };
       }
       const head = layout._comment ? { _comment: layout._comment } : {};
@@ -993,11 +1011,15 @@
       }
     }
     function updateWorkspaceRenderMode() {
-      if (!LVGL_MODE) return;
       // The browser renderer is useful as a selected-item editing overlay, but
       // it is not pixel-identical to LVGL. Never replace the native framebuffer
       // with it: pending edits remain an overlay until native previews regenerate.
       document.body.classList.remove("workspace-live-edit");
+      const view = screenMeta();
+      if (view && view.readOnly) {
+        el.workspaceLabel.textContent = "View only · this theme is drawn by dashboards.cpp, not by layout.json";
+        return;
+      }
       el.workspaceLabel.textContent = workspaceLiveEdit
         ? "Editable workspace · native LVGL + pending edit overlay"
         : "Editable workspace · native LVGL base";
@@ -1048,7 +1070,7 @@
       el.screenSelect.innerHTML = "";
       for (const [id, s] of Object.entries(layout.screens)) {
         const o = document.createElement("option"); o.value = id;
-        o.textContent = (s.schema === "items" ? "● " : "○ ") + (s.name || id);
+        o.textContent = (s.schema === "items" ? "● " : "○ ") + (s.name || id) + (s.readOnly ? " · view only" : "");
         el.screenSelect.appendChild(o);
       }
       el.screenSelect.value = currentScreen;
@@ -1214,7 +1236,6 @@
 
     function previewImageUrl(screen = screenMeta()) {
       const source = screen.image || "";
-      if (!LVGL_MODE) return assetUrl(source);
       const filename = source.split(/[\\/]/).pop();
       return `../preview_output/lvgl/${filename}?v=${encodeURIComponent(ASSET_VERSION)}&t=${previewRevision}`;
     }
@@ -1664,18 +1685,10 @@
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false;
       ctx.clearRect(0, 0, 320, 240);
-      if (LVGL_MODE) {
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, 0, 320, 240);
-        const img = loadPreviewImage();
-        if (img.complete && img.naturalWidth === 320 && img.naturalHeight === 240) ctx.drawImage(img, 0, 0);
-        return;
-      }
-      drawScreenBase(ctx);
-      for (const it of items()) {
-        if (isText(it)) drawCanvasTextItem(ctx, it);
-        else drawCanvasShape(ctx, it);
-      }
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, 320, 240);
+      const img = loadPreviewImage();
+      if (img.complete && img.naturalWidth === 320 && img.naturalHeight === 240) ctx.drawImage(img, 0, 0);
     }
 
     function setPreviewScale(scale) {
@@ -1912,7 +1925,7 @@
     }
     async function regeneratePreviews() {
       el.runPreview.disabled = true;
-      setStatus(LVGL_MODE ? "Saving layout and regenerating LVGL preview images..." : "Saving layout and regenerating preview images...");
+      setStatus("Saving layout and regenerating LVGL preview images...");
       const saved = await saveToFile();
       if (!saved) { setStatus("Preview generation cancelled because the layout was not saved"); el.runPreview.disabled = false; return; }
       try {
@@ -1922,10 +1935,10 @@
           setStatus("Preview generation failed: " + (json.error || res.status));
           return;
         }
-        if (LVGL_MODE) refreshNativeScreenImages();
+        refreshNativeScreenImages();
         refreshContactSheet();
         await boot({ overlayHeader: true, skipAutosave: true, keepScreen: true });
-        setStatus(LVGL_MODE ? "Regenerated LVGL previews and reloaded generated layout constants" : "Regenerated preview images and reloaded generated layout constants");
+        setStatus("Regenerated LVGL previews and reloaded generated layout constants");
       } catch (_) {
         setStatus("Preview generation needs the local editor server from scripts/run_layout_editor_lvgl.bat");
       } finally {
@@ -1933,7 +1946,6 @@
       }
     }
     async function refreshEditorFromSource() {
-      if (!LVGL_MODE) return;
       el.refreshEditor.disabled = true;
       el.runPreview.disabled = true;
       setStatus("Refreshing LVGL editor from firmware source...");
@@ -1947,7 +1959,7 @@
           return;
         }
         const url = new URL(window.location.href);
-        url.searchParams.set("lvgl", "1");
+        url.searchParams.delete("lvgl");
         url.searchParams.set("v", "source-refresh-" + Date.now());
         window.location.replace(url.toString());
       } catch (_) {
@@ -2055,7 +2067,6 @@
     }
 
     async function loadLvglFontMetrics() {
-      if (!LVGL_MODE) return;
       try {
         const res = await fetch(assetUrl("lvgl_font_metrics.json"), { cache: "no-store" });
         if (res.ok) lvglFontMetrics = await res.json();

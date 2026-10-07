@@ -29,11 +29,11 @@ if errorlevel 1 set "PY=python"
 if errorlevel 1 (
   echo Python was not found. Opening the editor file directly.
   echo layout.json auto-load and LVGL upload button are blocked on file://.
-  start "" "%CD%\tools\layout_editor.html?lvgl=1"
+  start "" "%CD%\tools\layout_editor.html"
   exit /b 0
 )
 
-set "URL=http://localhost:%PORT%/tools/layout_editor.html?lvgl=1&v=lvgl-previews-20260708"
+set "URL=http://localhost:%PORT%/tools/layout_editor.html?v=lvgl-previews-20261007"
 echo Serving the LVGL layout editor at:
 echo   %URL%
 echo.

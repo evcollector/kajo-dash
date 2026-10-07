@@ -40,7 +40,7 @@ CAPTIONS = {
     "editor": ("The layout editor", "Edit any screen at 1:1 and see the result."),
     "pick": ("Pick an element", "Click it, then drag."),
     "undo": ("Undo is one click", ""),
-    "screens": ("Every screen", "Switch between them in one list."),
+    "screens": ("All twelve themes", "One list. The last two are view only."),
     "flash": ("Flash over USB", "Build and install on a connected display."),
 }
 
@@ -351,11 +351,11 @@ def editor_part(writer: Writer, captions: Captions, fps: int) -> None:
         hold(0.7)
         captions.at(writer.frames, *CAPTIONS["screens"])
         move(640, 560, 0.4)
-        for index in (1, 3, 8):
+        for index in (1, 4, 10, 11):
             page.select_option("#screenSelect", index=index)
             page.evaluate("document.getElementById('screen').scrollIntoView({block:'center'}); window.scrollBy(0, -8)")
             page.wait_for_timeout(250)
-            hold(1.0)
+            hold(0.9)
         browser.close()
 
 

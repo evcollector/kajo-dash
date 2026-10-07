@@ -142,6 +142,14 @@ writes both the source PNG and the packed firmware icon data. The generated
 layout header must not be edited by hand — change `tools/layout.json` through
 the editor, then regenerate.
 
+The workspace is the native LVGL render of each screen from `preview_output/lvgl/`
+(run **Generate LVGL previews**, or option 2 of `kajo.bat`, after a UI change), with your
+pending edits drawn over it. It lists all twelve dashboard themes. Ten are driven by the layout
+file; **11 Gauge** and **12 Efficiency** are drawn in `dashboards.cpp`, so they are shown view
+only, with no items to move. Below the workspace is the visual reference for the shared menu
+components, including the Customize Theme panel; keep it in step with `ui_style.h` as
+[ui-components.md](ui-components.md) asks.
+
 Before editing any screen, read [ui-components.md](ui-components.md).
 
 ## Fonts
