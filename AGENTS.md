@@ -63,14 +63,13 @@ Confirmation dialogs that require a user choice may remain modal and larger,
 but any transient success, status, warning, or "already enabled" message must
 follow the popup convention above.
 
-## Pre-release compatibility policy
+## Compatibility policy
 
-This project has no public releases or deployed user base. Firmware, desktop
-tools, protocols, and internal data formats should move forward together.
-Do not add compatibility shims for superseded prototype versions unless the
-user explicitly requests one; prefer a clear version failure or a clean reset.
+KAJO-Dash 0.01 is the first signed release (see `RELEASES.md`, a `v*` tag built
+by `kajo.bat` option 5, **R**), so settings, ride logs, and update protocols
+may now be installed on real devices. Do not add compatibility shims for the
+prototype versions that came before it; they were never released.
 
-Revisit this section once a signed release is published, which `RELEASES.md`
-records (a `v*` tag built by `kajo.bat` option 5, **R**): from then on,
-settings, ride logs, and update protocols installed on real devices may need
-an explicit migration path.
+From 0.01 onwards, a change to a stored setting, ride-log layout, or update
+protocol needs an explicit migration path, or the user's decision that a clean
+reset is acceptable. Raise it before making the change rather than after.

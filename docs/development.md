@@ -252,8 +252,8 @@ passed.
 ### Test packages and releases
 
 `include/config.h` holds the version being worked towards: the next release,
-not the last one. Until the first release that is `0.01`, and everything built
-in the meantime is `0.01`. To choose a different next version, edit its two
+not the last one. After a release it moves on to the next number, and everything
+built in the meantime carries it. To choose a different next version, edit its two
 defines by hand. [RELEASES.md](../RELEASES.md) lists what has been released;
 the `kajo.bat` header shows both.
 

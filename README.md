@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/licence-GPL--3.0--or--later-ff7900?style=flat-square&labelColor=1f2328" alt="Licence: GPL-3.0-or-later">
   <img src="https://img.shields.io/badge/board-ESP32--2432S028R-ff7900?style=flat-square&labelColor=1f2328" alt="Board: ESP32-2432S028R">
   <img src="https://img.shields.io/badge/built%20with-PlatformIO-ff7900?style=flat-square&labelColor=1f2328" alt="Built with PlatformIO">
-  <img src="https://img.shields.io/badge/status-pre--release-ff7900?style=flat-square&labelColor=1f2328" alt="Status: pre-release">
+  <img src="https://img.shields.io/badge/release-v0.01-ff7900?style=flat-square&labelColor=1f2328" alt="Release: v0.01">
 </p>
 
 <p align="center">
@@ -99,7 +99,7 @@ settings screen, and the ride replay views.
 | VESC | Bluetooth LE | Working |
 | FarDriver | Bluetooth LE | Works in limited testing: connects, reads telemetry and records rides, but with no guarantees |
 
-v0.01 is the first release. FarDriver support has had only limited testing on a
+[v0.01](https://github.com/evcollector/kajo-dash/releases/tag/v0.01) is the first release. FarDriver support has had only limited testing on a
 few controllers, so treat its readings as unverified until you have checked them
 against your own controller.
 
@@ -162,10 +162,6 @@ installer links the USB drivers the board needs (Windows usually installs them
 by itself).
 
 Reinstalling keeps the settings already on the display.
-
-> [!NOTE]
-> No release has been published yet. Until the first one, use
-> [Build from source](#build-from-source) below.
 
 **Updating later** needs no cable:
 
