@@ -4766,7 +4766,7 @@ static void makeCustomizerExplanation(lv_obj_t *popup) {
                    "Scegli i dati per"),
                dashboardDataLabel(dashboardDataDefault(dashUiPreviewMode, dataSelectedSlot)),
                txt("section.", ".", "aus.", ".", ".", "."));
-    } else if (displayPage == 1) {
+    } else {
       snprintf(message, sizeof(message), "%s",
                txt("Select a data section to customize.", "Valitse muokattava tietokenttä.",
                    "Wähle ein Datenfeld zum Anpassen.", "Sélectionnez un champ à modifier.",

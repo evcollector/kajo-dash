@@ -40,6 +40,7 @@ tap 245 177 settle=2400
 
 caption "Readouts" "Pick what each slot shows. Volts become recovered energy."
 tap-label "DATA" settle=1000
+expect-label "Select a data section to customize."
 tap 128 100 settle=900
 tap-label "RECOVERED" settle=1800
 
