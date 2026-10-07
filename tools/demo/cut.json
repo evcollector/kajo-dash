@@ -5,11 +5,11 @@
     "mark": "Intro",
     "seconds": 4.5
   },
-  "chapters": ["themes", "customize", "replay", "display", "developer", "updates", "start"],
+  "chapters": ["start", "themes", "customize", "replay", "display", "developer", "updates"],
   "outro": {
     "title": "Build it yourself",
     "subtitle": "Everything in this video runs from the repository.",
-    "lines": ["Start with kajo.bat.", "github.com/evcollector/kajo-dash"],
+    "lines": ["Run kajo.bat to begin.", "github.com/evcollector/kajo-dash"],
     "mark": "Get the code",
     "seconds": 6
   }

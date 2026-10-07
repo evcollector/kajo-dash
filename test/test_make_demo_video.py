@@ -308,11 +308,12 @@ class SpeedTests(unittest.TestCase):
         args = demo.parse_arguments([])
         self.assertEqual(args.speed, 3)
         self.assertGreaterEqual(args.speed, 3, "the video is a fast tour")
-        self.assertGreaterEqual(args.min_caption, 1200)
+        self.assertGreaterEqual(args.min_caption, 800)
+        self.assertLessEqual(args.pace, 250, "a navigation step is about a fifth of a second")
 
     def test_the_speed_and_hold_can_be_overridden_and_are_bounded(self):
-        args = demo.parse_arguments(["--speed", "1", "--min-caption", "0"])
-        self.assertEqual((args.speed, args.min_caption), (1, 0))
+        args = demo.parse_arguments(["--speed", "1", "--min-caption", "0", "--pace", "0"])
+        self.assertEqual((args.speed, args.min_caption, args.pace), (1, 0, 0))
         with self.assertRaises(SystemExit):
             demo.parse_arguments(["--speed", "11"])
 
@@ -320,6 +321,7 @@ class SpeedTests(unittest.TestCase):
         source = Path(demo.__file__).read_text(encoding="utf-8")
         self.assertIn('f"--speed={speed}"', source)
         self.assertIn('f"--min-caption={min_caption}"', source)
+        self.assertIn('f"--pace={pace}"', source)
 
 
 class ChapterMarkTests(unittest.TestCase):
@@ -353,6 +355,15 @@ class StartChapterTests(unittest.TestCase):
         self.assertIsNotNone(demo.story_path("start"))
         demo.check_chapter("start")
         self.assertIn("start", demo.known_chapters())
+
+    def test_the_chapter_comes_first_because_it_is_where_a_new_user_begins(self):
+        self.assertEqual(demo.load_cut()[0], "start")
+
+    def test_the_installer_text_is_what_kajo_bat_prints(self):
+        lines = start_capture.installer_lines()
+        self.assertTrue(any("1. Install over USB cable" in line for line in lines))
+        self.assertTrue(any("2. Update over Bluetooth" in line for line in lines))
+        self.assertTrue(any(line.strip() == "Q. Quit" for line in lines))
 
     def test_the_menu_is_read_from_kajo_bat_and_leaves_out_the_private_companion_entry(self):
         entries = start_capture.menu_entries()

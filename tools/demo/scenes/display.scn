@@ -43,13 +43,13 @@ tap-label "Ambient LED" settle=1200
 tap-label "Ambient LED" settle=1400
 
 caption "Touch tools" "Recalibrate the touch, or draw on Touch Test to see exactly where it reads your finger."
-tap-label "NEXT" settle=1500
+tap-label "NEXT" settle=1500 exact=yes
 tap-label "TOUCH TEST" settle=130
 # The host build draws a sample stroke the firmware does not (screens.cpp, CYD_LVGL_PREVIEW), and a
 # device starts with a blank canvas, so clear it before anyone can see it.
 tap-label "CLEAR" hold=40 settle=1000
 path 1500 30 170 70 90 110 170 150 90 190 170 230 90 270 170 300 110 settle=500
-path 1300 160 75 215 110 215 160 160 195 105 160 105 110 160 75 settle=1200
+path 1300 160 75 215 110 215 160 160 195 105 160 105 110 160 75 settle=1200 exact=yes
 tap-label "CLEAR" settle=800
 tap-label "BACK" settle=800
 

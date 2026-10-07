@@ -169,12 +169,12 @@ constexpr CommandSpec kCommands[] = {
     {"demo", "w", ""},
     {"logging", "w", ""},
     {"card", "w", ""},
-    {"wait", "i", ""},
-    {"tap", "ii", "hold settle"},
-    {"tap-label", "s", "nth hold settle"},
-    {"drag", "iiiii", "settle ease"},
-    {"path", "iiiii+", "settle ease"},
-    {"hold", "iii", "settle"},
+    {"wait", "i", "exact"},
+    {"tap", "ii", "hold settle exact"},
+    {"tap-label", "s", "nth hold settle exact"},
+    {"drag", "iiiii", "settle ease exact"},
+    {"path", "iiiii+", "settle ease exact"},
+    {"hold", "iii", "settle exact"},
     {"light", "ii", "over"},
     {"companion", "w?s", "seconds paused"},
     {"update", "w?s", "key received total"},
@@ -262,7 +262,7 @@ void validate(const Step &step) {
       fail(step, "unknown option '" + option.first + "'");
     if (option.first == "ease") {
       if (!oneOf(option.second, {"linear", "smooth"})) fail(step, "ease must be linear or smooth");
-    } else if (option.first == "paused" || option.first == "key") {
+    } else if (option.first == "paused" || option.first == "key" || option.first == "exact") {
       if (!oneOf(option.second, {"yes", "no"})) fail(step, "option '" + option.first + "' must be yes or no");
     } else {
       long value = 0;
@@ -359,6 +359,7 @@ struct Options {
   fs::path stills;
   int fps = 60;
   int speed = 1;          // scene milliseconds per video millisecond: 3 plays the scene 3x faster
+  int paceMs = 0;         // video milliseconds a settle or wait may last (0: as written); exact=yes opts out
   int minCaptionMs = 0;   // video milliseconds a caption stays before the next one may replace it
   int scale = 4;
   bool touch = true;
@@ -845,6 +846,15 @@ class Recorder {
 
   // ---------------------------------------------------------------------------- commands
 
+  // A pause the scene wrote for a person to look at a page. With --pace it lasts at most that long in
+  // video time, so navigation keeps one quick rhythm; exact=yes keeps a pause that the UI needs.
+  uint32_t paced(const Step &step, uint32_t ms) const {
+    if (options_.paceMs <= 0) return ms;
+    const auto exact = step.options.find("exact");
+    if (exact != step.options.end() && exact->second == "yes") return ms;
+    return std::min<uint32_t>(ms, static_cast<uint32_t>(options_.paceMs) * static_cast<uint32_t>(options_.speed));
+  }
+
   static uint32_t option(const Step &step, const char *key, uint32_t fallback) {
     const auto it = step.options.find(key);
     return it == step.options.end() ? fallback : static_cast<uint32_t>(std::stol(it->second));
@@ -960,33 +970,33 @@ class Recorder {
 
     if (name == "wait") {
       trace(step, step.args[0].text + " ms");
-      return advance(static_cast<uint32_t>(integer(step, 0)));
+      return advance(paced(step, static_cast<uint32_t>(integer(step, 0))));
     }
     if (name == "tap") {
       trace(step, step.args[0].text + " " + step.args[1].text);
       return tap(integer(step, 0), integer(step, 1), option(step, "hold", kDefaultHoldMs),
-                 option(step, "settle", kDefaultSettleMs));
+                 paced(step, option(step, "settle", kDefaultSettleMs)));
     }
     if (name == "tap-label") {
       std::vector<VisibleLabel> storage;
       const VisibleLabel &label = findLabel(step, step.args[0].text, option(step, "nth", 1), storage);
       trace(step, "\"" + label.text + "\" -> " + std::to_string(label.x) + "," + std::to_string(label.y));
       warnIfCovered(step, label);
-      return tap(label.x, label.y, option(step, "hold", kDefaultHoldMs), option(step, "settle", kDefaultSettleMs));
+      return tap(label.x, label.y, option(step, "hold", kDefaultHoldMs), paced(step, option(step, "settle", kDefaultSettleMs)));
     }
     if (name == "drag") {
       trace(step, step.args[0].text + "," + step.args[1].text + " -> " + step.args[2].text + "," + step.args[3].text);
       const auto ease = step.options.find("ease");
       return drag(integer(step, 0), integer(step, 1), integer(step, 2), integer(step, 3),
                   static_cast<uint32_t>(integer(step, 4)), ease == step.options.end() || ease->second == "smooth",
-                  option(step, "settle", kDefaultSettleMs));
+                  paced(step, option(step, "settle", kDefaultSettleMs)));
     }
     if (name == "hold") {
       trace(step, step.args[0].text + "," + step.args[1].text + " for " + step.args[2].text + " ms");
       press(integer(step, 0), integer(step, 1));
       advance(static_cast<uint32_t>(integer(step, 2)));
       release();
-      return advance(option(step, "settle", kDefaultSettleMs));
+      return advance(paced(step, option(step, "settle", kDefaultSettleMs)));
     }
     if (name == "path") {
       std::vector<Point> points;
@@ -995,7 +1005,7 @@ class Recorder {
       trace(step, std::to_string(points.size()) + " points over " + step.args[0].text + " ms");
       const auto ease = step.options.find("ease");
       return drawPath(points, static_cast<uint32_t>(integer(step, 0)),
-                      ease == step.options.end() || ease->second == "smooth", option(step, "settle", kDefaultSettleMs));
+                      ease == step.options.end() || ease->second == "smooth", paced(step, option(step, "settle", kDefaultSettleMs)));
     }
     if (name == "light") {
       const int raw = integer(step, 0);
@@ -1212,7 +1222,7 @@ class Recorder {
 
 void printUsage() {
   std::cerr << "usage: cyd_demo_recorder <scene.scn> [--raw=PATH|-] [--events=PATH] [--stills=DIR]\n"
-               "                         [--fps=N] [--speed=N] [--min-caption=MS] [--scale=N] [--no-touch] [--no-backlight] [--trace] [--digest]\n"
+               "                         [--fps=N] [--speed=N] [--pace=MS] [--min-caption=MS] [--scale=N] [--no-touch] [--no-backlight] [--trace] [--digest]\n"
                "\n"
                "  --raw      write RGB24 frames to PATH, or to stdout with '-'; without it nothing is\n"
                "             encoded and the scene only runs (a fast check of every label and step)\n"
@@ -1221,6 +1231,8 @@ void printUsage() {
                "  --fps      video frame rate, 10 to 120 (default 60)\n"
                "  --speed    play the scene N times faster, 1 to 10 (default 1): frames are sampled N times\n"
                "             as far apart in scene time, so every frame is still a real firmware frame\n"
+               "  --pace     longest a settle or wait lasts, in video milliseconds (default: as written);\n"
+               "             a step with exact=yes keeps its time\n"
                "  --min-caption  video milliseconds a caption stays before the next may replace it\n"
                "             (default 0); the scene pauses to give it that long\n"
                "  --scale    integer upscale of the 320x240 display (default 4)\n"
@@ -1251,6 +1263,8 @@ bool parseArguments(int argc, char **argv, Options &options) {
       if (!parseInt(argument.substr(6), 10, 120, options.fps)) return false;
     } else if (argument.rfind("--speed=", 0) == 0) {
       if (!parseInt(argument.substr(8), 1, 10, options.speed)) return false;
+    } else if (argument.rfind("--pace=", 0) == 0) {
+      if (!parseInt(argument.substr(7), 0, 20000, options.paceMs)) return false;
     } else if (argument.rfind("--min-caption=", 0) == 0) {
       if (!parseInt(argument.substr(14), 0, 20000, options.minCaptionMs)) return false;
     } else if (argument.rfind("--scale=", 0) == 0) {

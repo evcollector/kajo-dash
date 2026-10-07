@@ -27,21 +27,23 @@ ROOT = Path(__file__).resolve().parents[2]
 FRAME = (1280, 960)
 
 TITLE = "Get started"
-SUBTITLE = "From a fresh clone to the simulator, the layout editor and a flashed board."
-NOTE = "The menu is redrawn from kajo.bat. The layout editor is the real page, in Chrome."
+SUBTITLE = "Install a release, or clone it and build."
+NOTE = "The terminal, installer and menu are redrawn. No release is published yet. The layout editor is the real page, in Chrome."
 DISCLOSURE = "Captured from the repository's own tools, not the firmware simulator."
 
 # Every caption of the chapter, so a test can check that each fits the rail.
 CAPTIONS = {
-    "menu": ("One menu", "Clone the repository and run kajo.bat."),
-    "simulator": ("Simulator", "The real firmware UI on your PC. No board needed."),
-    "previews": ("Preview renders", "Every screen, as 320x240 images."),
+    "download": ("Just want to run it?", "Download the release ZIP and extract it."),
+    "installer": ("Install it", "Plug in the display and choose USB."),
+    "clone": ("Want to hack on it?", "Clone it and run kajo.bat."),
+    "simulator": ("Simulator", "The real UI on your PC."),
+    "previews": ("Preview renders", "Every screen as an image."),
     "layout": ("Layout editor", "Edit tools/layout.json."),
-    "editor": ("The layout editor", "Edit any screen at 1:1 and see the result."),
-    "pick": ("Pick an element", "Click it, then drag."),
+    "editor": ("The layout editor", "Edit any screen at 1:1."),
+    "pick": ("Drag an element", ""),
     "undo": ("Undo is one click", ""),
-    "screens": ("All twelve themes", "One list. The last two are view only."),
-    "flash": ("Flash over USB", "Build and install on a connected display."),
+    "screens": ("All twelve themes", "The last two are view only."),
+    "flash": ("Flash over USB", "Build it, put it on a display."),
 }
 
 CONSOLE_BACKGROUND = (12, 12, 12)
@@ -52,6 +54,8 @@ CONSOLE_PRESSED = (249, 241, 165)
 TITLE_BAR = (31, 31, 31)
 
 LABEL_WIDTH = 22  # scripts/menu.ps1: $LabelWidth
+CONSOLE_BAR = 52
+CONSOLE_SIZE = 24
 
 
 # ------------------------------------------------------------------------------ the menu
@@ -187,6 +191,63 @@ def render_menu(selected: str, pressed: bool = False):
     return image
 
 
+def installer_lines(bat: Path = ROOT / "kajo.bat") -> list[str]:
+    """What the release ZIP's launcher prints (the `:installer` block of kajo.bat), line by line."""
+    text = bat.read_text(encoding="utf-8", errors="replace").splitlines()
+    start = next(i for i, line in enumerate(text) if line.strip().lower() == ":installer")
+    lines: list[str] = []
+    for line in text[start + 1 :]:
+        stripped = line.strip()
+        if stripped.lower().startswith("choice "):
+            break
+        match = re.match(r"echo(?:\.|\s(.*))?$", stripped, re.IGNORECASE)
+        if match:
+            lines.append(match.group(1) or "")
+    return lines
+
+
+def console_image(title: str):
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGB", FRAME, CONSOLE_BACKGROUND)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, FRAME[0], CONSOLE_BAR), fill=TITLE_BAR)
+    draw.text((24, CONSOLE_BAR // 2), title, font=console_font(SANS, 22), fill=CONSOLE_TEXT, anchor="lm")
+    return image, draw, console_font(MONOSPACE, CONSOLE_SIZE)
+
+
+def console_row_y(index: int) -> int:
+    return CONSOLE_BAR + 24 + index * round(CONSOLE_SIZE * 1.32)
+
+
+def render_console(rows: list[str], title: str = "Terminal", cursor: bool = True, highlight: int | None = None):
+    """Plain console text, one row per line; the last row carries the cursor. `highlight` pulses
+    one row in the pressed colour, as the menu does."""
+    image, draw, face = console_image(title)
+    leading = round(CONSOLE_SIZE * 1.32)
+    for index, text in enumerate(rows):
+        y = console_row_y(index)
+        if index == highlight:
+            draw.rectangle((24, y, 24 + face.getlength(text.rstrip()), y + leading), fill=CONSOLE_PRESSED)
+            draw.text((24, y), text, font=face, fill=(0, 0, 0))
+        else:
+            draw.text((24, y), text, font=face, fill=CONSOLE_DARK_GRAY if text.startswith("Cloning") else CONSOLE_TEXT)
+    if cursor and rows:
+        x = 24 + face.getlength(rows[-1])
+        y = console_row_y(len(rows) - 1)
+        draw.rectangle((x + 2, y + 4, x + 2 + face.getlength("M") * 0.6, y + leading - 4), fill=CONSOLE_TEXT)
+    return image
+
+
+def render_installer(choice: str = "", pressed: bool = False):
+    """The release ZIP's launcher: kajo.bat's own text, then the choice prompt."""
+    rows = installer_lines() + ["", "  Choose: " + choice]
+    highlight = None
+    if pressed:
+        highlight = next(i for i, row in enumerate(rows) if row.strip().startswith(choice + "."))
+    return render_console(rows, "KAJO-Dash firmware", cursor=not choice, highlight=highlight)
+
+
 # ------------------------------------------------------------------------------ the timeline
 
 
@@ -226,6 +287,32 @@ class Captions:
 
     def at(self, frame: int, heading: str, body: str = "") -> None:
         self.events.append({"frame": frame, "heading": heading, "body": body})
+
+
+def console_part(writer: Writer, captions: Captions, fps: int) -> None:
+    """Download and install, then clone and start kajo.bat: about a second per step."""
+    captions.at(writer.frames, *CAPTIONS["download"])
+    writer.add(render_installer(), frames_for(1.1, fps))
+    captions.at(writer.frames, *CAPTIONS["installer"])
+    writer.add(render_installer("1"), frames_for(0.4, fps))
+    writer.add(render_installer("1", pressed=True), frames_for(0.4, fps))
+
+    captions.at(writer.frames, *CAPTIONS["clone"])
+    rows: list[str] = []
+
+    def type_command(command: str, seconds: float) -> None:
+        steps = max(1, round(seconds * fps / 2))
+        for step in range(1, steps + 1):
+            shown = command if step == steps else command[: -(-len(command) * step // steps)]
+            writer.add(render_console(rows + ["> " + shown]), 2)
+
+    type_command("git clone https://github.com/evcollector/kajo-dash.git", 1.2)
+    rows += ["> git clone https://github.com/evcollector/kajo-dash.git", "Cloning into 'kajo-dash'..."]
+    writer.add(render_console(rows + ["> "]), frames_for(0.35, fps))
+    type_command("cd kajo-dash", 0.3)
+    rows += ["> cd kajo-dash"]
+    type_command("kajo.bat", 0.3)
+    writer.add(render_console(rows + ["> kajo.bat"], cursor=False), frames_for(0.25, fps))
 
 
 def menu_part(writer: Writer, captions: Captions, fps: int, steps: list[tuple[str, float, tuple[str, str] | None]], press: bool) -> None:
@@ -332,30 +419,30 @@ def editor_part(writer: Writer, captions: Captions, fps: int) -> None:
                 writer.add(shot(), 2)
 
         captions.at(writer.frames, *CAPTIONS["editor"])
-        hold(1.2)
-        move(362, 352, 0.6)
+        hold(0.8)
+        move(362, 352, 0.4)
         captions.at(writer.frames, *CAPTIONS["pick"])
         page.mouse.down()
         down[0] = True
-        hold(0.5)
-        move(470, 420, 0.7)
+        hold(0.25)
+        move(470, 420, 0.5)
         page.mouse.up()
         down[0] = False
-        hold(0.7)
+        hold(0.45)
         captions.at(writer.frames, *CAPTIONS["undo"])
-        move(188, 944, 0.6)
+        move(188, 944, 0.4)
         page.mouse.click(188, 944)
         down[0] = True
-        hold(0.15)
+        hold(0.12)
         down[0] = False
-        hold(0.7)
+        hold(0.5)
         captions.at(writer.frames, *CAPTIONS["screens"])
-        move(640, 560, 0.4)
+        move(640, 560, 0.25)
         for index in (1, 4, 10, 11):
             page.select_option("#screenSelect", index=index)
             page.evaluate("document.getElementById('screen').scrollIntoView({block:'center'}); window.scrollBy(0, -8)")
             page.wait_for_timeout(250)
-            hold(0.9)
+            hold(0.6)
         browser.close()
 
 
@@ -369,20 +456,20 @@ def capture(out: Path, ffmpeg: str, fps: int) -> tuple[Path, dict]:
     captions = Captions()
     writer = Writer(ffmpeg, screen, fps)
     try:
-        captions.at(0, *CAPTIONS["menu"])
+        console_part(writer, captions, fps)
         menu_part(
             writer, captions, fps,
             [
-                ("1", 2.4, CAPTIONS["simulator"]),
-                ("2", 1.5, CAPTIONS["previews"]),
-                ("3", 1.8, CAPTIONS["layout"]),
+                ("1", 1.0, CAPTIONS["simulator"]),
+                ("2", 0.7, CAPTIONS["previews"]),
+                ("3", 0.8, CAPTIONS["layout"]),
             ],
             press=True,
         )  # fmt: skip
         editor_part(writer, captions, fps)
         menu_part(
             writer, captions, fps,
-            [("4", 3.0, CAPTIONS["flash"])],
+            [("4", 1.2, CAPTIONS["flash"])],
             press=True,
         )  # fmt: skip
     except BaseException:

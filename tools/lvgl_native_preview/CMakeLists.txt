@@ -204,7 +204,10 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
   file(GLOB CYD_DEMO_CHAPTERS CONFIGURE_DEPENDS "${PROJECT_ROOT}/tools/demo/scenes/*.scn")
   foreach(chapter IN LISTS CYD_DEMO_CHAPTERS)
     get_filename_component(chapter_name "${chapter}" NAME_WE)
-    add_test(NAME cyd_demo_scene_${chapter_name} COMMAND cyd_demo_recorder "${chapter}")
+    # At the speed make_demo_video.py renders them (SPEED, PACE_MS, MIN_CAPTION_MS there), so a step
+    # that needs more time than the pace allows fails here and not in the next render.
+    add_test(NAME cyd_demo_scene_${chapter_name}
+             COMMAND cyd_demo_recorder "${chapter}" --speed=3 --pace=200 --min-caption=1000)
   endforeach()
   set(CYD_DEMO_TEST_SCENES "${CMAKE_CURRENT_LIST_DIR}/demo_test_scenes")
   add_test(NAME cyd_demo_recorder_smoke COMMAND cyd_demo_recorder "${CYD_DEMO_TEST_SCENES}/smoke.scn")

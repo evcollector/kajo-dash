@@ -27,13 +27,13 @@ for speed while drafting. Everything lands in `dist/demo/`, which git ignores.
 
 | # | Chapter | Shows |
 | --- | --- | --- |
-| 1 | `themes` | a speed edit of the twelve dashboard themes on their live previews, and saving one |
-| 2 | `customize` | Dual Gauge in magenta; dark, light and auto appearance; background and gradient; what each readout shows |
-| 3 | `replay` | on-device ride replay: seek, play, zoom, charts, summary |
-| 4 | `display` | brightness, auto brightness and its calibration, the ambient LED, the touch test, the display panel page |
-| 5 | `developer` | unlocking developer mode, and what is inside it |
-| 6 | `updates` | a signed firmware update over Bluetooth, from Bluetooth Link to the verified restart |
-| 7 | `start` | a speed edit of getting started: the `kajo.bat` menu, then the layout editor |
+| 1 | `start` | a speed edit of getting started: the release installer, then cloning and `kajo.bat`, the simulator and the layout editor |
+| 2 | `themes` | a speed edit of the twelve dashboard themes on their live previews, and saving one |
+| 3 | `customize` | Dual Gauge in magenta; dark, light and auto appearance; background and gradient; what each readout shows |
+| 4 | `replay` | on-device ride replay: seek, play, zoom, charts, summary |
+| 5 | `display` | brightness, auto brightness and its calibration, the ambient LED, the touch test, the display panel page |
+| 6 | `developer` | unlocking developer mode, and what is inside it |
+| 7 | `updates` | a signed firmware update over Bluetooth, from Bluetooth Link to the verified restart |
 
 `themes-tour` is the unhurried walk through the themes that `themes` condenses (a minute against
 half a minute). It is not in the cut; render it by name.
@@ -110,12 +110,17 @@ firmware drew, only fewer of them, so the needles and slides move three times as
 is interpolated. The touch ring keeps its own timing in video time, so a tap looks the same at
 any speed.
 
+The pauses a scene wrote for a person to look at a page (`settle` after a tap, `wait`) are capped
+with `--pace` at 200 ms of video, so a tap takes about a fifth of a second to reach the next
+step however long the scene lingers. A step that the UI really needs the time for (the Touch
+Test bringing its buttons back, say) says `exact=yes` and keeps it.
+
 A caption that goes by in a second cannot be read, so the recorder also holds each caption for at
-least `--min-caption` milliseconds of video (1500 by default): before the next caption appears,
+least `--min-caption` milliseconds of video (1000 by default): before the next caption appears,
 the scene pauses until the last one has had that long. A chapter is therefore a run of quick
 actions with a short beat at each caption. Both are options of `make_demo_video.py`
-(`--speed N`, `--min-caption MS`) and of `cyd_demo_recorder`; the recorder's default is real time
-with no hold.
+(`--speed N`, `--pace MS`, `--min-caption MS`) and of `cyd_demo_recorder`; the recorder's default
+is real time with no cap and no hold.
 
 ## Scene scripts
 
@@ -137,7 +142,7 @@ before anything runs, so a typo costs no render.
 | `update-request [on\|off]` | the phone asking for update mode, which hands Bluetooth Link over to the update screen |
 | `update-progress PERCENT MS` | moves an update in progress to a percentage over the given time |
 | `wait MS` | lets time pass |
-| `tap X Y` | touch down, hold, release. Options `hold=90`, `settle=300` (ms) |
+| `tap X Y` | touch down, hold, release. Options `hold=90`, `settle=300` (ms), `exact=yes` (a pause `--pace` must not shorten; `wait`, `tap-label`, `drag`, `path` and `hold` take it too) |
 | `tap-label "TEXT"` | taps the middle of the visible label with exactly this text. Options `nth=1`, `hold`, `settle` |
 | `drag X0 Y0 X1 Y1 MS` | a finger moving between two points. Options `ease=smooth\|linear`, `settle` |
 | `path MS X0 Y0 X1 Y1 [X Y ...]` | a finger drawing a smooth curve through the points. Options `ease`, `settle` |
