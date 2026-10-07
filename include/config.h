@@ -13,10 +13,10 @@ constexpr int TFT_BACKLIGHT_PIN = 21;
 //
 // Monotonic release number covered by the signed OTA manifest. The display
 // asks for confirmation before installing a lower one.
-#define CYD_FIRMWARE_VERSION_CODE 1UL
+#define CYD_FIRMWARE_VERSION_CODE 2UL
 // Human-readable name. The numeric code above stays the monotonic value OTA
 // compares for rollback; this is display only.
-#define CYD_FIRMWARE_VERSION_NAME "0.01"
+#define CYD_FIRMWARE_VERSION_NAME "0.02"
 
 // What the display shows as its version, on the boot splash and in Settings.
 // Test packages from the release builder are built with
