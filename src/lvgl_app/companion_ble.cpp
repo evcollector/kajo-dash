@@ -3,6 +3,7 @@
 #include <NimBLEDevice.h>
 
 #include "app_state.h"
+#include "ble_gatt_guard.h"
 #include "config.h"
 #include "controller_manager.h"
 #include "firmware_update_ble.h"
@@ -32,9 +33,7 @@ NimBLEServer *server = nullptr;
 NimBLECharacteristic *responseCharacteristic = nullptr;
 volatile bool active = false;
 volatile bool stopRequested = false;
-bool serverStarted = false;
 bool controllerPaused = false;
-volatile bool phoneConnected = false;
 uint32_t stateStartedMs = 0;
 uint32_t sessionDeadlineMs = 0;
 portMUX_TYPE commandMux = portMUX_INITIALIZER_UNLOCKED;
@@ -278,17 +277,12 @@ class ServerCallbacks : public NimBLEServerCallbacks {
       return;
     }
     activeServer->setDataLen(connection.getConnHandle(), 251);
-    phoneConnected = true;
     sessionDeadlineMs = millis() + kConnectedTimeoutMs;
-    if (controllerUsesBluetooth()) {
-      stateStartedMs = millis();
-      publishStatus(COMPANION_BLE_PREPARING, "Phone connected - pausing controller Bluetooth");
-    } else {
-      publishStatus(COMPANION_BLE_CONNECTED, "Phone connected - controller remains active");
-      writeIdentity(true);
-      rideLoggerSetStorageNeeded(true);
-      rideLoggerRequestCatalog();
-    }
+    publishStatus(COMPANION_BLE_CONNECTED, controllerPaused ? "Phone connected - controller Bluetooth paused"
+                                                            : "Phone connected - controller remains active");
+    writeIdentity(true);
+    rideLoggerSetStorageNeeded(true);
+    rideLoggerRequestCatalog();
   }
 
   void onDisconnect(NimBLEServer *, NimBLEConnInfo &, int) override {
@@ -329,7 +323,6 @@ bool startServer() {
   advertising->setName("KAJO Companion");
   advertising->addServiceUUID(COMPANION_SERVICE_UUID);
   if (!NimBLEDevice::startAdvertising()) return false;
-  serverStarted = true;
   sessionDeadlineMs = millis() + kAdvertisingTimeoutMs;
   return true;
 }
@@ -337,7 +330,6 @@ bool startServer() {
 void finishSession(const char *message, bool resumeController = true) {
   active = false;
   stopRequested = false;
-  phoneConnected = false;
   sessionDeadlineMs = 0;
   if (NimBLEDevice::isInitialized()) NimBLEDevice::stopAdvertising();
   if (server) {
@@ -359,11 +351,9 @@ bool companionBleStart() {
   }
   active = true;
   stopRequested = false;
-  phoneConnected = false;
   commandPending = false;
   updateModeRequested = false;
   updateModeAtMs = 0;
-  serverStarted = false;
   controllerPaused = false;
   stateStartedMs = millis();
   publishStatus(COMPANION_BLE_PREPARING, "Preparing phone connection");
@@ -396,28 +386,27 @@ void companionBleService() {
   if (!active) return;
   CompanionBleStatus status = companionBleStatus();
   if (status.state == COMPANION_BLE_PREPARING) {
-    if (phoneConnected && controllerUsesBluetooth()) {
-      controllerPaused = true;
-      if (!controllerQuiesceForCompanion()) {
-        if (millis() - stateStartedMs >= kPrepareTimeoutMs) {
-          finishSession("Could not pause controller Bluetooth");
-          publishStatus(COMPANION_BLE_ERROR, "Could not pause controller Bluetooth");
-        }
-        return;
+    // A Bluetooth controller gives the radio up before the phone side starts,
+    // not once a phone has connected: this build has one connection slot, so
+    // advertising cannot begin while the controller holds it, and the server
+    // must not be started while its worker is scanning or dialling (see
+    // ble_gatt_guard.h).
+    if (controllerUsesBluetooth()) controllerPaused = true;
+    if (!controllerQuiesceForCompanion() || !bleGattRebuildAllowed()) {
+      if (millis() - stateStartedMs >= kPrepareTimeoutMs) {
+        finishSession("Could not pause controller Bluetooth");
+        publishStatus(COMPANION_BLE_ERROR, "Could not pause controller Bluetooth");
       }
-      publishStatus(COMPANION_BLE_CONNECTED, "Phone connected - controller Bluetooth paused");
-      writeIdentity(true);
-      rideLoggerSetStorageNeeded(true);
-      rideLoggerRequestCatalog();
       return;
     }
-    if (phoneConnected) return;
-    if (!serverStarted && !startServer()) {
+    // Published first: a phone can connect as soon as advertising starts, and
+    // its CONNECTED state must not be overwritten from here afterwards.
+    publishStatus(COMPANION_BLE_ADVERTISING, "Ready for phone connection");
+    if (!startServer()) {
       finishSession("Could not start Companion Bluetooth");
       publishStatus(COMPANION_BLE_ERROR, "Could not start Companion Bluetooth");
       return;
     }
-    publishStatus(COMPANION_BLE_ADVERTISING, "Ready for phone connection");
   }
   if (status.state == COMPANION_BLE_CONNECTED) processPendingCommand();
   if (sessionDeadlineMs && static_cast<int32_t>(millis() - sessionDeadlineMs) >= 0)

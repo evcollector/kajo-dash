@@ -6,6 +6,7 @@
 #include <esp32/rom/miniz.h>
 #include <mbedtls/sha256.h>
 
+#include "ble_gatt_guard.h"
 #include "controller_manager.h"
 #include "companion_ble.h"
 #include "firmware_update.h"
@@ -661,7 +662,9 @@ void firmwareUpdateBleService() {
   // advertising cannot start (BLE_HS_ENOMEM) until that link has closed.
   NimBLEServer *existingServer = NimBLEDevice::isInitialized() ? NimBLEDevice::getServer() : nullptr;
   const bool phoneReleased = !existingServer || existingServer->getConnectedCount() == 0;
-  if (rideLoggerStatus().recording || !controllerReleased || !phoneReleased) {
+  // Adding the update service makes startServer() rebuild the GATT table, so
+  // the released links must also have finished closing (see ble_gatt_guard.h).
+  if (rideLoggerStatus().recording || !controllerReleased || !phoneReleased || !bleGattRebuildAllowed()) {
     if (millis() - prepareStartedMs >= kPrepareTimeoutMs) {
       updateModeActive = false;
       rideLoggerSetSuspended(false);
