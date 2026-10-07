@@ -1,0 +1,29 @@
+# Runs a scene at speed 1 and speed 3 and checks what --speed promises: about a third of the frames
+# (the same scene, three times faster), and with --min-caption never fewer than a caption needs.
+#
+#   cmake -DRECORDER=<cyd_demo_recorder> -DSCENE=<scene.scn> -P demo_recorder_speed.cmake
+function(frames_of result)
+  execute_process(COMMAND "${RECORDER}" "${SCENE}" ${ARGN} RESULT_VARIABLE code ERROR_VARIABLE log OUTPUT_QUIET)
+  if(NOT code EQUAL 0)
+    message(FATAL_ERROR "the recorder failed with ${code} for '${ARGN}':\n${log}")
+  endif()
+  string(REGEX MATCH "([0-9]+) frames" matched "${log}")
+  set(${result} ${CMAKE_MATCH_1} PARENT_SCOPE)
+endfunction()
+
+frames_of(normal)
+frames_of(fast --speed=3)
+frames_of(held --speed=3 --min-caption=1500)
+math(EXPR three_times "${fast} * 3")
+math(EXPR slack "${normal} / 20 + 6")
+math(EXPR gap "${three_times} - ${normal}")
+if(gap LESS 0)
+  math(EXPR gap "0 - ${gap}")
+endif()
+if(gap GREATER slack)
+  message(FATAL_ERROR "speed 3 should give about a third of ${normal} frames, got ${fast}")
+endif()
+if(held LESS fast)
+  message(FATAL_ERROR "holding captions cannot shorten the scene: ${held} frames against ${fast}")
+endif()
+message(STATUS "frames: ${normal} at speed 1, ${fast} at speed 3, ${held} with captions held")

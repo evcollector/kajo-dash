@@ -221,6 +221,21 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
       -DRECORDER=$<TARGET_FILE:cyd_demo_recorder>
       -DSCENE=${CYD_DEMO_TEST_SCENES}/fixtures.scn
       -P "${CMAKE_CURRENT_LIST_DIR}/demo_recorder_deterministic.cmake")
+  add_test(
+    NAME cyd_demo_recorder_deterministic_speed
+    COMMAND ${CMAKE_COMMAND}
+      -DRECORDER=$<TARGET_FILE:cyd_demo_recorder>
+      -DSCENE=${CYD_DEMO_TEST_SCENES}/fixtures.scn
+      "-DARGS=--speed=3;--min-caption=1500"
+      -P "${CMAKE_CURRENT_LIST_DIR}/demo_recorder_deterministic.cmake")
+  add_test(
+    NAME cyd_demo_recorder_speed
+    COMMAND ${CMAKE_COMMAND}
+      -DRECORDER=$<TARGET_FILE:cyd_demo_recorder>
+      -DSCENE=${CYD_DEMO_TEST_SCENES}/smoke.scn
+      -P "${CMAKE_CURRENT_LIST_DIR}/demo_recorder_speed.cmake")
+  add_test(NAME cyd_demo_recorder_speed_range COMMAND cyd_demo_recorder "${CYD_DEMO_TEST_SCENES}/smoke.scn" --speed=0)
+  set_tests_properties(cyd_demo_recorder_speed_range PROPERTIES PASS_REGULAR_EXPRESSION "usage:")
   # A matching message passes the test whatever the exit code, so each of these proves the
   # recorder failed for the stated reason rather than for any reason.
   function(cyd_demo_expect_failure name message)

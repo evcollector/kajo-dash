@@ -41,6 +41,8 @@ BRAND = ROOT / "tools" / "logo" / "brand" / "png"
 OUT = ROOT / "dist" / "demo"
 
 FPS = 60
+SPEED = 3  # how much faster than real time the firmware chapters play
+MIN_CAPTION_MS = 1500  # video time a caption stays, so a fast chapter can still be read
 SCALE = 4
 DISPLAY = (320, 240)
 CANVAS = (1920, 1080)
@@ -349,7 +351,7 @@ class Recording:
         return self.frames / int(self.events["fps"])
 
 
-def record(recorder: Path, ffmpeg: str, scene: Path, out: Path) -> Recording:
+def record(recorder: Path, ffmpeg: str, scene: Path, out: Path, speed: int = SPEED, min_caption: int = MIN_CAPTION_MS) -> Recording:
     """Play a scene and store its frames losslessly.
 
     Lossless H.264 in RGB is bit-exact like FFV1 but predicts from the previous frame, and a UI
@@ -364,7 +366,7 @@ def record(recorder: Path, ffmpeg: str, scene: Path, out: Path) -> Recording:
 
     recorder_command = [
         str(recorder), str(scene), "--raw=-", f"--events={events_file}", f"--stills={stills}",
-        f"--fps={FPS}", f"--scale={SCALE}",
+        f"--fps={FPS}", f"--scale={SCALE}", f"--speed={speed}", f"--min-caption={min_caption}",
     ]  # fmt: skip
     encoder_command = [
         ffmpeg, "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
@@ -706,6 +708,8 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--sheet", action="store_true", help="also write a contact sheet per chapter")
     parser.add_argument("--no-cut", action="store_true", help="do not join the chapters into demo.mp4")
     parser.add_argument("--crf", type=int, default=14, help="x264 quality, lower is better (default 14)")
+    parser.add_argument("--speed", type=int, default=SPEED, choices=range(1, 11), help=f"play the firmware chapters this many times faster than real time (default {SPEED})")
+    parser.add_argument("--min-caption", type=int, default=MIN_CAPTION_MS, help=f"video milliseconds a caption stays on the rail (default {MIN_CAPTION_MS})")
     parser.add_argument("--quick", action="store_true", help="fast, larger encode for checking a draft")
     parser.add_argument("--keep-work", action="store_true", help="keep the rail and card images")
     return parser.parse_args(argv)
@@ -738,7 +742,7 @@ def main(argv: list[str] | None = None) -> int:
             if story_path(name) is not None:
                 recording = record_story(ffmpeg, name, out)
             else:
-                recording = record(recorder, ffmpeg, scene_path(name), out)
+                recording = record(recorder, ffmpeg, scene_path(name), out, args.speed, args.min_caption)
             print(f"  {recording.frames} frames, {recording.seconds:.1f} s", flush=True)
             if args.sheet:
                 make_sheet(ffmpeg, recording, out)

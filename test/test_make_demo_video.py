@@ -303,6 +303,25 @@ class ArtworkTests(unittest.TestCase):
         self.assertTrue(all(draw.textlength(line, font=face) <= 460 for line in lines))
 
 
+class SpeedTests(unittest.TestCase):
+    def test_the_chapters_play_faster_than_real_time_and_hold_each_caption_long_enough_to_read(self):
+        args = demo.parse_arguments([])
+        self.assertEqual(args.speed, 3)
+        self.assertGreaterEqual(args.speed, 3, "the video is a fast tour")
+        self.assertGreaterEqual(args.min_caption, 1200)
+
+    def test_the_speed_and_hold_can_be_overridden_and_are_bounded(self):
+        args = demo.parse_arguments(["--speed", "1", "--min-caption", "0"])
+        self.assertEqual((args.speed, args.min_caption), (1, 0))
+        with self.assertRaises(SystemExit):
+            demo.parse_arguments(["--speed", "11"])
+
+    def test_the_recorder_is_told_the_speed_and_the_hold(self):
+        source = Path(demo.__file__).read_text(encoding="utf-8")
+        self.assertIn('f"--speed={speed}"', source)
+        self.assertIn('f"--min-caption={min_caption}"', source)
+
+
 class ChapterMarkTests(unittest.TestCase):
     def test_the_chapter_list_starts_at_zero_and_adds_each_length(self):
         text = demo.chapter_list([("Intro", 4.5), ("Twelve themes", 37.28), ("Updates", 40.0)])

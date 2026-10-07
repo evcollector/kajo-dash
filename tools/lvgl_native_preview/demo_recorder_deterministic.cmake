@@ -1,10 +1,10 @@
 # Runs a scene twice and fails unless the recorder reports the same digest of every frame the
 # firmware drew: a scene must render identically each time, whatever the machine or its load.
 #
-#   cmake -DRECORDER=<cyd_demo_recorder> -DSCENE=<scene.scn> -P demo_recorder_deterministic.cmake
+#   cmake -DRECORDER=<cyd_demo_recorder> -DSCENE=<scene.scn> [-DARGS="--speed=3;..."] -P demo_recorder_deterministic.cmake
 foreach(run IN ITEMS 1 2)
   execute_process(
-    COMMAND "${RECORDER}" "${SCENE}" --digest
+    COMMAND "${RECORDER}" "${SCENE}" --digest ${ARGS}
     RESULT_VARIABLE result_${run}
     ERROR_VARIABLE log_${run}
     OUTPUT_QUIET)

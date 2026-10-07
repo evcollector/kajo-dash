@@ -358,6 +358,8 @@ struct Options {
   fs::path events;
   fs::path stills;
   int fps = 60;
+  int speed = 1;          // scene milliseconds per video millisecond: 3 plays the scene 3x faster
+  int minCaptionMs = 0;   // video milliseconds a caption stays before the next one may replace it
   int scale = 4;
   bool touch = true;
   bool backlight = true;
@@ -549,6 +551,7 @@ class Recorder {
   uint64_t simMs_ = 0;
   uint64_t gridMs_ = 0;
   uint64_t nextFrame_ = 0;
+  int64_t captionOpenFrame_ = -1;  // first frame of the caption on the rail, or -1 when it ends by itself
 
   struct Touch {
     bool down = false;
@@ -569,13 +572,16 @@ class Recorder {
   bool haveBase_ = false;
   uint64_t digest_ = 1469598103934665603ULL;
 
+  // Scene time of a frame. At speed 3 each frame is 3x as far from the last as the frame rate says,
+  // so the same scene plays three times faster and every frame is still a real firmware frame.
   uint64_t tickMs(uint64_t frame) const {
-    return (frame * 1000 + static_cast<uint64_t>(options_.fps) / 2) / static_cast<uint64_t>(options_.fps);
+    return (frame * 1000 * static_cast<uint64_t>(options_.speed) + static_cast<uint64_t>(options_.fps) / 2) /
+           static_cast<uint64_t>(options_.fps);
   }
 
   // First frame whose tick is at or after the given scene time.
   uint64_t frameAtOrAfter(uint64_t ms) const {
-    uint64_t frame = ms * static_cast<uint64_t>(options_.fps) / 1000;
+    uint64_t frame = ms * static_cast<uint64_t>(options_.fps) / (1000 * static_cast<uint64_t>(options_.speed));
     while (tickMs(frame) < ms) ++frame;
     while (frame > 0 && tickMs(frame - 1) >= ms) --frame;
     return frame;
@@ -612,13 +618,16 @@ class Recorder {
     if (!options_.touch || !touch_.everDown) return ring;
     ring.x = touch_.x;
     ring.y = touch_.y;
+    // The ring's own timing is video time, so it looks the same at any speed.
+    const float pressMs = static_cast<float>(kRingPressMs * options_.speed);
+    const float releaseMs = static_cast<float>(kRingReleaseMs * options_.speed);
     if (touch_.down) {
-      const float k = std::clamp(static_cast<float>(ms - touch_.downMs) / kRingPressMs, 0.0F, 1.0F);
+      const float k = std::clamp(static_cast<float>(ms - touch_.downMs) / pressMs, 0.0F, 1.0F);
       const float eased = 1.0F - (1.0F - k) * (1.0F - k) * (1.0F - k);
       ring.radius = kRingRadius * (0.7F + 0.3F * eased);
       ring.alpha = 0.35F + 0.65F * eased;
-    } else if (ms - touch_.upMs < kRingReleaseMs) {
-      const float k = static_cast<float>(ms - touch_.upMs) / kRingReleaseMs;
+    } else if (static_cast<float>(ms - touch_.upMs) < releaseMs) {
+      const float k = static_cast<float>(ms - touch_.upMs) / releaseMs;
       ring.radius = kRingRadius * (1.0F + 0.7F * smoothstep(k));
       ring.alpha = 1.0F - k;
     }
@@ -1082,6 +1091,7 @@ class Recorder {
       return;
     }
     if (name == "caption") {
+      holdCaption();
       CaptionEvent event;
       event.frame = nextFrame_;
       event.heading = step.args[0].text;
@@ -1090,10 +1100,13 @@ class Recorder {
       if (until != step.options.end())
         event.untilFrame = static_cast<int64_t>(frameAtOrAfter(simMs_ + static_cast<uint64_t>(std::stol(until->second))));
       trace(step, "\"" + event.heading + "\"");
+      captionOpenFrame_ = event.untilFrame < 0 ? static_cast<int64_t>(event.frame) : -1;
       captions_.push_back(std::move(event));
       return;
     }
     if (name == "caption-off") {
+      holdCaption();
+      captionOpenFrame_ = -1;
       trace(step, "");
       CaptionEvent event;
       event.frame = nextFrame_;
@@ -1146,6 +1159,7 @@ class Recorder {
     out << "  \"subtitle\": " << jsonString(subtitle_) << ",\n";
     out << "  \"note\": " << jsonString(note_) << ",\n";
     out << "  \"fps\": " << options_.fps << ",\n";
+    out << "  \"speed\": " << options_.speed << ",\n";
     out << "  \"scale\": " << options_.scale << ",\n";
     out << "  \"width\": " << kWidth * options_.scale << ",\n";
     out << "  \"height\": " << kHeight * options_.scale << ",\n";
@@ -1165,7 +1179,19 @@ class Recorder {
     out << (captions_.empty() ? "]\n" : "\n  ]\n") << "}\n";
   }
 
+  // At a high speed the scene moves on before a caption can be read. Before the next caption (or
+  // the end of the scene) replaces one, let it stay at least --min-caption of video time.
+  void holdCaption() {
+    if (options_.minCaptionMs <= 0 || captionOpenFrame_ < 0) return;
+    const uint64_t minFrames =
+        (static_cast<uint64_t>(options_.minCaptionMs) * static_cast<uint64_t>(options_.fps) + 999) / 1000;
+    const uint64_t due = static_cast<uint64_t>(captionOpenFrame_) + minFrames;
+    if (nextFrame_ >= due) return;
+    advance(static_cast<uint32_t>(tickMs(due) - simMs_));
+  }
+
   void finish() {
+    holdCaption();
     // Every frame up to the end of the scene has been written; the stream only needs flushing.
     if (raw_) std::fflush(raw_);
     writeEvents();
@@ -1186,13 +1212,17 @@ class Recorder {
 
 void printUsage() {
   std::cerr << "usage: cyd_demo_recorder <scene.scn> [--raw=PATH|-] [--events=PATH] [--stills=DIR]\n"
-               "                         [--fps=N] [--scale=N] [--no-touch] [--no-backlight] [--trace] [--digest]\n"
+               "                         [--fps=N] [--speed=N] [--min-caption=MS] [--scale=N] [--no-touch] [--no-backlight] [--trace] [--digest]\n"
                "\n"
                "  --raw      write RGB24 frames to PATH, or to stdout with '-'; without it nothing is\n"
                "             encoded and the scene only runs (a fast check of every label and step)\n"
                "  --events   write the caption timeline as JSON for tools/make_demo_video.py\n"
                "  --stills   folder for 'still' steps, written as 320x240 PPM\n"
                "  --fps      video frame rate, 10 to 120 (default 60)\n"
+               "  --speed    play the scene N times faster, 1 to 10 (default 1): frames are sampled N times\n"
+               "             as far apart in scene time, so every frame is still a real firmware frame\n"
+               "  --min-caption  video milliseconds a caption stays before the next may replace it\n"
+               "             (default 0); the scene pauses to give it that long\n"
                "  --scale    integer upscale of the 320x240 display (default 4)\n"
                "  --no-touch leave the touch ring out of the frames\n"
                "  --no-backlight  draw every frame at full brightness (the host has no backlight; by\n"
@@ -1219,6 +1249,10 @@ bool parseArguments(int argc, char **argv, Options &options) {
       options.stills = argument.substr(9);
     } else if (argument.rfind("--fps=", 0) == 0) {
       if (!parseInt(argument.substr(6), 10, 120, options.fps)) return false;
+    } else if (argument.rfind("--speed=", 0) == 0) {
+      if (!parseInt(argument.substr(8), 1, 10, options.speed)) return false;
+    } else if (argument.rfind("--min-caption=", 0) == 0) {
+      if (!parseInt(argument.substr(14), 0, 20000, options.minCaptionMs)) return false;
     } else if (argument.rfind("--scale=", 0) == 0) {
       if (!parseInt(argument.substr(8), 1, 8, options.scale)) return false;
     } else if (argument == "--no-touch") {
