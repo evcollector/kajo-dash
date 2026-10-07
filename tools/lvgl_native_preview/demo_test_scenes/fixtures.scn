@@ -1,0 +1,61 @@
+# The fixture commands, against the real screens: the light sensor ramps, a finger draws a curve on
+# the Touch Test page, and the companion link and the update status walk the Bluetooth Link and
+# update screens through a whole transfer, each state checked by the label it puts on screen. The
+# update screen has no way back (the display would restart), so it comes last.
+# ctest runs it for success (cyd_demo_recorder_fixtures) and twice for an identical frame digest
+# (cyd_demo_recorder_deterministic_fixtures).
+title "Fixtures"
+subtitle "The scripted other end."
+note "A scene may carry a note for the footer."
+
+update ready
+companion advertising seconds=48
+light 420 72
+demo 1
+boot dashboard
+
+# The light sensor, with and without a ramp, then the touch tools.
+tap 160 120 settle=500
+tap-label "SETTINGS" settle=600
+tap-label "DISPLAY" settle=800
+light 3300 20 over=600
+light 250 100
+tap-label "NEXT" settle=700
+tap-label "TOUCH TEST" settle=700
+path 600 30 170 160 90 300 170 settle=1200
+expect-label "CLEAR"
+tap-label "BACK" settle=700
+tap-label "BACK" settle=700
+tap-label "BACK" settle=700
+
+# The whole update, from Bluetooth Link to the verified restart and a refused downgrade.
+tap-label "INFO" settle=800
+tap-label "BLUETOOTH LINK" settle=900
+expect-label "READY FOR DEVICE"
+companion connected seconds=287 paused=yes
+wait 300
+expect-label "DEVICE CONNECTED"
+
+update-request
+wait 600
+expect-label "STARTING BLUETOOTH"
+update advertising
+wait 300
+expect-label "READY TO RECEIVE UPDATE"
+update connected
+wait 300
+expect-label "UPDATER CONNECTED"
+update receiving
+update-progress 50 1000
+expect-label "RECEIVING"
+update-progress 100 500
+update ready-to-reboot
+wait 300
+expect-label "UPDATE SUCCESSFUL"
+update confirm-downgrade
+wait 400
+expect-label "INSTALL OLDER FIRMWARE?"
+tap-label "CANCEL" settle=500
+update cancelled received=0
+wait 300
+expect-label "UPDATE CANCELLED"

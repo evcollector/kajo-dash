@@ -40,12 +40,19 @@
 
 #include "Preferences.h"
 #include "app_state.h"
+#include "companion_ble.h"
+#include "firmware_update_ble.h"
 #include "host_runtime.h"
 #include "screens.h"
 
 extern void previewSetInteractiveMode(bool enabled);
 extern void previewSetLoggingState(RideLoggingMode mode, bool recording);
 extern void previewSetCardState(bool ready, bool checking);
+extern void previewSetLightSensor(int raw, int targetPercent);
+extern void previewSetCompanionState(CompanionBleState state, bool paused, uint32_t seconds, const char *message);
+extern void previewSetFirmwareUpdateActive(bool active);
+extern void previewSetFirmwareUpdateState(FirmwareUpdateBleState state, bool configured, uint32_t received,
+                                          uint32_t total, const char *message);
 
 namespace fs = std::filesystem;
 
@@ -62,6 +69,8 @@ constexpr uint32_t kDefaultSettleMs = 300;
 constexpr float kRingRadius = 11.0F;
 constexpr uint32_t kRingPressMs = 110;
 constexpr uint32_t kRingReleaseMs = 280;
+// The compressed image the renderer's update screens show (905.0 KiB).
+constexpr uint32_t kUpdateBytes = 926687;
 
 static_assert(LV_COLOR_DEPTH == 16, "the recorder converts RGB565 framebuffers");
 
@@ -144,7 +153,8 @@ bool isOption(const Token &token) {
 }
 
 // signature: one letter per positional argument (i integer, s string, w word); every letter after
-// a '?' is optional. options: the key=value names the command accepts.
+// a '?' is optional, and a trailing '+' lets the last letter repeat. options: the key=value names
+// the command accepts.
 struct CommandSpec {
   const char *name;
   const char *signature;
@@ -154,6 +164,7 @@ struct CommandSpec {
 constexpr CommandSpec kCommands[] = {
     {"title", "s", ""},
     {"subtitle", "s", ""},
+    {"note", "s", ""},
     {"boot", "?w", ""},
     {"demo", "w", ""},
     {"logging", "w", ""},
@@ -162,7 +173,13 @@ constexpr CommandSpec kCommands[] = {
     {"tap", "ii", "hold settle"},
     {"tap-label", "s", "nth hold settle"},
     {"drag", "iiiii", "settle ease"},
+    {"path", "iiiii+", "settle ease"},
     {"hold", "iii", "settle"},
+    {"light", "ii", "over"},
+    {"companion", "w?s", "seconds paused"},
+    {"update", "w?s", "key received total"},
+    {"update-request", "?w", ""},
+    {"update-progress", "ii", ""},
     {"caption", "s?s", "for"},
     {"caption-off", "", ""},
     {"still", "w", ""},
@@ -199,7 +216,7 @@ bool oneOf(const std::string &value, std::initializer_list<const char *> allowed
 // DEMO MODE only if a demo ride is already running. Everything else plays on the timeline and
 // needs the firmware running.
 bool isTimelineCommand(const std::string &name) {
-  return !oneOf(name, {"title", "subtitle", "boot", "logging", "card", "demo"});
+  return !oneOf(name, {"title", "subtitle", "note", "boot", "logging", "card", "demo", "light", "companion", "update"});
 }
 
 void validate(const Step &step) {
@@ -209,24 +226,31 @@ void validate(const Step &step) {
   size_t required = 0;
   size_t total = 0;
   bool optional = false;
+  bool repeats = false;
   std::string kinds;
   for (const char *p = spec->signature; *p; ++p) {
     if (*p == '?') {
       optional = true;
       continue;
     }
+    if (*p == '+') {
+      repeats = true;
+      continue;
+    }
     kinds += *p;
     ++total;
     if (!optional) ++required;
   }
-  if (step.args.size() < required || step.args.size() > total) {
-    fail(step, "expects " + (required == total ? std::to_string(total)
-                                               : std::to_string(required) + " to " + std::to_string(total)) +
+  if (step.args.size() < required || (!repeats && step.args.size() > total)) {
+    fail(step, "expects " + (repeats ? "at least " + std::to_string(required)
+                             : required == total ? std::to_string(total)
+                                                 : std::to_string(required) + " to " + std::to_string(total)) +
                    " argument(s), got " + std::to_string(step.args.size()));
   }
   for (size_t i = 0; i < step.args.size(); ++i) {
     long value = 0;
-    if (kinds[i] == 'i' && !parseInteger(step.args[i].text, value))
+    const char kind = i < kinds.size() ? kinds[i] : kinds.back();
+    if (kind == 'i' && !parseInteger(step.args[i].text, value))
       fail(step, "argument " + std::to_string(i + 1) + " must be an integer, got '" + step.args[i].text + "'");
   }
 
@@ -238,6 +262,8 @@ void validate(const Step &step) {
       fail(step, "unknown option '" + option.first + "'");
     if (option.first == "ease") {
       if (!oneOf(option.second, {"linear", "smooth"})) fail(step, "ease must be linear or smooth");
+    } else if (option.first == "paused" || option.first == "key") {
+      if (!oneOf(option.second, {"yes", "no"})) fail(step, "option '" + option.first + "' must be yes or no");
     } else {
       long value = 0;
       if (!parseInteger(option.second, value) || value < 0)
@@ -256,6 +282,21 @@ void validate(const Step &step) {
     fail(step, "expected off, on or recording");
   if (step.command == "card" && !oneOf(word(0), {"ready", "missing", "checking"}))
     fail(step, "expected ready, missing or checking");
+  if (step.command == "companion" && !oneOf(word(0), {"off", "preparing", "advertising", "connected", "error"}))
+    fail(step, "expected off, preparing, advertising, connected or error");
+  if (step.command == "update" &&
+      !oneOf(word(0), {"locked", "ready", "preparing", "advertising", "connected", "confirm-downgrade", "receiving",
+                       "ready-to-reboot", "error", "cancelled"}))
+    fail(step, "expected locked, ready, preparing, advertising, connected, confirm-downgrade, receiving, "
+               "ready-to-reboot, error or cancelled");
+  if (step.command == "update-request" && !step.args.empty() && !oneOf(word(0), {"on", "off"}))
+    fail(step, "expected on or off");
+  if (step.command == "update-progress" && (std::stol(word(0)) < 0 || std::stol(word(0)) > 100))
+    fail(step, "the percentage runs from 0 to 100");
+  if (step.command == "light" && (std::stol(word(0)) < 0 || std::stol(word(0)) > 4095 || std::stol(word(1)) < 0 ||
+                                  std::stol(word(1)) > 100))
+    fail(step, "expects a raw reading of 0 to 4095 and a target of 0 to 100 percent");
+  if (step.command == "path" && step.args.size() % 2 != 1) fail(step, "expects a duration, then x y pairs");
   if (step.command == "still") {
     for (const char c : word(0))
       if (!std::islower(static_cast<unsigned char>(c)) && !std::isdigit(static_cast<unsigned char>(c)) &&
@@ -319,6 +360,7 @@ struct Options {
   int fps = 60;
   int scale = 4;
   bool touch = true;
+  bool backlight = true;
   bool trace = false;
   bool digest = false;
 };
@@ -345,10 +387,51 @@ struct Ring {
   float y = 0.0F;
 };
 
+// The host has no backlight, so the video draws the brightness setting as a gain on the picture.
+// Manual brightness is displayBrightnessPercent. Auto brightness walks toward the sensor's target
+// two percent a tick, which is what serviceAutoBrightness() does in src/main_lvgl.cpp; the host
+// does not compile that file, so the few lines are repeated here. Nothing else in the firmware
+// reads the value, so a change there only makes the video's dimming stale, never wrong on screen.
+int backlightApplied = -1;
+
+void serviceBacklight() {
+  if (!autoBrightnessEnabled) {
+    backlightApplied = -1;
+    return;
+  }
+  const int target = lightSensorTargetPct();
+  if (backlightApplied < 0) backlightApplied = displayBrightnessPercent;
+  if (backlightApplied < target)
+    backlightApplied = std::min(target, backlightApplied + 2);
+  else if (backlightApplied > target)
+    backlightApplied = std::max(target, backlightApplied - 2);
+}
+
+int backlightPercent() {
+  if (autoBrightnessEnabled && backlightApplied >= 0) return backlightApplied;
+  return std::clamp<int>(displayBrightnessPercent, DISPLAY_BRIGHTNESS_MIN, DISPLAY_BRIGHTNESS_MAX);
+}
+
+// The LED backlight scales luminance, and the video stores gamma-encoded values, so the gain is
+// applied in linear light: 50 percent looks half as bright, not a quarter.
+std::vector<uint8_t> backlightGain(int percent) {
+  const auto toLinear = [](float c) { return c <= 0.04045F ? c / 12.92F : std::pow((c + 0.055F) / 1.055F, 2.4F); };
+  const auto toEncoded = [](float c) {
+    return c <= 0.0031308F ? c * 12.92F : 1.055F * std::pow(c, 1.0F / 2.4F) - 0.055F;
+  };
+  std::vector<uint8_t> table(256);
+  for (int value = 0; value < 256; ++value) {
+    const float linear = toLinear(static_cast<float>(value) / 255.0F) * static_cast<float>(percent) / 100.0F;
+    table[value] = static_cast<uint8_t>(std::clamp(std::lround(toEncoded(linear) * 255.0F), 0L, 255L));
+  }
+  return table;
+}
+
 void uiTimer(lv_timer_t *) {
   uiDashboardTick();
   uiAutoReturnTick();
   uiSensorTick();
+  serviceBacklight();
 }
 
 void collectLabels(lv_obj_t *object, std::vector<VisibleLabel> &out) {
@@ -420,22 +503,24 @@ class Recorder {
     base_.resize(outputBytes);
     if (options_.touch) scratch_.resize(outputBytes);
     previous_.resize(kPixels);
-    lut_.resize(65536 * 3);
+    lutBase_.resize(65536 * 3);
     for (uint32_t value = 0; value < 65536; ++value) {
       lv_color_t color;
       color.full = static_cast<uint16_t>(value);
       lv_color32_t expanded;
       expanded.full = lv_color_to32(color);
-      lut_[value * 3] = expanded.ch.red;
-      lut_[value * 3 + 1] = expanded.ch.green;
-      lut_[value * 3 + 2] = expanded.ch.blue;
+      lutBase_[value * 3] = expanded.ch.red;
+      lutBase_[value * 3 + 1] = expanded.ch.green;
+      lutBase_[value * 3 + 2] = expanded.ch.blue;
     }
+    lut_ = lutBase_;
   }
 
   int run(const std::vector<Step> &steps) {
     for (const Step &step : steps) {
       if (step.command == "title") title_ = step.args[0].text;
       if (step.command == "subtitle") subtitle_ = step.args[0].text;
+      if (step.command == "note") note_ = step.args[0].text;
     }
     // The host stubs show logging switched on for their screenshots; a stock firmware boots with
     // it off, so that is where a scene starts.
@@ -456,6 +541,7 @@ class Recorder {
   FILE *raw_ = nullptr;
   std::string title_;
   std::string subtitle_;
+  std::string note_;
   bool booted_ = false;
   int pendingDemoSpeed_ = 0;  // a demo requested before boot; 0 for none
 
@@ -477,7 +563,9 @@ class Recorder {
   std::vector<lv_color_t> previous_;
   std::vector<uint8_t> base_;
   std::vector<uint8_t> scratch_;
-  std::vector<uint8_t> lut_;
+  std::vector<uint8_t> lutBase_;  // RGB565 to RGB888 as the firmware drew it
+  std::vector<uint8_t> lut_;      // the same with the backlight applied
+  int lutPercent_ = 100;
   bool haveBase_ = false;
   uint64_t digest_ = 1469598103934665603ULL;
 
@@ -589,15 +677,38 @@ class Recorder {
     }
   }
 
+  // Rebuilds the colour table for a backlight level; the next frame is drawn from scratch.
+  void applyBacklight(int percent) {
+    lutPercent_ = percent;
+    if (percent >= 100) {
+      lut_ = lutBase_;
+    } else {
+      const std::vector<uint8_t> gain = backlightGain(percent);
+      for (size_t i = 0; i < lutBase_.size(); ++i) lut_[i] = gain[lutBase_[i]];
+    }
+    haveBase_ = false;
+  }
+
   void emitFrame() {
     const lv_color_t *framebuffer = cyd::preview::framebuffer();
     const Ring ring = ringAt(simMs_);
+    const int backlight = options_.backlight ? backlightPercent() : 100;
     if (options_.digest) {
       const uint8_t *bytes = reinterpret_cast<const uint8_t *>(framebuffer);
       for (size_t i = 0; i < kPixels * sizeof(lv_color_t); ++i) digest_ = (digest_ ^ bytes[i]) * 1099511628211ULL;
       digest_ = (digest_ ^ static_cast<uint32_t>(ring.alpha * 1000.0F)) * 1099511628211ULL;
+      digest_ = (digest_ ^ static_cast<uint32_t>(backlight)) * 1099511628211ULL;
+      // With --trace the running hash is printed once a second, so two builds that disagree can
+      // be compared to find the second where they first part.
+      if (options_.trace && nextFrame_ % static_cast<uint64_t>(options_.fps) == 0) {
+        char line[96];
+        std::snprintf(line, sizeof(line), "%s digest=%016llx backlight=%d", stamp().c_str(),
+                      static_cast<unsigned long long>(digest_), backlight);
+        std::cerr << line << '\n';
+      }
     }
     if (!raw_) return;
+    if (backlight != lutPercent_) applyBacklight(backlight);
 
     if (!haveBase_ || std::memcmp(framebuffer, previous_.data(), kPixels * sizeof(lv_color_t)) != 0) {
       upscale(framebuffer);
@@ -663,6 +774,66 @@ class Recorder {
     advance(settleMs);
   }
 
+  struct Point {
+    float x;
+    float y;
+  };
+
+  // A finger drawing through several points: a Catmull-Rom curve through them, travelled at an
+  // eased pace along its length, so a squiggle looks like a hand and not a ruler.
+  void drawPath(const std::vector<Point> &points, uint32_t durationMs, bool smooth, uint32_t settleMs) {
+    constexpr int kSamplesPerSegment = 24;
+    std::vector<Point> curve;
+    for (size_t i = 0; i + 1 < points.size(); ++i) {
+      const Point &p0 = points[i == 0 ? 0 : i - 1];
+      const Point &p1 = points[i];
+      const Point &p2 = points[i + 1];
+      const Point &p3 = points[i + 2 < points.size() ? i + 2 : points.size() - 1];
+      for (int k = 0; k < kSamplesPerSegment; ++k) {
+        const float t = static_cast<float>(k) / kSamplesPerSegment;
+        const auto spline = [t](float a, float b, float c, float d) {
+          return 0.5F * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t +
+                         (-a + 3 * b - 3 * c + d) * t * t * t);
+        };
+        curve.push_back({spline(p0.x, p1.x, p2.x, p3.x), spline(p0.y, p1.y, p2.y, p3.y)});
+      }
+    }
+    curve.push_back(points.back());
+    std::vector<float> length(curve.size(), 0.0F);
+    for (size_t i = 1; i < curve.size(); ++i)
+      length[i] = length[i - 1] + std::hypot(curve[i].x - curve[i - 1].x, curve[i].y - curve[i - 1].y);
+
+    press(static_cast<int>(std::lround(curve.front().x)), static_cast<int>(std::lround(curve.front().y)));
+    advance(40);  // the finger lands before it moves
+    const uint32_t steps = std::max<uint32_t>(1, durationMs / kGridMs);
+    size_t segment = 0;
+    for (uint32_t i = 1; i <= steps; ++i) {
+      const float t = static_cast<float>(i) / steps;
+      const float travelled = (smooth ? smoothstep(t) : t) * length.back();
+      while (segment + 2 < curve.size() && length[segment + 1] < travelled) ++segment;
+      const float span = length[segment + 1] - length[segment];
+      const float k = span > 0.0F ? std::clamp((travelled - length[segment]) / span, 0.0F, 1.0F) : 0.0F;
+      move(curve[segment].x + (curve[segment + 1].x - curve[segment].x) * k,
+           curve[segment].y + (curve[segment + 1].y - curve[segment].y) * k);
+      advance(kGridMs);
+    }
+    advance(30);
+    release();
+    advance(settleMs);
+  }
+
+  // Moves a fixture over time in the firmware's own 100 ms tick, so the screen sees it change the
+  // way it would if the sensor or the link really did.
+  template <typename Apply>
+  void ramp(uint32_t durationMs, Apply apply) {
+    const uint32_t slices = std::max<uint32_t>(1, durationMs / 100);
+    const uint32_t slice = durationMs / slices;
+    for (uint32_t i = 1; i <= slices; ++i) {
+      apply(static_cast<float>(i) / slices);
+      advance(i == slices ? durationMs - slice * (slices - 1) : slice);
+    }
+  }
+
   // ---------------------------------------------------------------------------- commands
 
   static uint32_t option(const Step &step, const char *key, uint32_t fallback) {
@@ -696,6 +867,7 @@ class Recorder {
       setDemoMode(true);
     }
     firstBootConfigured = !firstBoot;
+    backlightApplied = -1;
     lv_timer_create(uiTimer, 100, nullptr);
     if (firstBootConfigured) {
       uiShow(SCREEN_DASHBOARD);
@@ -734,9 +906,47 @@ class Recorder {
               << '\n';
   }
 
+  // The status the display would report during an update, set the way the renderer sets it. No
+  // uploader exists on the host: this is the display's side of the conversation, scripted.
+  void updateFixture(const Step &step) {
+    struct Fixture {
+      const char *word;
+      FirmwareUpdateBleState state;
+      const char *message;
+    };
+    static const Fixture kFixtures[] = {
+        {"locked", FIRMWARE_UPDATE_BLE_LOCKED, "Release signing key not configured"},
+        {"ready", FIRMWARE_UPDATE_BLE_READY, "Ready to enter update mode"},
+        {"preparing", FIRMWARE_UPDATE_BLE_PREPARING, "Stopping logging and controller Bluetooth"},
+        {"advertising", FIRMWARE_UPDATE_BLE_ADVERTISING, "Advertising as CYD Firmware Update"},
+        {"connected", FIRMWARE_UPDATE_BLE_CONNECTED, "Uploader connected"},
+        {"confirm-downgrade", FIRMWARE_UPDATE_BLE_CONFIRM_DOWNGRADE,
+         "Signed older firmware - confirm downgrade on display"},
+        {"receiving", FIRMWARE_UPDATE_BLE_RECEIVING, "Receiving compressed signed firmware"},
+        {"ready-to-reboot", FIRMWARE_UPDATE_BLE_READY_TO_REBOOT, "Firmware verified - restarting in 5 seconds"},
+        {"error", FIRMWARE_UPDATE_BLE_ERROR, "The update could not continue"},
+        {"cancelled", FIRMWARE_UPDATE_BLE_CANCELLED, "Upload cancelled by phone - restarting"},
+    };
+    const std::string &word = step.args[0].text;
+    for (const Fixture &fixture : kFixtures) {
+      if (word != fixture.word) continue;
+      const bool transfer = oneOf(word, {"confirm-downgrade", "receiving", "ready-to-reboot", "cancelled"});
+      const uint32_t total = option(step, "total", transfer ? kUpdateBytes : 0);
+      const uint32_t received =
+          option(step, "received", word == "ready-to-reboot" ? total : word == "cancelled" ? total / 3 : 0);
+      const auto keyOption = step.options.find("key");
+      const bool key = keyOption != step.options.end() ? keyOption->second == "yes" : word != "locked";
+      const std::string message = step.args.size() > 1 ? step.args[1].text : std::string(fixture.message);
+      trace(step, word);
+      previewSetFirmwareUpdateState(fixture.state, key, received, total, message.c_str());
+      return;
+    }
+    fail(step, "not implemented");
+  }
+
   void execute(const Step &step) {
     const std::string &name = step.command;
-    if (name == "title" || name == "subtitle") return;
+    if (name == "title" || name == "subtitle" || name == "note") return;
     if (name == "boot") return boot(step);
 
     if (name == "wait") {
@@ -768,6 +978,76 @@ class Recorder {
       advance(static_cast<uint32_t>(integer(step, 2)));
       release();
       return advance(option(step, "settle", kDefaultSettleMs));
+    }
+    if (name == "path") {
+      std::vector<Point> points;
+      for (size_t i = 1; i + 1 < step.args.size(); i += 2)
+        points.push_back({static_cast<float>(integer(step, i)), static_cast<float>(integer(step, i + 1))});
+      trace(step, std::to_string(points.size()) + " points over " + step.args[0].text + " ms");
+      const auto ease = step.options.find("ease");
+      return drawPath(points, static_cast<uint32_t>(integer(step, 0)),
+                      ease == step.options.end() || ease->second == "smooth", option(step, "settle", kDefaultSettleMs));
+    }
+    if (name == "light") {
+      const int raw = integer(step, 0);
+      const int target = integer(step, 1);
+      const uint32_t over = option(step, "over", 0);
+      trace(step, "raw " + step.args[0].text + ", target " + step.args[1].text + "%" +
+                      (over ? " over " + std::to_string(over) + " ms" : std::string()));
+      if (over == 0) {
+        previewSetLightSensor(raw, target);
+        return;
+      }
+      if (!booted_) fail(step, "a light sensor ramp needs the firmware running; put it after boot");
+      const int fromRaw = lightSensorRaw();
+      const int fromTarget = lightSensorTargetPct();
+      return ramp(over, [&](float k) {
+        previewSetLightSensor(fromRaw + static_cast<int>(std::lround((raw - fromRaw) * k)),
+                              fromTarget + static_cast<int>(std::lround((target - fromTarget) * k)));
+      });
+    }
+    if (name == "companion") {
+      const std::string &state = step.args[0].text;
+      const auto pausedOption = step.options.find("paused");
+      const bool paused = pausedOption != step.options.end() && pausedOption->second == "yes";
+      CompanionBleState value = COMPANION_BLE_OFF;
+      std::string message = "Companion mode off";
+      if (state == "preparing") {
+        value = COMPANION_BLE_PREPARING;
+        message = "Starting Bluetooth Link";
+      } else if (state == "advertising") {
+        value = COMPANION_BLE_ADVERTISING;
+        message = "Ready for phone connection";
+      } else if (state == "connected") {
+        value = COMPANION_BLE_CONNECTED;
+        message = paused ? "Phone connected - controller Bluetooth paused" : "Phone connected";
+      } else if (state == "error") {
+        value = COMPANION_BLE_ERROR;
+        message = "Bluetooth Link error";
+      }
+      if (step.args.size() > 1) message = step.args[1].text;
+      trace(step, state);
+      previewSetCompanionState(value, paused, option(step, "seconds", 0), message.c_str());
+      return;
+    }
+    if (name == "update") return updateFixture(step);
+    if (name == "update-request") {
+      const bool on = step.args.empty() || step.args[0].text == "on";
+      trace(step, on ? "on" : "off");
+      previewSetFirmwareUpdateActive(on);
+      return;
+    }
+    if (name == "update-progress") {
+      const FirmwareUpdateBleStatus current = firmwareUpdateBleStatus();
+      const uint32_t total = current.totalBytes ? current.totalBytes : kUpdateBytes;
+      const int64_t from = current.expectedOffset;
+      const int64_t to = static_cast<int64_t>(total) * integer(step, 0) / 100;
+      trace(step, step.args[0].text + "% over " + step.args[1].text + " ms");
+      return ramp(static_cast<uint32_t>(integer(step, 1)), [&](float k) {
+        previewSetFirmwareUpdateState(FIRMWARE_UPDATE_BLE_RECEIVING, true,
+                                      static_cast<uint32_t>(from + std::llround(static_cast<double>(to - from) * k)),
+                                      total, "Receiving compressed signed firmware");
+      });
     }
     if (name == "demo") {
       trace(step, step.args[0].text);
@@ -851,7 +1131,7 @@ class Recorder {
     if (!out) fail(step, "cannot write " + path.string());
     out << "P6\n" << kWidth << ' ' << kHeight << "\n255\n";
     const lv_color_t *framebuffer = cyd::preview::framebuffer();
-    for (size_t i = 0; i < kPixels; ++i) out.write(reinterpret_cast<const char *>(&lut_[framebuffer[i].full * 3]), 3);
+    for (size_t i = 0; i < kPixels; ++i) out.write(reinterpret_cast<const char *>(&lutBase_[framebuffer[i].full * 3]), 3);
     trace(step, path.string());
   }
 
@@ -864,6 +1144,7 @@ class Recorder {
     out << "  \"scene\": " << jsonString(fs::path(sceneFile).stem().string()) << ",\n";
     out << "  \"title\": " << jsonString(title_) << ",\n";
     out << "  \"subtitle\": " << jsonString(subtitle_) << ",\n";
+    out << "  \"note\": " << jsonString(note_) << ",\n";
     out << "  \"fps\": " << options_.fps << ",\n";
     out << "  \"scale\": " << options_.scale << ",\n";
     out << "  \"width\": " << kWidth * options_.scale << ",\n";
@@ -905,7 +1186,7 @@ class Recorder {
 
 void printUsage() {
   std::cerr << "usage: cyd_demo_recorder <scene.scn> [--raw=PATH|-] [--events=PATH] [--stills=DIR]\n"
-               "                         [--fps=N] [--scale=N] [--no-touch] [--trace] [--digest]\n"
+               "                         [--fps=N] [--scale=N] [--no-touch] [--no-backlight] [--trace] [--digest]\n"
                "\n"
                "  --raw      write RGB24 frames to PATH, or to stdout with '-'; without it nothing is\n"
                "             encoded and the scene only runs (a fast check of every label and step)\n"
@@ -914,6 +1195,8 @@ void printUsage() {
                "  --fps      video frame rate, 10 to 120 (default 60)\n"
                "  --scale    integer upscale of the 320x240 display (default 4)\n"
                "  --no-touch leave the touch ring out of the frames\n"
+               "  --no-backlight  draw every frame at full brightness (the host has no backlight; by\n"
+               "             default the brightness setting is drawn as a gain on the picture)\n"
                "  --trace    print every step with its scene time\n"
                "  --digest   print a hash of every frame the firmware drew\n";
 }
@@ -940,6 +1223,8 @@ bool parseArguments(int argc, char **argv, Options &options) {
       if (!parseInt(argument.substr(8), 1, 8, options.scale)) return false;
     } else if (argument == "--no-touch") {
       options.touch = false;
+    } else if (argument == "--no-backlight") {
+      options.backlight = false;
     } else if (argument == "--trace") {
       options.trace = true;
     } else if (argument == "--digest") {

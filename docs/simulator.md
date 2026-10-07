@@ -94,7 +94,7 @@ videos. Nothing follows the wall clock, so a script renders identically each tim
 | VESC/FarDriver links | Semantic status and representative telemetry fixtures | UI reactions are covered; UART framing, BLE discovery/radio timing, packet loss, and controller compatibility are not simulated. |
 | SD ride logging | Semantic logger/card/catalog fixtures | UI reactions are covered; filesystem, SPI sharing, card latency, removal during writes, and media corruption require hardware tests. |
 | Firmware update | Semantic transfer/status fixtures | Screens and state delivery are covered; BLE transport, signature/OTA partition writes, rollback, and reboot validation require target tests. |
-| LDR, backlight, RGB LED | Representative sensor values and no-op output functions | UI and settings are covered; ADC response, PWM, LED polarity, and brightness are not simulated. |
+| LDR, backlight, RGB LED | Representative sensor values and no-op output functions | UI and settings are covered; ADC response, PWM, LED polarity, and brightness are not simulated. The demo-video recorder draws the brightness setting as an effect on the picture only ([demo-video.md](demo-video.md)). |
 | Restart | Firmware restart requests remain a no-op host service; the native menu can launch a clean replacement simulator process | Menu-driven profile/reset/start-screen testing is covered, but target reboot timing and bootloader behavior are not simulated. |
 
 Fakes are deliberately domain-level — "controller connected", "ride save

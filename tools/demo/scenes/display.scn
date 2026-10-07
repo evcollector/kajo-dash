@@ -1,0 +1,59 @@
+# Chapter: the Display settings.
+#
+# Settings > Display, page 1: the brightness slider, Auto Brightness with its sensor calibration,
+# and the ambient LED. Page 2: the touch tools and the display panel page. The host has no
+# backlight, so the recorder draws the brightness setting as a gain on the picture; the light
+# sensor is a fixture the scene moves.
+#
+# Slider: y 95; about 0.35 percent per pixel, so x 75 is roughly 25 percent and x 270 roughly 93.
+title "Display settings"
+subtitle "Brightness, the light sensor, touch and panel tools."
+note "The backlight is drawn as an effect, and the LED and panel profile are not simulated."
+
+demo 1
+boot dashboard
+
+wait 1200
+tap 160 120 settle=600
+tap-label "SETTINGS" settle=600
+caption "Screen brightness" "Drag the slider. The setting is remembered."
+tap-label "DISPLAY" settle=1200
+drag 310 95 75 95 1200 settle=1000
+drag 75 95 270 95 1100 settle=900
+
+caption "Auto brightness" "The front light sensor sets the backlight. One tap switches it on."
+tap-label "Auto Brightness" settle=1500
+caption "It follows the light" "Dusk dims the display, daylight brightens it. It eases, it never jumps."
+light 3300 28 over=2600
+wait 900
+light 250 100 over=2600
+wait 700
+
+caption "Calibrate it" "Cover the sensor and save the dark level, then the bright level."
+tap-label "CALIBRATE SENSOR" settle=1200
+light 3400 20 over=800
+wait 400
+tap-label "SET DARK" settle=1000
+light 300 100 over=800
+wait 400
+tap-label "SET BRIGHT" settle=2200
+
+caption "Ambient LED" "The board's RGB LED follows the theme colour. Switch it off here."
+tap-label "Ambient LED" settle=1200
+tap-label "Ambient LED" settle=1400
+
+caption "Touch tools" "Recalibrate the touch, or draw on Touch Test to see exactly where it reads your finger."
+tap-label "NEXT" settle=1500
+tap-label "TOUCH TEST" settle=130
+# The host build draws a sample stroke the firmware does not (screens.cpp, CYD_LVGL_PREVIEW), and a
+# device starts with a blank canvas, so clear it before anyone can see it.
+tap-label "CLEAR" hold=40 settle=1000
+path 1500 30 170 70 90 110 170 150 90 190 170 230 90 270 170 300 110 settle=500
+path 1300 160 75 215 110 215 160 160 195 105 160 105 110 160 75 settle=1200
+tap-label "CLEAR" settle=800
+tap-label "BACK" settle=800
+
+caption "Display panel" "Pick the panel profile and a gamma curve, and check them against test patterns."
+tap-label "DISPLAY PANEL" settle=450
+tap-label "NEXT" settle=2600
+tap-label "NEXT >" settle=2200

@@ -408,9 +408,10 @@ def render_background():
     return image
 
 
-def render_rail_static(number: int | None, title: str, subtitle: str):
+def render_rail_static(number: int | None, title: str, subtitle: str, note: str = ""):
     """Everything on the rail that does not change during a chapter. Returns the layer, the y at
-    which captions may start and the y they must stay above (the footer)."""
+    which captions may start and the y they must stay above (the footer, which carries the
+    chapter's note, if it has one, above the standing disclosure)."""
     from PIL import Image, ImageDraw
 
     _, _, width, height = RAIL
@@ -433,8 +434,13 @@ def render_rail_static(number: int | None, title: str, subtitle: str):
     caption_top = y + 44
 
     footer = wrap(draw, DISCLOSURE, font("SemiBold", 20), width)
-    footer_top = height - 26 - 24 * (len(footer) + 1)
-    footer_y = draw_lines(draw, 0, footer_top, footer, font("SemiBold", 20), MUTED, 24)
+    note_lines = wrap(draw, note, font("SemiBold", 20), width) if note else []
+    note_height = 24 * len(note_lines) + 14 if note_lines else 0
+    footer_top = height - 26 - note_height - 24 * (len(footer) + 1)
+    y = footer_top
+    if note_lines:
+        y = draw_lines(draw, 0, y, note_lines, font("SemiBold", 20), SOFT, 24) + 14
+    footer_y = draw_lines(draw, 0, y, footer, font("SemiBold", 20), MUTED, 24)
     draw.text((0, footer_y + 2), REPOSITORY, font=font("SemiBold", 20), fill=ORANGE)
     return layer, caption_top, footer_top - 24
 
@@ -498,7 +504,9 @@ def write_rail(work: Path, recording: Recording, number: int | None) -> Path:
 
     events = recording.events
     spans = caption_spans(events.get("captions", []), recording.frames)
-    static, caption_top, caption_limit = render_rail_static(number, events.get("title", ""), events.get("subtitle", ""))
+    static, caption_top, caption_limit = render_rail_static(
+        number, events.get("title", ""), events.get("subtitle", ""), events.get("note", "")
+    )
     layers = [render_caption(span, caption_top, caption_limit) for span in spans]
 
     work.mkdir(parents=True, exist_ok=True)

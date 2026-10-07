@@ -1,0 +1,53 @@
+# Chapter: developer mode.
+#
+# Hold the Display tile in Settings for two seconds (the tile fills with the accent colour from one
+# second to two), confirm, and a Developer Options card appears on the second Settings page. The
+# scene walks its four tiles, and ends by enabling Demo Mode and going back to a dashboard that is
+# running a demo ride: the ride every chapter of this video uses.
+#
+# No demo ride is running before that: this chapter turns it on through the real Demo Mode page.
+title "Developer mode"
+subtitle "Hidden until you ask for it."
+
+boot dashboard
+
+wait 1100
+tap 160 120 settle=600
+tap-label "SETTINGS" settle=800
+
+caption "Hold Display" "Developer options stay out of the way. Hold the Display tile for two seconds."
+wait 700
+hold 241 61 2400 settle=900
+caption "It says what it does" "Advanced hardware diagnostics and display compatibility controls."
+wait 1900
+tap-label "ENABLE" settle=1500
+caption "A new card" "Developer Options appears on the second Settings page."
+wait 1800
+tap-label "DEVELOPER OPTIONS" settle=1200
+
+caption "Changelog" "The last four firmware changes, read on the display itself."
+tap-label "CHANGELOG" settle=3200
+tap-label "BACK" settle=700
+
+caption "Auto return" "Menus hand you back to the dashboard after a spell without touches. Anything from 30 seconds to an hour."
+tap-label "AUTO RETURN" settle=1800
+tap-label "2 MIN" settle=1500
+tap-label "BACK" settle=700
+
+caption "Switching it off" "Developer mode asks before it goes, and comes back with the same hold."
+tap-label "DEVELOPER MODE" settle=2400
+tap-label "CANCEL" settle=900
+
+caption "Demo mode" "A synthetic ride for desks and videos. The demo rides in this video come from here."
+tap-label "DEMO MODE" settle=1000
+tap 161 61 settle=1200
+caption "Time compression" "From 1x to 60x. Here, 30x."
+tap-label "TIME COMPRESSION" settle=500
+tap-label "TIME COMPRESSION" settle=500
+tap-label "TIME COMPRESSION" settle=1400
+tap-label "BACK" settle=500
+tap-label "BACK" settle=500
+tap-label "BACK" settle=500
+tap-label "BACK" settle=700
+caption-off
+wait 4200

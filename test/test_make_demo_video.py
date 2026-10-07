@@ -225,6 +225,14 @@ class ArtworkTests(unittest.TestCase):
         self.assertEqual(layer.size, static.size)
         self.assertIsNotNone(layer.getchannel("A").getbbox(), "the caption drew nothing")
 
+    def test_a_chapter_note_sits_in_the_footer_and_costs_caption_room(self):
+        _, _, plain = demo.render_rail_static(1, "Title", "Subtitle")
+        static, _, noted = demo.render_rail_static(
+            1, "Title", "Subtitle", "A note long enough to wrap over two lines in the rail."
+        )
+        self.assertLess(noted, plain, "the note takes room from the captions")
+        self.assertEqual(static.size, (demo.RAIL[2], demo.RAIL[3]))
+
     def test_a_caption_too_long_for_the_rail_is_an_error_not_an_overlap(self):
         _, top, limit = demo.render_rail_static(1, "Title", "Subtitle")
         with self.assertRaises(ValueError) as caught:
@@ -238,7 +246,10 @@ class ArtworkTests(unittest.TestCase):
             text = demo.scene_path(name).read_text(encoding="utf-8")
             title = re.search(r'^title "(.*)"', text, re.M).group(1)
             subtitle = re.search(r'^subtitle "(.*)"', text, re.M)
-            _, top, limit = demo.render_rail_static(1, title, subtitle.group(1) if subtitle else "")
+            note = re.search(r'^note "(.*)"', text, re.M)
+            _, top, limit = demo.render_rail_static(
+                1, title, subtitle.group(1) if subtitle else "", note.group(1) if note else ""
+            )
             captions = [line for line in text.splitlines() if line.startswith("caption ")]
             self.assertTrue(captions, f"{name} has no captions")
             for line in captions:

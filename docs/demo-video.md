@@ -18,8 +18,17 @@ python tools\make_demo_video.py themes --gif     # one chapter, plus a README GI
 python tools\make_demo_video.py replay --screen-only --sheet --no-build   # authoring: no dressing
 ```
 
-Both chapters render in about a minute and a half, GIFs and sheets included; `--quick` trades size
-for speed while drafting. Everything lands in `dist/demo/`, which git ignores.
+All six chapters render in about three and a half minutes, GIFs and sheets included; `--quick`
+trades size for speed while drafting. Everything lands in `dist/demo/`, which git ignores.
+
+| # | Chapter | Shows |
+| --- | --- | --- |
+| 1 | `themes` | the twelve dashboard themes on their live previews, and saving one |
+| 2 | `customize` | Dual Gauge in magenta; dark, light and auto appearance; background and gradient; what each readout shows |
+| 3 | `replay` | on-device ride replay: seek, play, zoom, charts, summary |
+| 4 | `display` | brightness, auto brightness and its calibration, the ambient LED, the touch test, the display panel page |
+| 5 | `developer` | unlocking developer mode, and what is inside it |
+| 6 | `updates` | a signed firmware update over Bluetooth, from Bluetooth Link to the verified restart |
 
 | File | What |
 | --- | --- |
@@ -41,8 +50,14 @@ video holds each distinct frame for one or two video frames: the best a CYD coul
 one does. Frame time on the real board is unmeasured; see
 [Performance claims](simulator.md#performance-claims).
 
-Bluetooth, the SD card and firmware updates are host fixtures. A chapter that shows one is
-showing the UI's reaction to a state, not a radio or a card.
+Bluetooth, the SD card, the light sensor and firmware updates are host fixtures. A chapter that
+shows one is showing the UI's reaction to a state, not a radio, a card or a photoresistor; the
+`updates` chapter scripts the display's side of a transfer, and a time-lapse of one at that. A
+chapter says so on its rail: `note "..."` puts a line in the footer above the standing disclosure.
+
+The host also has no backlight, and the LED and the panel profile do nothing. The recorder draws
+the brightness setting itself (see below); the other two are not drawn at all, and the `display`
+chapter's note says so.
 
 ## How a frame is made
 
@@ -57,8 +72,14 @@ showing the UI's reaction to a state, not a radio or a card.
 - The screen layer is stored as lossless H.264 in RGB. One conversion to `yuv420p` (BT.709, tagged)
   happens at the final encode. The display sits at even offsets so that 4:2:0 chroma blocks stay
   inside one display pixel.
-- `cyd_demo_recorder --digest` prints a hash of every frame the firmware drew; ctest runs a scene
-  twice and fails if the two differ.
+- The backlight is drawn as a gain on the picture, in linear light, before the touch ring: manual
+  brightness is the app's `displayBrightnessPercent`, and Auto brightness walks toward the sensor's
+  target two percent a tick as `serviceAutoBrightness()` does in `src/main_lvgl.cpp` (which the host
+  does not compile, so those few lines are repeated in the recorder). The sensor's target is a
+  fixture the scene sets with `light`; the Auto *appearance* logic that reads it is the firmware's.
+  Stills keep the framebuffer as drawn, and `--no-backlight` turns the effect off.
+- `cyd_demo_recorder --digest` prints a hash of every frame the firmware drew and the backlight
+  level; ctest runs a scene twice and fails if the two differ.
 
 ## Scene scripts
 
@@ -69,14 +90,21 @@ before anything runs, so a typo costs no render.
 | Command | Does |
 | --- | --- |
 | `title "..."`, `subtitle "..."` | the chapter card and the rail heading |
+| `note "..."` | a caveat for the rail's footer, above the standing disclosure |
 | `boot [dashboard\|first-boot]` | starts the firmware, on the dashboard by default |
 | `logging off\|on\|recording` | ride-logging fixture. Off unless asked, as on a stock firmware |
 | `card ready\|missing\|checking` | SD card fixture. Ready unless asked |
 | `demo off\|1\|5\|15\|30\|60` | demo ride and its speed. Changing speed mid-scene keeps the ride's place |
+| `light RAW TARGET` | the front light sensor: its ADC reading (0 to 4095, high in the dark) and the brightness percentage it maps to. Option `over=MS` ramps both |
+| `companion off\|preparing\|advertising\|connected\|error ["message"]` | the Bluetooth Link status. Options `seconds=N`, `paused=yes\|no` |
+| `update locked\|ready\|preparing\|advertising\|connected\|confirm-downgrade\|receiving\|ready-to-reboot\|error\|cancelled ["message"]` | the update status the display reports. Options `key=yes\|no`, `received=BYTES`, `total=BYTES`. Starts locked, as a build without a release key does |
+| `update-request [on\|off]` | the phone asking for update mode, which hands Bluetooth Link over to the update screen |
+| `update-progress PERCENT MS` | moves an update in progress to a percentage over the given time |
 | `wait MS` | lets time pass |
 | `tap X Y` | touch down, hold, release. Options `hold=90`, `settle=300` (ms) |
 | `tap-label "TEXT"` | taps the middle of the visible label with exactly this text. Options `nth=1`, `hold`, `settle` |
 | `drag X0 Y0 X1 Y1 MS` | a finger moving between two points. Options `ease=smooth\|linear`, `settle` |
+| `path MS X0 Y0 X1 Y1 [X Y ...]` | a finger drawing a smooth curve through the points. Options `ease`, `settle` |
 | `hold X Y MS` | a long press. Option `settle` |
 | `caption "heading" ["body"]` | puts this caption on the rail until the next one. Option `for=MS` ends it earlier |
 | `caption-off` | clears the rail's caption |
@@ -84,9 +112,15 @@ before anything runs, so a typo costs no render.
 | `expect-label "TEXT"`, `expect-no-label "TEXT"` | fails the scene unless the label is, or is not, visible |
 | `dump` | prints every visible label with its position, for authoring |
 
-`logging`, `card` and `demo` may come before `boot`, and a scene that wants a running ride on the
-dashboard should say `demo` there: the dashboard titles itself DEMO MODE only if the ride is already
-running when it is built, and builds its logging pill only if logging is already on.
+`logging`, `card`, `demo`, `light`, `companion` and `update` may come before `boot`, and a scene that
+wants a running ride on the dashboard should say `demo` there: the dashboard titles itself DEMO MODE
+only if the ride is already running when it is built, and builds its logging pill only if logging
+is already on. A `light` ramp and the rest of the update commands need the firmware running.
+
+The fixtures only report: the update fixtures do not move on their own, and the sensor's target is
+not computed from its reading. Calibrating the sensor on screen sets the firmware's real dark and
+bright levels and checks their range for real, but the target the display shows is the one the
+scene last set.
 
 `tap-label` picks the topmost match, so an overlay's label wins over the screen below it, and says
 what was on screen when it finds nothing. It also warns when the tap would land on a different
@@ -119,6 +153,20 @@ Things the UI does that a scene has to work with:
 - Menus return to the dashboard after 30 s without a touch. Replay does not.
 - Some labels exist twice, a pixel apart (the theme names on the selector, for one). Both match
   `tap-label`, and the topmost is tapped.
+- The Customize Theme panel belongs to the preview's controls. A tap outside it closes it and brings
+  the preview's own controls back; the panel keeps working while Auto appearance flips the theme
+  behind it.
+- Selecting Auto appearance asks to enable Auto brightness, since both read the same sensor.
+- Holding the Display tile in Settings for two seconds opens the developer prompt; the tile fills
+  with the accent colour from one second to two.
+- The Touch Test hides its buttons while a finger draws and brings them back after about a second.
+- The host build draws a sample stroke on the Touch Test that a device does not (a `CYD_LVGL_PREVIEW`
+  block in `screens.cpp`; a device starts blank), so a scene taps Clear before anyone can see it.
+- An update screen has no way back: a finished or cancelled update restarts the display, so a scene
+  ends there.
+- The first page of Display Panel prints the host's build time and the Information page its build
+  date, so a scene that shows either differs with every build. The `display` chapter goes straight
+  to the panel's second page.
 
 ## Adding a chapter
 
@@ -133,8 +181,9 @@ A UI change that renames or moves a label the scenes tap fails ctest, not the ne
 | Test | Covers |
 | --- | --- |
 | `cyd_demo_scene_<name>` | each committed chapter plays to the end |
-| `cyd_demo_recorder_smoke`, `_deterministic` | every command once, and the same frame digest on a second run |
-| `cyd_demo_recorder_missing_label`, `_expectation_failed`, `_unknown_command`, `_before_boot` | the failures the recorder must name |
+| `cyd_demo_recorder_smoke`, `_deterministic` | the scene commands once, and the same frame digest on a second run |
+| `cyd_demo_recorder_fixtures`, `_deterministic_fixtures` | the sensor, link and update fixtures and the finger path, each update state checked by the label it shows, and the same digest twice |
+| `cyd_demo_recorder_missing_label`, `_expectation_failed`, `_unknown_command`, `_before_boot`, `_light_range`, `_path_pairs` | the failures the recorder must name |
 | `test/test_make_demo_video.py` | the caption timeline, fades, rail images, cut file, and that every caption fits |
 
 The recorder is `tools/lvgl_native_preview/demo_recorder.cpp`. Like all simulator orchestration it

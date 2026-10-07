@@ -1,0 +1,4 @@
+# Must fail before anything runs: a path is a duration followed by x y pairs, so an odd coordinate
+# is a typo and not a point.
+boot dashboard
+path 500 10 20 30 40 50

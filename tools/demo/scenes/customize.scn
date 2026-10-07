@@ -1,0 +1,66 @@
+# Chapter: customising a theme.
+#
+# Settings > Theme > Dual Gauge > Customize Theme, then the panel's three tabs: accent colour and
+# appearance (dark, light, auto), background, and which readout each slot shows. Auto appearance
+# follows the front light sensor, which the host fakes: the scene moves the reading through a night
+# and a day, and the recorder draws the backlight dimming that goes with it.
+#
+# Panel positions: tabs at y 50 (Theme x 85, Background x 170, Data x 246); accent swatches at
+# y 102 and 132, x 70 to 247 in steps of about 44, so magenta is (70, 132); appearance buttons at
+# y 168 (Dark x 86, Light x 161, Auto x 233); gradient styles at y 177 (Flat x 76, Fade x 133,
+# Side x 189, Bell x 245).
+title "Make it yours"
+subtitle "Accent, light or dark, background and readouts, for each theme."
+
+demo 1
+boot dashboard
+
+caption "Every theme is tunable" "Settings, Theme, then the theme you want to change. Here, Dual Gauge."
+wait 1400
+tap 160 120 settle=700
+tap-label "SETTINGS" settle=600
+tap-label "THEME" settle=800
+tap-label "Dual Gauge" settle=500
+caption "Customize Theme" "One panel under every preview."
+tap-label "CUSTOMIZE THEME" settle=1500
+
+caption "Accent colour" "Ten to choose from. Magenta on Dual Gauge, live as you tap."
+wait 500
+tap 70 132 settle=2600
+
+caption "Light mode" "The same theme on white. Stock accents deepen to stay readable; a colour you pick stays as picked."
+tap 161 168 settle=3200
+caption "Dark mode" "And back."
+tap 86 168 settle=1800
+
+caption "Background" "A colour, and a gradient: flat, fade, side or bell."
+tap-label "BACKGROUND" settle=1000
+tap 115 132 settle=800
+tap 245 177 settle=2400
+
+caption "Readouts" "Pick what each slot shows. Volts become recovered energy."
+tap-label "DATA" settle=1000
+tap 128 100 settle=900
+tap-label "RECOVERED" settle=1800
+
+caption "Auto" "Auto follows the front light sensor, and the backlight with it."
+tap 85 50 settle=900
+tap 233 168 settle=900
+tap-label "ENABLE" settle=1800
+caption "Dusk" "Dark mode and a dimmer display."
+light 3300 28 over=3200
+wait 900
+caption "Daylight" "Back to light mode, full brightness."
+light 250 95 over=3200
+wait 1200
+
+caption "Saved per theme" "Each theme keeps its own look. Save it and it is your dashboard."
+tap 20 120 settle=700
+tap 160 120 settle=3200
+tap 160 120 settle=700
+tap-label "SAVE" settle=1100
+expect-label "SAVED"
+tap-label "BACK" settle=500
+tap-label "BACK" settle=500
+tap-label "BACK" settle=700
+wait 4200

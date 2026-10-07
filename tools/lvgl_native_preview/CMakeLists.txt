@@ -208,11 +208,18 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
   endforeach()
   set(CYD_DEMO_TEST_SCENES "${CMAKE_CURRENT_LIST_DIR}/demo_test_scenes")
   add_test(NAME cyd_demo_recorder_smoke COMMAND cyd_demo_recorder "${CYD_DEMO_TEST_SCENES}/smoke.scn")
+  add_test(NAME cyd_demo_recorder_fixtures COMMAND cyd_demo_recorder "${CYD_DEMO_TEST_SCENES}/fixtures.scn")
   add_test(
     NAME cyd_demo_recorder_deterministic
     COMMAND ${CMAKE_COMMAND}
       -DRECORDER=$<TARGET_FILE:cyd_demo_recorder>
       -DSCENE=${CYD_DEMO_TEST_SCENES}/smoke.scn
+      -P "${CMAKE_CURRENT_LIST_DIR}/demo_recorder_deterministic.cmake")
+  add_test(
+    NAME cyd_demo_recorder_deterministic_fixtures
+    COMMAND ${CMAKE_COMMAND}
+      -DRECORDER=$<TARGET_FILE:cyd_demo_recorder>
+      -DSCENE=${CYD_DEMO_TEST_SCENES}/fixtures.scn
       -P "${CMAKE_CURRENT_LIST_DIR}/demo_recorder_deterministic.cmake")
   # A matching message passes the test whatever the exit code, so each of these proves the
   # recorder failed for the stated reason rather than for any reason.
@@ -224,6 +231,8 @@ if(CYD_BUILD_TESTS OR CYD_BUILD_SIMULATOR)
   cyd_demo_expect_failure(expectation_failed "is visible but should not be")
   cyd_demo_expect_failure(unknown_command "unknown command")
   cyd_demo_expect_failure(before_boot "comes before boot")
+  cyd_demo_expect_failure(light_range "raw reading of 0 to 4095")
+  cyd_demo_expect_failure(path_pairs "duration, then x y pairs")
 
   # The vehicle field model builds no widgets of its own, so it is tested
   # against the settings logic and the host stubs rather than through the

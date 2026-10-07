@@ -1,0 +1,58 @@
+# Chapter: signed firmware updates over Bluetooth.
+#
+# Settings > Information > Bluetooth Link, then the hand-over to the update screen when the phone
+# asks for update mode, a transfer with its progress, and the verified restart. The other end of the
+# link does not exist on the host, so the scene scripts what the display would report: the
+# companion and update fixtures stand in for the phone, and the progress is a time-lapse of a
+# transfer that takes minutes on a real display. Every screen is the firmware's own.
+title "Updates over Bluetooth"
+subtitle "Signed, checked before anything is erased, and safe to interrupt."
+note "The phone and the radio are not simulated. The screens are the firmware's own and the transfer is scripted."
+
+# A release build: the signing key is present, so update mode is available.
+update ready
+companion advertising seconds=48
+demo 1
+boot dashboard
+
+wait 1000
+caption "Never while riding" "The display offers an update only while Bluetooth Link is open: Settings, then Information."
+tap 160 120 settle=600
+tap-label "SETTINGS" settle=600
+tap-label "INFO" settle=1500
+tap-label "BLUETOOTH LINK" settle=1800
+
+caption "A short window" "Open KAJO Companion on a phone, or the Windows uploader, and connect."
+wait 1800
+companion connected seconds=287
+caption "Riding data carries on" "A wired controller keeps reporting. A Bluetooth one is let go while the link is open."
+wait 2800
+
+caption "The phone asks" "It requests update mode. The display stops ride logging and takes over."
+update-request
+wait 1500
+update advertising
+wait 1300
+update connected
+caption "Signed images only" "The release is signed with an offline key. The display checks the signature before it erases anything."
+wait 3000
+
+update receiving
+caption "A spare slot" "Two firmware slots. The new image is written to the one you are not running."
+update-progress 35 3200
+caption "Sector by sector" "Each compressed sector is checked, written once and acknowledged. A dropped link resumes where it stopped."
+update-progress 78 3200
+update-progress 100 1800
+caption "Verified" "The image is hashed and checked, then the display restarts by itself in five seconds."
+update ready-to-reboot
+wait 2800
+
+caption "Rollback-safe" "The new firmware has ten seconds of healthy running to confirm itself, or the bootloader goes back to the old one."
+wait 3600
+
+caption "Older releases ask first" "A signed downgrade waits for a tap on the display."
+update confirm-downgrade
+wait 3000
+tap-label "CANCEL" settle=600
+update cancelled received=0
+wait 2600
