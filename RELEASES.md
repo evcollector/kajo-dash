@@ -17,3 +17,4 @@ Keep the table at the end of this file: the release builder appends to it.
 
 | Version | Code | Date | Firmware SHA-256 |
 | --- | --- | --- | --- |
+| 0.01 | 1 | 2026-10-07 | `d6375204728dc865df6c5901fb6d2feeb335b3fc27d88a64f673754ea4ad4373` |
