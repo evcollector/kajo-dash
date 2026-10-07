@@ -35,7 +35,7 @@
       a Bluetooth firmware update. <a href="docs/media/demo.chapters.txt">Chapter list</a>.
     </td>
     <td align="center" valign="top" width="50%">
-      <video src="https://github.com/user-attachments/assets/c51ef7e1-67d2-4754-b1a8-bfcc9f359ccf" poster="docs/media/live-demo.jpg" controls muted playsinline preload="none" width="100%"></video><br>
+      <video src="https://github.com/user-attachments/assets/05b64b66-3db1-4c25-a6d0-7337e62583b3" poster="docs/media/live-demo.jpg" controls muted playsinline preload="none" width="100%"></video><br>
       <b><a href="docs/media/live-demo.mp4">Watch the live demo (MP4)</a></b><br>
       Filmed on a real display: installing the firmware over USB, first boot and using the dashboard.
     </td>

@@ -75,6 +75,23 @@ foreach ($c in "start","themes","customize","replay","display","developer","upda
 Each refresh adds the new binaries to the repository's history, so refresh when a release or a
 visible UI change calls for it, not after every edit.
 
+The README's two players do not read these files. GitHub plays a video only from its own upload
+storage, so each player points at a `github.com/user-attachments/assets/...` copy, made by dragging
+the MP4 into an edit box on github.com and copying the URL it inserts. The files in `docs/media/`
+are the poster stills (`demo.jpg`, `live-demo.jpg`) and the download links under each player. After
+refreshing `demo.mp4`, upload it again and replace its URL in `README.md`, or the player keeps
+showing the old cut.
+
+`live-demo.mp4` is not rendered: it is a filmed clip of a real display. Keep it H.264, which every
+browser plays (HEVC does not play in several), and under GitHub's upload limit (10 MB on a free
+plan). The published copy was encoded like this; use the best original you have as the input:
+
+```powershell
+$vf = "scale=960:540:flags=lanczos,format=yuv420p"
+ffmpeg -y -i original.mp4 -vf $vf -c:v libx264 -preset slow -profile:v high -b:v 420k -pass 1 -an -f null -
+ffmpeg -y -i original.mp4 -vf $vf -c:v libx264 -preset slow -profile:v high -b:v 420k -pass 2 -c:a aac -b:a 64k -ac 1 -movflags +faststart docs\media\live-demo.mp4
+```
+
 ## What the video is, and is not
 
 It is footage of the firmware's own UI code, running on a PC. Every frame carries that in its
